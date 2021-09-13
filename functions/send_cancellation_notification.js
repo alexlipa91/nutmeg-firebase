@@ -38,7 +38,11 @@ const getLatestSubscriptionsPerUser = async function (matchId) {
 
 const getUserTokens = async function (userId) {
     const ds = await admin.firestore().doc("users/" + userId).get();
-    return ds.data().tokens
+    const tokens = ds.data().tokens
+    if (typeof tokens == "undefined") {
+        return []
+    }
+    return tokens
 }
 
 const sendNotificationToTokens = async function (tokens, matchId) {
