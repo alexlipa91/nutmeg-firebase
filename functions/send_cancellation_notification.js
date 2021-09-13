@@ -16,7 +16,7 @@ const runFunction = async function (matchId) {
     let goingUsers = subs.filter(s => s.status === "going").map(s => s.userId);
     console.log(goingUsers);
     let tokens = (await Promise.all(goingUsers.map(async (u) => await getUserTokens(u)))).flat();
-    await sendNotificationToTokens(tokens);
+    await sendNotificationToTokens(tokens, matchId);
 }
 
 const getLatestSubscriptionsPerUser = async function (matchId) {
@@ -41,8 +41,14 @@ const getUserTokens = async function (userId) {
     return ds.data().tokens
 }
 
-const sendNotificationToTokens = async function (tokens) {
+const sendNotificationToTokens = async function (tokens, matchId) {
     console.log("sending notifications to " + tokens.length + " devices");
     console.log(tokens)
-    tokens.forEach(t => console.log("sending to " + t));
+    await admin.messaging().sendMulticast({
+        tokens: tokens,
+        notification: {
+            title: "Match Cancellation!",
+            body: "Unfortunately match " + matchId + " has been cancelled. We are processing your refund."
+        },
+    });
 }
