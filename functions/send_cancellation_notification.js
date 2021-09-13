@@ -12,8 +12,8 @@ exports.sendCancellationNotification = functions.https.onRequest((req, res) => {
 
 const runFunction = async function (matchId) {
     let subs = Array.from(await getLatestSubscriptionsPerUser(matchId));
-    console.log("found " + subs.length + " subscriptions");
     let goingUsers = subs.filter(s => s.status === "going").map(s => s.userId);
+    console.log("found " + goingUsers.length + " going users");
     console.log(goingUsers);
     let tokens = (await Promise.all(goingUsers.map(async (u) => await getUserTokens(u)))).flat();
     await sendNotificationToTokens(tokens, matchId);
