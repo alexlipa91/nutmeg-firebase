@@ -15,8 +15,9 @@ const runFunction = async function (matchId) {
     let goingUsers = subs.filter(s => s.status === "going").map(s => s.userId);
     console.log("found " + goingUsers.length + " going users");
     console.log(goingUsers);
-    let tokens = (await Promise.all(goingUsers.map(async (u) => await getUserTokens(u)))).flat();
-    await sendNotificationToTokens(tokens, matchId);
+    const tokens = (await Promise.all(goingUsers.map(async (u) => await getUserTokens(u)))).flat();
+    const matchInfo = await getMatchInfo(matchId)
+    await sendNotificationToTokens(tokens, matchInfo.dateTime, matchInfo.sportcenter);
 }
 
 const getLatestSubscriptionsPerUser = async function (matchId) {
@@ -39,20 +40,31 @@ const getLatestSubscriptionsPerUser = async function (matchId) {
 const getUserTokens = async function (userId) {
     const ds = await admin.firestore().doc("users/" + userId).get();
     const tokens = ds.data().tokens
+    console.log("tokens for user " + userId + " is " + tokens)
     if (typeof tokens == "undefined") {
         return []
     }
     return tokens
 }
 
-const sendNotificationToTokens = async function (tokens, matchId) {
+const sendNotificationToTokens = async function (tokens, datetime, sportcenter) {
     console.log("sending notifications to " + tokens.length + " devices");
     console.log(tokens)
     await admin.messaging().sendMulticast({
         tokens: tokens,
         notification: {
             title: "Match Cancellation!",
-            body: "Unfortunately match " + matchId + " has been cancelled. We are processing your refund."
+            body: "Unfortunately your match planned for " + datetime + " at " + sportcenter + " has been cancelled. " +
+                "We are sorry for the inconvenience. We are processing your refund."
         },
     });
+}
+
+const getMatchInfo = async function(matchId) {
+    const match = await admin.firestore().doc("matches/" + matchId).get();
+    const sportCenter = await admin.firestore().doc("sport_centers/" + match.data().sportCenter).get();
+    return {
+        "dateTime" : match.data().dateTime,
+        "sportcenter": sportCenter.data().name
+    }
 }
