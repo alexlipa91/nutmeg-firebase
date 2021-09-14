@@ -7,4 +7,3 @@ admin.initializeApp();
 
 exports.schedulePrematchNofification = schedulePrematchNofification.schedulePreMatchNotification;
 exports.sendCancellationNotification = sendCancellationNotification.sendCancellationNotification;
-exports.insertFakeData = insertFakeData.insertFakeData;

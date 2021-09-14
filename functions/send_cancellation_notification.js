@@ -1,23 +1,30 @@
 const functions = require("firebase-functions");
 const admin = require('firebase-admin');
+const Sugar = require('sugar')
+
 
 exports.sendCancellationNotification = functions.https.onRequest((req, res) => {
     let matchId = req.body.matchId
     console.log("fetching subs for match: " + matchId)
 
     runFunction(matchId)
-        .then(() => res.status(200).send())
-        .catch((e) => res.status(500).send(e))
+        .then(() => {
+            console.log("success")
+            res.status(200).send()
+        })
+        .catch((e) => {
+            console.log("finished with error " + e)
+            res.status(500).send(e.toString())
+        })
 });
 
 const runFunction = async function (matchId) {
     let subs = Array.from(await getLatestSubscriptionsPerUser(matchId));
     let goingUsers = subs.filter(s => s.status === "going").map(s => s.userId);
     console.log("found " + goingUsers.length + " going users");
-    console.log(goingUsers);
     const tokens = (await Promise.all(goingUsers.map(async (u) => await getUserTokens(u)))).flat();
     const matchInfo = await getMatchInfo(matchId)
-    await sendNotificationToTokens(tokens, matchInfo.dateTime, matchInfo.sportcenter);
+    return await sendNotificationToTokens(tokens, matchInfo.dateTime, matchInfo.sportcenter);
 }
 
 const getLatestSubscriptionsPerUser = async function (matchId) {
@@ -40,7 +47,6 @@ const getLatestSubscriptionsPerUser = async function (matchId) {
 const getUserTokens = async function (userId) {
     const ds = await admin.firestore().doc("users/" + userId).get();
     const tokens = ds.data().tokens
-    console.log("tokens for user " + userId + " is " + tokens)
     if (typeof tokens == "undefined") {
         return []
     }
@@ -48,15 +54,20 @@ const getUserTokens = async function (userId) {
 }
 
 const sendNotificationToTokens = async function (tokens, datetime, sportcenter) {
-    console.log("sending notifications to " + tokens.length + " devices");
-    console.log(tokens)
-    await admin.messaging().sendMulticast({
+    Sugar.extend();
+    console.log("sending notifications to " + tokens.length + " tokens");
+
+    const date = Sugar.Date.create(datetime.toMillis())
+    const dateToString = Sugar.Date.format(date, "{dd}/{MM}/{yyyy} {H}:{mm}");
+
+    return await admin.messaging().sendMulticast({
         tokens: tokens,
         notification: {
             title: "Match Cancellation!",
             // fixme figure out how to format the date
-            body: "Unfortunately your match planned for " + datetime.toISOString() + " at " + sportcenter + " has been cancelled.\n" +
-                "We are sorry for the inconvenience. We are processing your refund."
+            body: "Unfortunately your match planned for " + dateToString
+                + " at " + sportcenter + " has been cancelled.\n"
+                + "We are sorry for the inconvenience. We are processing your refund."
         },
     });
 }
