@@ -55,7 +55,7 @@ const sendNotificationToTokens = async function (tokens, datetime, sportcenter) 
         notification: {
             title: "Match Cancellation!",
             // fixme figure out how to format the date
-            body: "Unfortunately your match planned for " + datetime.toISOString() + " at " + sportcenter + " has been cancelled. " +
+            body: "Unfortunately your match planned for " + datetime.toISOString() + " at " + sportcenter + " has been cancelled.\n" +
                 "We are sorry for the inconvenience. We are processing your refund."
         },
     });
