@@ -1,14 +1,15 @@
 import firebase_admin
 from firebase_admin import firestore
 from datetime import datetime
+import pytz
 
+tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
 
 
 def add_user_to_match(request):
     request_json = request.get_json(silent=True)
-    print(request.args)
-    print(request_json)
+    print("args {}, data {}".format(request.args, request_json))
 
     request_data = request_json["data"]
 
@@ -19,13 +20,13 @@ def add_user_to_match(request):
     _add_user_to_match_firestore(match_id, user_id, payment_intent)
     # redirect_url = _build_redirect_to_app_link(match_id)
 
-    return {}, 200
+    return {"data": {}}, 200
 
 
 def _add_user_to_match_firestore(match_id, user_id, payment_intent):
     db = firestore.client()
 
-    timestamp = datetime.today()
+    timestamp = datetime.now(tz)
 
     new_doc_ref = db.collection('matches').document(match_id).collection("going") \
         .document(user_id)
