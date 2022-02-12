@@ -5,6 +5,8 @@ gcloud functions deploy create_stripe_product \
                          --trigger-resource "projects/nutmeg-9099c/databases/(default)/documents/matches/{matchId}" \
                          --region europe-central2
 """
+import os
+
 import stripe
 
 import firebase_admin
@@ -20,15 +22,15 @@ def create_stripe_product(data, context):
     print('Function triggered by change to: %s' % trigger_resource)
 
     match_id = data["value"]["name"].split("/")[-1]
+    is_test = data["value"]["fields"]["isTest"]["booleanValue"]
 
-    prod = _create_stripe_product("Nutmeg Match")
-    price_id = _create_stripe_price(630, prod)
+    prod = _create_stripe_product("Nutmeg Match", is_test)
+    price_id = _create_stripe_price(630, prod, is_test)
     _store_in_firebase(match_id, price_id)
 
 
-def _create_stripe_product(name):
-    stripe.api_key = "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"
-        # os.environ["STRIPE_PROD_KEY"]
+def _create_stripe_product(name, isTest):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not isTest else "STRIPE_TEST_KEY"]
 
     response = stripe.Product.create(
         name=name
@@ -36,9 +38,8 @@ def _create_stripe_product(name):
     return response["id"]
 
 
-def _create_stripe_price(amount, prod_id):
-    stripe.api_key = "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"
-    # os.environ["STRIPE_PROD_KEY"]
+def _create_stripe_price(amount, prod_id, isTest):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not isTest else "STRIPE_TEST_KEY"]
 
     response = stripe.Price.create(
         unit_amount=amount,

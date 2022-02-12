@@ -85,6 +85,7 @@ def _build_redirect_to_app_link(match_id):
 
 
 if __name__ == '__main__':
-    cus = _get_stripe_customer_id("IwrZWBFb4LZl3Kto1V3oUKPnCni1", False)
-    print(_create_checkout_session(cus, "", "test_match_id", "price_1KRPNeGRb87bTNwH991CaYMa", False))
+    print(_build_redirect_to_app_link("test_match_id"))
+    # cus = _get_stripe_customer_id("IwrZWBFb4LZl3Kto1V3oUKPnCni1", False)
+    # print(_create_checkout_session(cus, "", "test_match_id", "price_1KRPNeGRb87bTNwH991CaYMa", False))
 

@@ -1,6 +1,5 @@
 import datetime
 import json
-import calendar
 
 import dateutil.parser
 import firebase_admin
@@ -24,8 +23,8 @@ def edit_match(request):
 
     request_data = request_json["data"]
 
-    _edit_match_firestore(request_data)
-    return {}, 200
+    _edit_match_firestore(request.args["id"], request_data["data"])
+    return {"data": {}}, 200
 
 
 def get_match(request):
@@ -55,12 +54,12 @@ def _edit_match_firestore(match_id, match_data):
 
 
 def _add_match_firestore(match_data):
-    # assert "sportCenterId" in match_data, "Required field missing"
-    # assert "sport" in match_data, "Required field missing"
-    # assert "pricePerPerson" in match_data, "Required field missing"
-    # assert "maxPlayers" in match_data, "Required field missing"
-    # assert "dateTime" in match_data, "Required field missing"
-    # assert "duration" in match_data, "Required field missing"
+    assert "sportCenterId" in match_data, "Required field missing"
+    assert "sport" in match_data, "Required field missing"
+    assert "pricePerPerson" in match_data, "Required field missing"
+    assert "maxPlayers" in match_data, "Required field missing"
+    assert "dateTime" in match_data, "Required field missing"
+    assert "duration" in match_data, "Required field missing"
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
