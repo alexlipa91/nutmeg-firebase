@@ -59,12 +59,12 @@ def _edit_match_firestore(match_id, match_data):
 
 
 def _add_match_firestore(match_data):
-    assert "sportCenterId" in match_data, "Required field missing"
-    assert "sport" in match_data, "Required field missing"
-    assert "pricePerPerson" in match_data, "Required field missing"
-    assert "maxPlayers" in match_data, "Required field missing"
-    assert "dateTime" in match_data, "Required field missing"
-    assert "duration" in match_data, "Required field missing"
+    assert match_data.get("sportCenterId", None) is not None, "Required field missing"
+    assert match_data.get("sport", None) is not None, "Required field missing"
+    assert match_data.get("pricePerPerson", None) is not None, "Required field missing"
+    assert match_data.get("maxPlayers", None) is not None, "Required field missing"
+    assert match_data.get("dateTime", None) is not None, "Required field missing"
+    assert match_data.get("duration", None) is not None, "Required field missing"
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
