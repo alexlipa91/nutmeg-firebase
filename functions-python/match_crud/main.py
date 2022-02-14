@@ -68,6 +68,9 @@ def _add_match_firestore(match_data):
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
+    # fixme to allow backward compatibility with v0.1.45
+    match_data["sportCenter"] = match_data["sportCenterId"]
+
     db = firestore.client()
 
     doc_ref = db.collection('matches').document()
