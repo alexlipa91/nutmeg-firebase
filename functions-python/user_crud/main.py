@@ -1,6 +1,5 @@
 import firebase_admin
 from firebase_admin import firestore
-from google.cloud import functions
 
 firebase_admin.initialize_app()
 
@@ -11,10 +10,7 @@ def add_user(request):
 
     request_data = request_json["data"]
 
-    try:
-        _add_user_firestore(request_data["id"], request_data["data"])
-    except:
-        return HttpResponseServerError
+    _add_user_firestore(request_data["id"], request_data["data"])
 
     return {"data": {}}, 200
 
