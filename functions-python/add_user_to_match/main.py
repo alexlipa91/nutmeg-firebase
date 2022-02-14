@@ -17,7 +17,7 @@ def add_user_to_match(request):
     match_id = request_data["match_id"]
     user_id = request_data["user_id"]
     payment_intent = request_data.get("payment_intent", None)
-    credits_used = request_data.get("credits_used", 0)
+    credits_used = request_data.get("credits_used", None)
 
     _add_user_to_match_firestore(match_id, user_id, payment_intent, credits_used)
 
@@ -52,7 +52,7 @@ def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, refunde
     user = user_doc_ref.get(transaction=transaction).to_dict()
     available_credits = user['credits']
 
-    if credits_used > available_credits:
+    if credits_used is not None and credits_used > available_credits:
         raise Exception("User has not enough credits. Needed {}, actual {}".format(credits_used, available_credits))
 
     # remove if user is in refunds
@@ -70,8 +70,4 @@ def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, refunde
     transaction.update(user_doc_ref, {
         'credits': Increment(-match_price)
     })
-
-
-if __name__ == '__main__':
-    _add_user_to_match_firestore("FKxTBQl32LFig3J2iHoA", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", "py", 0)
 
