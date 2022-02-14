@@ -1,5 +1,4 @@
 import datetime
-import json
 
 import dateutil.parser
 import firebase_admin
@@ -33,12 +32,18 @@ def get_match(request):
 
     request_data = request_json["data"]
 
+    resp = {"data": _get_match_firestore(request_data["id"])}
+    print(type(resp))
+
     return {"data": _get_match_firestore(request_data["id"])}, 200
 
 
 def get_all_matches(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
+
+    resp = {"data": _get_all_matches_firestore()}
+    print(type(resp))
 
     return {"data": _get_all_matches_firestore()}, 200
 
@@ -75,17 +80,25 @@ def _get_match_firestore(match_id):
 
     match_data = db.collection('matches').document(match_id).get().to_dict()
 
-    match_data["going"] = {}
-    going = db.collection('matches').document(match_id).collection("going").stream()
-    for doc in going:
-        match_data["going"][doc.id] = doc.to_dict()
+    match_data["going"] = _read_subscriptions(match_id, "going")
+    match_data["refunded"] = _read_subscriptions(match_id, "refunded")
 
-    match_data["refunded"] = {}
-    going = db.collection('matches').document(match_id).collection("refunded").stream()
-    for doc in going:
-        match_data["refunded"][doc.id] = doc.to_dict()
+    # serialize date
+    match_data["dateTime"] = _serialize_date(match_data["dateTime"])
 
-    return json.dumps(match_data, default=SerializationUtils.default)
+    return match_data
+
+
+def _read_subscriptions(match_id, field_name):
+    db = firestore.client()
+    res = {}
+
+    for sub in db.collection('matches').document(match_id).collection(field_name).stream():
+        sub_dict = sub.to_dict()
+        sub_dict["createdAt"] = _serialize_date(sub_dict["createdAt"])
+        res[sub.id] = sub_dict
+
+    return res
 
 
 def _get_all_matches_firestore():
@@ -101,16 +114,5 @@ def _get_matches_id_firestore():
     return [ds.id for ds in db.collection('matches').select({}).get()]
 
 
-class SerializationUtils:
-    def default(obj):
-        """Default JSON serializer."""
-        if isinstance(obj, datetime.datetime):
-            if obj.utcoffset() is not None:
-                obj = obj - obj.utcoffset()
-            return datetime.datetime.isoformat(obj)
-        raise TypeError('Not sure how to serialize %s' % (obj,))
-
-
-# if __name__ == '__main__':
-#     print(dateutil.parser.isoparse("1969-07-20T20:18:04.000Z"))
-# print(_add_match_firestore({'dateTime': "1969-07-20T20:18:04.000Z"}))
+def _serialize_date(date):
+    return datetime.datetime.isoformat(date)

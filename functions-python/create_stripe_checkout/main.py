@@ -16,17 +16,34 @@ def create_stripe_checkout(request):
 
     request_data = request_json["data"]
 
-    price_id = request_data["price_id"]
     test_mode = request_data["test_mode"]
     match_id = request_data["match_id"]
     user_id = request_data["user_id"]
 
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
 
-    session = _create_checkout_session(_get_stripe_customer_id(user_id, test_mode),
-                                       user_id, match_id, price_id, test_mode)
+    match_info = _get_match_info(match_id)
+
+    session = _create_checkout_session(
+        _get_stripe_customer_id(user_id, test_mode),
+        user_id,
+        match_id,
+        match_info["pricePerPerson"],
+        match_info["stripeProductId"],
+        test_mode)
+
     data = {'data': {'session_id': session.id, 'url': session.url}}
     return data, 200
+
+
+def _get_match_info(match_id):
+    db = firestore.client()
+
+    data = db.collection('matches').document(match_id).get(
+        field_paths={"pricePerPerson", "stripeProductId"}) \
+        .to_dict()
+
+    return data
 
 
 def _get_stripe_customer_id(user_id, test_mode):
@@ -39,33 +56,32 @@ def _get_stripe_customer_id(user_id, test_mode):
     return data["stripeTestId" if test_mode else "stripeId"]
 
 
-def _create_checkout_session(customer_id, user_id, match_id, price_id, test_mode):
+def _create_checkout_session(customer_id, user_id, match_id, price, product_id, test_mode):
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
-    # "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"
 
     session = stripe.checkout.Session.create(
-        success_url=_build_redirect_to_app_link(match_id),
-        cancel_url="https://www.google.com",
+        success_url=_build_redirect_to_app_link(match_id, "success"),
+        cancel_url=_build_redirect_to_app_link(match_id, "cancel"),
 
         payment_method_types=["card", "ideal"],
         line_items=[
             {
-                "price": price_id,
-                "quantity": 1
+                'price_data': {
+                    "unit_amount": price,
+                    "product": product_id,
+                    "currency": "eur"
+                },
+                'quantity': 1,
             }
         ],
         mode="payment",
         customer=customer_id,
-        # discounts=[{
-        #     "coupon": "cZLa83ZZ"
-        # }],
-        # allow_promotion_codes=True,
         metadata={"user_id": user_id, "match_id": match_id}
     )
     return session
 
 
-def _build_redirect_to_app_link(match_id):
+def _build_redirect_to_app_link(match_id, outcome):
     api_key = 'AIzaSyAjyxMFOrglJXpK6QlzJR_Mh8hNH3NcGS0'
     domain = 'nutmegapp.page.link'
     dl = DynamicLinks(api_key, domain)
@@ -79,13 +95,9 @@ def _build_redirect_to_app_link(match_id):
             "iosAppStoreId": '1592985083',
         }
     }
-    short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?outcome=success&match_id={}'.format(match_id),
+    short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?outcome={}&match_id={}'.format(outcome, match_id),
                                           True, params)
     return short_link
 
 
-if __name__ == '__main__':
-    print(_build_redirect_to_app_link("test_match_id"))
-    # cus = _get_stripe_customer_id("IwrZWBFb4LZl3Kto1V3oUKPnCni1", False)
-    # print(_create_checkout_session(cus, "", "test_match_id", "price_1KRPNeGRb87bTNwH991CaYMa", False))
 

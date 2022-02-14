@@ -6,6 +6,7 @@ gcloud functions deploy create_stripe_product \
                          --region europe-central2
 """
 import os
+from datetime import datetime
 
 import stripe
 
@@ -24,22 +25,34 @@ def create_stripe_product(data, context):
     match_id = data["value"]["name"].split("/")[-1]
     is_test = data["value"]["fields"]["isTest"]["booleanValue"]
 
-    prod = _create_stripe_product("Nutmeg Match", is_test)
-    price_id = _create_stripe_price(630, prod, is_test)
-    _store_in_firebase(match_id, price_id)
+    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+
+    sport_center = _get_sport_center_details(data["value"]["fields"]["sportCenterId"]["stringValue"])
+
+    product_id = _create_stripe_product("Nutmeg Match - "
+                                        + sport_center["name"]
+                                        + " - " + date_time.strftime("%a %-d %b %H:%M"),
+                                        sport_center["address"], is_test)
+    _store_in_firebase(match_id, product_id)
 
 
-def _create_stripe_product(name, isTest):
-    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not isTest else "STRIPE_TEST_KEY"]
+def _get_sport_center_details(sport_center_id):
+    db = firestore.client()
+    return db.collection('sport_centers').document(sport_center_id).get().to_dict()
+
+
+def _create_stripe_product(name, address, is_test):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     response = stripe.Product.create(
-        name=name
+        name=name,
+        description="Address: " + address
     )
     return response["id"]
 
 
-def _create_stripe_price(amount, prod_id, isTest):
-    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not isTest else "STRIPE_TEST_KEY"]
+def _create_stripe_price(amount, prod_id, is_test):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     response = stripe.Price.create(
         unit_amount=amount,
@@ -53,13 +66,8 @@ def _store_in_firebase(match_id, price_id):
     db = firestore.client()
 
     db.collection('matches').document(match_id).update({
-        'stripePriceId': price_id
+        'stripeProductId': price_id
     })
 
-
-# if __name__ == '__main__':
-#     prod = _create_stripe_product("Nutmeg Match")
-#     price_id = _create_stripe_price(630, prod)
-#     _store_in_firebase("crFHcsL52YvzXl0LFJ28", price_id)
 
 
