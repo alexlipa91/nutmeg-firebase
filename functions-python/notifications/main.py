@@ -57,8 +57,8 @@ gcloud functions deploy schedule_prematch_notification \
                          --region europe-central2
 """
 def schedule_prematch_notification(data, context):
-    # trigger_resource = context.resource
-    # print('Function triggered by change to: %s' % trigger_resource)
+    trigger_resource = context.resource
+    print('Function triggered by change to: %s' % trigger_resource)
 
     match_id = data["value"]["name"].split("/")[-1]
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
