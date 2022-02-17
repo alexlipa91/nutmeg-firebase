@@ -36,12 +36,17 @@ def _send_prematch_notification(match_id):
         tokens.extend(user_tokens)
 
     match = db.collection("matches").document(match_id).get().to_dict()
-    sport_center = db.collection('sport_centers').document(match["sportCenter"]).get().to_dict()
+    if match["cancelledAt"] is not None:
+        raise Exception("Match is cancelled! Not sending any notification...")
+
+    sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
+
+    date_time = datetime.strptime(match["dateTime"], "%Y-%m-%dT%H:%M:%SZ")
 
     message = messaging.MulticastMessage(
         notification=messaging.Notification(
-            title="Get ready",
-            body="Your match at {} is coming up!".format(sport_center["name"]),
+            title="Ready for the match?",
+            body="Your match today is at {} at {}".format(date_time.strftime("%H:%m"), sport_center["name"]),
         ),
         tokens=tokens,
     )
@@ -113,6 +118,6 @@ def schedule_prematch_notification(data, context):
     print("Created task {}".format(response.name))
 
 
-if __name__ == '__main__':
-    data = {'oldValue': {}, 'updateMask': {}, 'value': {'createTime': '2022-02-14T23:08:37.516335Z', 'fields': {'cancelledAt': {'nullValue': None}, 'dateTime': {'timestampValue': '2022-02-16T17:00:00Z'}, 'duration': {'integerValue': '60'}, 'isTest': {'booleanValue': False}, 'maxPlayers': {'integerValue': '12'}, 'pricePerPerson': {'integerValue': '630'}, 'sport': {'stringValue': 'BvwIYDpu0f3RIT4EaWBH'}, 'sportCenter': {'stringValue': 'ChIJaaYbkP8JxkcR_lUNC3ssFuU'}, 'sportCenterId': {'stringValue': 'ChIJaaYbkP8JxkcR_lUNC3ssFuU'}, 'sportCenterSubLocation': {'nullValue': None}}, 'name': 'projects/nutmeg-9099c/databases/(default)/documents/matches/8fmbZokYTfjRDVyGPt1s', 'updateTime': '2022-02-14T23:08:37.516335Z'}}
-    schedule_prematch_notification(data=data, context=None)
+# if __name__ == '__main__':
+#     data = {'oldValue': {}, 'updateMask': {}, 'value': {'createTime': '2022-02-14T23:08:37.516335Z', 'fields': {'cancelledAt': {'nullValue': None}, 'dateTime': {'timestampValue': '2022-02-16T17:00:00Z'}, 'duration': {'integerValue': '60'}, 'isTest': {'booleanValue': False}, 'maxPlayers': {'integerValue': '12'}, 'pricePerPerson': {'integerValue': '630'}, 'sport': {'stringValue': 'BvwIYDpu0f3RIT4EaWBH'}, 'sportCenter': {'stringValue': 'ChIJaaYbkP8JxkcR_lUNC3ssFuU'}, 'sportCenterId': {'stringValue': 'ChIJaaYbkP8JxkcR_lUNC3ssFuU'}, 'sportCenterSubLocation': {'nullValue': None}}, 'name': 'projects/nutmeg-9099c/databases/(default)/documents/matches/8fmbZokYTfjRDVyGPt1s', 'updateTime': '2022-02-14T23:08:37.516335Z'}}
+#     schedule_prematch_notification(data=data, context=None)
