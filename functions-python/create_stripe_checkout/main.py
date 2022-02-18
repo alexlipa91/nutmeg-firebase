@@ -19,6 +19,7 @@ def create_stripe_checkout(request):
     test_mode = request_data["test_mode"]
     match_id = request_data["match_id"]
     user_id = request_data["user_id"]
+    credits_used = request_data.get("credits_used", 0)
 
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
 
@@ -30,6 +31,8 @@ def create_stripe_checkout(request):
         match_id,
         match_info["pricePerPerson"],
         match_info["stripeProductId"],
+        match_info["stripePriceId"],
+        credits_used,
         test_mode)
 
     data = {'data': {'session_id': session.id, 'url': session.url}}
@@ -56,27 +59,32 @@ def _get_stripe_customer_id(user_id, test_mode):
     return data["stripeTestId" if test_mode else "stripeId"]
 
 
-def _create_checkout_session(customer_id, user_id, match_id, price, product_id, test_mode):
+def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id, credits_used, test_mode):
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
+
+    if credits_used == 0:
+        line_item = {
+            "price": price_id,
+        }
+    else:
+        line_item = {
+            'price_data': {
+                "unit_amount": price_per_person - credits_used,
+                "product": product_id,
+                "currency": "eur"
+            },
+        }
+    line_item["quantity"] = 1
 
     session = stripe.checkout.Session.create(
         success_url=_build_redirect_to_app_link(match_id, "success"),
         cancel_url=_build_redirect_to_app_link(match_id, "cancel"),
 
         payment_method_types=["card", "ideal"],
-        line_items=[
-            {
-                'price_data': {
-                    "unit_amount": price,
-                    "product": product_id,
-                    "currency": "eur"
-                },
-                'quantity': 1,
-            }
-        ],
+        line_items=[line_item],
         mode="payment",
         customer=customer_id,
-        metadata={"user_id": user_id, "match_id": match_id}
+        metadata={"user_id": user_id, "match_id": match_id, "credits_used": 0}
     )
     return session
 
@@ -99,5 +107,10 @@ def _build_redirect_to_app_link(match_id, outcome):
                                           True, params)
     return short_link
 
+
+# if __name__ == '__main__':
+#     print(_create_checkout_session("cus_L69uzD5yMZXVAn", "IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+#                              "0fn2zd8IjTDgoYtC1C6Z", 100, "prod_LAsIddc0zISbSd",
+#                              "price_1KUWXsGRb87bTNwHkctOMs7l", 0, True))
 
 

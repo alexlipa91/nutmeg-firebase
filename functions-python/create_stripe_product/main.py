@@ -8,6 +8,7 @@ gcloud functions deploy create_stripe_product \
 import os
 from datetime import datetime
 
+import pytz
 import stripe
 
 import firebase_admin
@@ -31,9 +32,10 @@ def create_stripe_product(data, context):
 
     product_id = _create_stripe_product("Nutmeg Match - "
                                         + sport_center["name"]
-                                        + " - " + date_time.strftime("%a %-d %b %H:%M"),
+                                        + " - " + date_time.astimezone(pytz.timezone("Europe/Amsterdam")).strftime("%a %-d %b %H:%M"),
                                         sport_center["address"], is_test)
-    _store_in_firebase(match_id, product_id)
+    price_id = _create_stripe_price(data["value"]["fields"]["pricePerPerson"]["integerValue"], product_id, is_test)
+    _store_in_firebase(match_id, product_id, price_id)
 
 
 def _get_sport_center_details(sport_center_id):
@@ -55,6 +57,7 @@ def _create_stripe_price(amount, prod_id, is_test):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     response = stripe.Price.create(
+        nickname='Standard Price',
         unit_amount=amount,
         currency="eur",
         product=prod_id
@@ -62,11 +65,12 @@ def _create_stripe_price(amount, prod_id, is_test):
     return response["id"]
 
 
-def _store_in_firebase(match_id, price_id):
+def _store_in_firebase(match_id, product_id, price_id):
     db = firestore.client()
 
     db.collection('matches').document(match_id).update({
-        'stripeProductId': price_id
+        'stripeProductId': product_id,
+        'stripePriceId': price_id
     })
 
 
