@@ -31,7 +31,7 @@ def create_stripe_checkout(request):
         match_id,
         match_info["pricePerPerson"],
         match_info["stripeProductId"],
-        match_info["stripePriceId"],
+        match_info.get("stripePriceId", None),
         credits_used,
         test_mode)
 
@@ -62,7 +62,7 @@ def _get_stripe_customer_id(user_id, test_mode):
 def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id, credits_used, test_mode):
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
 
-    if credits_used == 0:
+    if credits_used == 0 and price_id is not None:
         line_item = {
             "price": price_id,
         }
