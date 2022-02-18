@@ -1,8 +1,10 @@
+import asyncio
 import datetime
 
 import dateutil.parser
 import firebase_admin
 from firebase_admin import firestore
+from google.cloud.firestore import AsyncClient
 
 firebase_admin.initialize_app()
 
@@ -32,20 +34,14 @@ def get_match(request):
 
     request_data = request_json["data"]
 
-    resp = {"data": _get_match_firestore(request_data["id"])}
-    print(type(resp))
-
-    return {"data": _get_match_firestore(request_data["id"])}, 200
+    return {"data": asyncio.run(_get_match_firestore(request_data["id"]))}, 200
 
 
 def get_all_matches(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    resp = {"data": _get_all_matches_firestore()}
-    print(type(resp))
-
-    return {"data": _get_all_matches_firestore()}, 200
+    return {"data": asyncio.run(_get_all_matches_firestore())}, 200
 
 
 def _edit_match_firestore(match_id, match_data):
@@ -75,25 +71,28 @@ def _add_match_firestore(match_data):
     return doc_ref.id
 
 
-def _get_match_firestore(match_id):
-    db = firestore.client()
+async def _get_match_firestore(match_id):
+    db = AsyncClient()
 
-    match_data = db.collection('matches').document(match_id).get().to_dict()
+    match_data = (await db.collection('matches').document(match_id).get()).to_dict()
 
-    match_data["going"] = _read_subscriptions(match_id, "going")
-    match_data["refunded"] = _read_subscriptions(match_id, "refunded")
+    (match_data["going"], match_data["refunded"]) = await asyncio.gather(
+        _read_subscriptions(match_id, "going"),
+        _read_subscriptions(match_id, "refunded")
+    )
 
     # serialize date
     match_data["dateTime"] = _serialize_date(match_data["dateTime"])
-
     return match_data
 
 
-def _read_subscriptions(match_id, field_name):
-    db = firestore.client()
+async def _read_subscriptions(match_id, field_name):
+    db = AsyncClient()
     res = {}
 
-    for sub in db.collection('matches').document(match_id).collection(field_name).stream():
+    collection = await db.collection('matches/{}/{}'.format(match_id, field_name)).get()
+
+    for sub in collection:
         sub_dict = sub.to_dict()
         sub_dict["createdAt"] = _serialize_date(sub_dict["createdAt"])
         res[sub.id] = sub_dict
@@ -101,17 +100,25 @@ def _read_subscriptions(match_id, field_name):
     return res
 
 
-def _get_all_matches_firestore():
+async def _get_all_matches_firestore():
+    db = AsyncClient()
+    collection = await db.collection('matches').get()
+
     res = {}
 
-    for id in _get_matches_id_firestore():
-        res[id] = _get_match_firestore(id)
+    for c in collection:
+        match_data = c.to_dict()
+        (match_data["going"], match_data["refunded"]) = await asyncio.gather(
+            _read_subscriptions(c.id, "going"),
+            _read_subscriptions(c.id, "refunded")
+        )
+
+        # serialize date
+        match_data["dateTime"] = _serialize_date(match_data["dateTime"])
+
+        res[c.id] = match_data
+
     return res
-
-
-def _get_matches_id_firestore():
-    db = firestore.client()
-    return [ds.id for ds in db.collection('matches').select({}).get()]
 
 
 def _serialize_date(date):
