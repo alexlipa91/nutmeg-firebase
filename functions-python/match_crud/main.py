@@ -78,13 +78,15 @@ async def _get_match_firestore(match_id):
 
 
 async def _format_match_data(match_data):
-    # make it backward compatible, the client used to rely on user_id field being there; also going must be present
+    # make it backward compatible, the client used to rely on user_id field being there; also going must be present and refunded :(
     if "going" not in match_data:
         match_data["going"] = {}
     else:
         for u in match_data["going"]:
             match_data["going"][u]["userId"] = u
             match_data["going"][u]["createdAt"] = _serialize_date(match_data["going"][u]["createdAt"])
+
+    match_data["refunded"] = {}
 
     # serialize date
     match_data["dateTime"] = _serialize_date(match_data["dateTime"])

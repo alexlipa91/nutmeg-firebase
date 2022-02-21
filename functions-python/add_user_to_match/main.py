@@ -41,13 +41,10 @@ def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, transac
                                                 match_doc_ref, credits_used, payment_intent, user_id):
     timestamp = datetime.now(tz)
 
-    # check if already going
-    if going_doc_ref.get(transaction=transaction).exists:
-        raise Exception("User already going")
-
-    # check if enough credits
     match = match_doc_ref.get(transaction=transaction).to_dict()
-    match_price = match["pricePerPerson"]
+
+    if match.get("going", {}).get(user_id, None):
+        raise Exception("User already going")
 
     user = user_doc_ref.get(transaction=transaction).to_dict()
     available_credits = user['credits']
@@ -67,3 +64,7 @@ def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, transac
         transaction.update(user_doc_ref, {
             'credits': Increment(-credits_used)
         })
+
+
+if __name__ == '__main__':
+    _add_user_to_match_firestore("0fn2zd8IjTDgoYtC1C6Z", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", "", 0)
