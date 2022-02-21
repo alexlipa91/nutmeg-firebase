@@ -28,30 +28,22 @@ def _remove_user_from_match_firestore(match_id, user_id):
     timestamp = datetime.now(tz)
 
     match = db.collection('matches').document(match_id).get().to_dict()
-    new_doc_ref = db.collection('matches').document(match_id).collection("refunded").document(user_id)
 
-    if new_doc_ref.get().exists:
-        raise Exception("User already refunded")
+    if not match.get("going", {}).get(user_id, None):
+        raise Exception("User is not part of the match")
 
     # remove if user is in going
-    going_doc_ref = db.collection('matches').document(match_id).collection("going").document(user_id)
-
-    if not going_doc_ref.get().exists:
-        raise Exception("User is not going. Cannot refund")
-
-    going_doc_ref.delete()
-
-    # add user to list of refunded
-    new_doc_ref.set({
-        'createdAt': timestamp,
-        'userId': user_id,
+    db.collection('matches').document(match_id).update({
+        u'going.' + user_id: firestore.DELETE_FIELD
     })
+
+    credits_refunded = match['pricePerPerson']
+
+    # record transaction
+    db.collection('matches').document(match_id).collection("transactions").document().set(
+        {"type": "refund", "userId": user_id, "createdAt": timestamp, "creditsRefunded": credits_refunded})
 
     # update user credits count
     db.collection('users').document(user_id).update({
-        'credits': Increment(match['pricePerPerson'])
+        'credits': Increment(credits_refunded)
     })
-
-
-if __name__ == '__main__':
-    _remove_user_from_match_firestore("FKxTBQl32LFig3J2iHoA", "IwrZWBFb4LZl3Kto1V3oUKPnCni1")

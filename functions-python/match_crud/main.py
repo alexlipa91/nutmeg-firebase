@@ -73,31 +73,22 @@ def _add_match_firestore(match_data):
 
 async def _get_match_firestore(match_id):
     db = AsyncClient()
-
     match_data = (await db.collection('matches').document(match_id).get()).to_dict()
+    return await _format_match_data(match_data)
 
-    (match_data["going"], match_data["refunded"]) = await asyncio.gather(
-        _read_subscriptions(match_id, "going"),
-        _read_subscriptions(match_id, "refunded")
-    )
+
+async def _format_match_data(match_data):
+    # make it backward compatible, the client used to rely on user_id field being there; also going must be present
+    if "going" not in match_data:
+        match_data["going"] = {}
+    else:
+        for u in match_data["going"]:
+            match_data["going"][u]["userId"] = u
+            match_data["going"][u]["createdAt"] = _serialize_date(match_data["going"][u]["createdAt"])
 
     # serialize date
     match_data["dateTime"] = _serialize_date(match_data["dateTime"])
     return match_data
-
-
-async def _read_subscriptions(match_id, field_name):
-    db = AsyncClient()
-    res = {}
-
-    collection = await db.collection('matches/{}/{}'.format(match_id, field_name)).get()
-
-    for sub in collection:
-        sub_dict = sub.to_dict()
-        sub_dict["createdAt"] = _serialize_date(sub_dict["createdAt"])
-        res[sub.id] = sub_dict
-
-    return res
 
 
 async def _get_all_matches_firestore():
@@ -106,17 +97,8 @@ async def _get_all_matches_firestore():
 
     res = {}
 
-    for c in collection:
-        match_data = c.to_dict()
-        (match_data["going"], match_data["refunded"]) = await asyncio.gather(
-            _read_subscriptions(c.id, "going"),
-            _read_subscriptions(c.id, "refunded")
-        )
-
-        # serialize date
-        match_data["dateTime"] = _serialize_date(match_data["dateTime"])
-
-        res[c.id] = match_data
+    for m in collection:
+        res[m.id] = await _format_match_data(m.to_dict())
 
     return res
 

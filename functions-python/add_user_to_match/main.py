@@ -28,17 +28,17 @@ def _add_user_to_match_firestore(match_id, user_id, payment_intent, credits_used
     db = firestore.client()
 
     going_doc_ref = db.collection('matches').document(match_id).collection("going").document(user_id)
-    refunded_doc_ref = db.collection('matches').document(match_id).collection("refunded").document(user_id)
+    transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
     user_doc_ref = db.collection('users').document(user_id)
     match_doc_ref = db.collection('matches').document(match_id)
 
-    _add_user_to_match_firestore_transaction(db.transaction(), going_doc_ref, refunded_doc_ref, user_doc_ref,
+    _add_user_to_match_firestore_transaction(db.transaction(), going_doc_ref, transactions_doc_ref, user_doc_ref,
                                              match_doc_ref, credits_used, payment_intent, user_id)
 
 
 @firestore.transactional
-def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, refunded_doc_ref, user_doc_ref, match_doc_ref,
-                                             credits_used, payment_intent, user_id):
+def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, transactions_doc_ref, user_doc_ref,
+                                                match_doc_ref, credits_used, payment_intent, user_id):
     timestamp = datetime.now(tz)
 
     # check if already going
@@ -52,22 +52,18 @@ def _add_user_to_match_firestore_transaction(transaction, going_doc_ref, refunde
     user = user_doc_ref.get(transaction=transaction).to_dict()
     available_credits = user['credits']
 
-    if credits_used is not None and credits_used > available_credits:
+    if credits_used is not None and credits_used != 0 and credits_used > available_credits:
         raise Exception("User has not enough credits. Needed {}, actual {}".format(credits_used, available_credits))
 
-    # remove if user is in refunds
-    transaction.delete(refunded_doc_ref)
-
     # add user to list of going
-    transaction.set(going_doc_ref, {
-        'createdAt': timestamp,
-        'paymentIntent': payment_intent,
-        'userId': user_id,
-        'credits_used': credits_used
-    })
+    transaction.set(match_doc_ref, {"going": {user_id: {"createdAt" : timestamp}}}, merge=True)
+
+    # record transaction
+    transaction.set(transactions_doc_ref, {"type": "joined", "userId": user_id, "createdAt": timestamp,
+                                           "paymentIntent": payment_intent, "creditsUsed": credits_used})
 
     # update user credits count
-    transaction.update(user_doc_ref, {
-        'credits': Increment(-match_price)
-    })
-
+    if credits_used is not None and credits_used != 0:
+        transaction.update(user_doc_ref, {
+            'credits': Increment(-credits_used)
+        })
