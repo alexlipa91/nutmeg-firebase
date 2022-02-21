@@ -25,25 +25,43 @@ def remove_user_from_match(request):
 def _remove_user_from_match_firestore(match_id, user_id):
     db = firestore.client()
 
+    transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
+    user_doc_ref = db.collection('users').document(user_id)
+    match_doc_ref = db.collection('matches').document(match_id)
+
+    _remove_user_from_match_firestore_transaction(db.transaction(), match_doc_ref, user_doc_ref, transactions_doc_ref,
+                                                  user_id, match_id)
+
+
+@firestore.transactional
+def _remove_user_from_match_firestore_transaction(transaction, match_doc_ref, user_doc_ref, transaction_doc_ref,
+                                                  user_id, match_id):
     timestamp = datetime.now(tz)
 
-    match = db.collection('matches').document(match_id).get().to_dict()
+    match = match_doc_ref.get(transaction=transaction).to_dict()
 
     if not match.get("going", {}).get(user_id, None):
         raise Exception("User is not part of the match")
 
     # remove if user is in going
-    db.collection('matches').document(match_id).update({
+    transaction.update(match_doc_ref, {
         u'going.' + user_id: firestore.DELETE_FIELD
+    })
+
+    # remove match in user list
+    transaction.update(user_doc_ref, {
+        u'joined_matches.' + match_id: firestore.DELETE_FIELD
     })
 
     credits_refunded = match['pricePerPerson']
 
     # record transaction
-    db.collection('matches').document(match_id).collection("transactions").document().set(
-        {"type": "refund", "userId": user_id, "createdAt": timestamp, "creditsRefunded": credits_refunded})
+    transaction.set(transaction_doc_ref,
+                    {"type": "refund", "userId": user_id, "createdAt": timestamp, "creditsRefunded": credits_refunded})
 
     # update user credits count
-    db.collection('users').document(user_id).update({
-        'credits': Increment(credits_refunded)
-    })
+    transaction.update(user_doc_ref, {'credits': Increment(credits_refunded)})
+
+
+if __name__ == '__main__':
+    _remove_user_from_match_firestore("0fn2zd8IjTDgoYtC1C6Z", "IwrZWBFb4LZl3Kto1V3oUKPnCni1")
