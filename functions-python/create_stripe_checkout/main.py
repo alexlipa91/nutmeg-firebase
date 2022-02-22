@@ -52,11 +52,25 @@ def _get_match_info(match_id):
 def _get_stripe_customer_id(user_id, test_mode):
     db = firestore.client()
 
-    data = db.collection('users').document(user_id).get(
-        field_paths={"stripeId", "stripeTestId"})\
+    doc = db.collection('users').document(user_id)
+
+    data = doc.get(
+        field_paths={"name", "email", "stripeId", "stripeTestId"})\
         .to_dict()
 
-    return data["stripeTestId" if test_mode else "stripeId"]
+    field_name = "stripeId" if not test_mode else "stripeTestId"
+
+    if field_name not in data:
+        print("missing " + field_name + " for user " + user_id + ". Creating it...")
+        response = stripe.Customer.create(
+            email=data["email"],
+            name=data["name"]
+        )
+        stripe_id = response["id"]
+        doc.update({field_name: stripe_id})
+        return stripe_id
+
+    return data[field_name]
 
 
 def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id, credits_used, test_mode):
@@ -106,11 +120,4 @@ def _build_redirect_to_app_link(match_id, outcome):
     short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?outcome={}&match_id={}'.format(outcome, match_id),
                                           True, params)
     return short_link
-
-
-# if __name__ == '__main__':
-#     print(_create_checkout_session("cus_L69uzD5yMZXVAn", "IwrZWBFb4LZl3Kto1V3oUKPnCni1",
-#                              "0fn2zd8IjTDgoYtC1C6Z", 100, "prod_LAsIddc0zISbSd",
-#                              "price_1KUWXsGRb87bTNwHkctOMs7l", 0, True))
-
 
