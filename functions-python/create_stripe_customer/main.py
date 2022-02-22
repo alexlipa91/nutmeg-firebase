@@ -25,8 +25,11 @@ def create_stripe_customer(data, context):
     firebase_admin.initialize_app()
     db = firestore.client()
 
+    name = user_data["name"].get("stringValue", None)
+    email = user_data["email"].get("stringValue", None)
+
     db.collection('users').document(user_id).update({
-        'stripeId': _create_stripe_customer(user_data["name"]["stringValue"], user_data["email"]["stringValue"])
+        'stripeId': _create_stripe_customer(name, email)
     })
 
 
@@ -38,4 +41,5 @@ def _create_stripe_customer(name, email):
         name=name
     )
     return response["id"]
+
 
