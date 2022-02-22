@@ -1,0 +1,27 @@
+on:
+  push
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - uses: 'actions/checkout@v2'
+
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v0'
+        with:
+          workload_identity_provider: 'projects/956073807168/locations/global/workloadIdentityPools/my-pool/my-provider'
+          service_account: 'deploy-cloud-functions@nutmeg-9099c.iam.gserviceaccount.com'
+
+      - id: 'deploy'
+        uses: 'google-github-actions/deploy-cloud-functions@v0'
+        with:
+          working-directory: functions-python/match_crud_v2
+          name: 'get_all_matches_v2'
+          runtime: 'python37'
+          event_trigger_type: http
+          region: europe-central2
