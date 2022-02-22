@@ -26,9 +26,8 @@ def send_prematch_notification(request):
 def _send_prematch_notification(match_id):
     db = firestore.client()
 
-    users = []
-    for sub in db.collection("matches").document(match_id).collection("going").stream():
-        users.append(sub.to_dict()["userId"])
+    match = db.collection("matches").document(match_id).get().to_dict()
+    users = match["going"].keys()
 
     tokens = []
     for user_id in users:
@@ -41,7 +40,7 @@ def _send_prematch_notification(match_id):
 
     sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
 
-    date_time = datetime.strptime(match["dateTime"], "%Y-%m-%dT%H:%M:%SZ")
+    date_time = match["dateTime"]
 
     message = messaging.MulticastMessage(
         notification=messaging.Notification(
