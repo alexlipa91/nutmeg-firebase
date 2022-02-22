@@ -27,6 +27,10 @@ def _send_prematch_notification(match_id):
     db = firestore.client()
 
     match = db.collection("matches").document(match_id).get().to_dict()
+    if match.get("cancelledAt", None) is not None:
+        print("match cancelled...skipping")
+        return
+
     users = match["going"].keys()
 
     tokens = []
