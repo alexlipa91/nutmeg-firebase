@@ -7,3 +7,9 @@ jobs:
     with:
       name: "get_all_matches_v2"
       folder: "functions-python/match_crud_v2"
+
+  get_match_v2:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "get_match_v2"
+      folder: "functions-python/match_crud_v2"
