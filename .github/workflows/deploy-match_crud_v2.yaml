@@ -20,8 +20,7 @@ jobs:
       - id: 'deploy'
         uses: 'google-github-actions/deploy-cloud-functions@v0'
         with:
-          working-directory: functions-python/match_crud_v2
+          source_dir: functions-python/match_crud_v2
           name: 'get_all_matches_v2'
           runtime: 'python37'
-          event_trigger_type: http
           region: europe-central2
