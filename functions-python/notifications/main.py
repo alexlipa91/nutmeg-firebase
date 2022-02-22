@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 
 import firebase_admin
+import pytz
 from firebase_admin import firestore, messaging
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
@@ -45,11 +46,12 @@ def _send_prematch_notification(match_id):
     sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
 
     date_time = match["dateTime"]
+    date_time_ams = date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
 
     message = messaging.MulticastMessage(
         notification=messaging.Notification(
-            title="Ready for the match?",
-            body="Your match today is at {} at {}".format(date_time.strftime("%H:%m"), sport_center["name"]),
+            title="Ready for the match? " + u"\u26BD\uFE0F",
+            body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
         ),
         tokens=tokens,
     )
@@ -121,6 +123,5 @@ def schedule_prematch_notification(data, context):
     print("Created task {}".format(response.name))
 
 
-# if __name__ == '__main__':
-#     data = {'oldValue': {}, 'updateMask': {}, 'value': {'createTime': '2022-02-14T23:08:37.516335Z', 'fields': {'cancelledAt': {'nullValue': None}, 'dateTime': {'timestampValue': '2022-02-16T17:00:00Z'}, 'duration': {'integerValue': '60'}, 'isTest': {'booleanValue': False}, 'maxPlayers': {'integerValue': '12'}, 'pricePerPerson': {'integerValue': '630'}, 'sport': {'stringValue': 'BvwIYDpu0f3RIT4EaWBH'}, 'sportCenter': {'stringValue': 'ChIJaaYbkP8JxkcR_lUNC3ssFuU'}, 'sportCenterId': {'stringValue': 'ChIJaaYbkP8JxkcR_lUNC3ssFuU'}, 'sportCenterSubLocation': {'nullValue': None}}, 'name': 'projects/nutmeg-9099c/databases/(default)/documents/matches/8fmbZokYTfjRDVyGPt1s', 'updateTime': '2022-02-14T23:08:37.516335Z'}}
-#     schedule_prematch_notification(data=data, context=None)
+if __name__ == '__main__':
+    _send_prematch_notification("3dD9fotUuuuGySkDhU5o")
