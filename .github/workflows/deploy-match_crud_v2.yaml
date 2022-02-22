@@ -3,7 +3,7 @@ on:
 
 jobs:
   get_all_matches_v2:
-    uses: 'alexlipa91/nutmeg-firebase/.github/workflows/deploy-python-http.yaml@main'
+    uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "get_all_matches_v2"
       folder: "functions-python/match_crud_v2"
