@@ -1,0 +1,11 @@
+on:
+  push
+
+jobs:
+  create_stripe_customer:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "create_stripe_customer"
+      folder: "create_stripe_customer"
+      resource: users/{userId}
+
