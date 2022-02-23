@@ -6,40 +6,40 @@ jobs:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "get_all_matches_v2"
-      folder: "functions-python/get_all_matches_v2"
+      folder: "get_all_matches_v2"
 
   get_match_v2:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "get_match_v2"
-      folder: "functions-python/get_match_v2"
+      folder: "get_match_v2"
 
   add_user_to_match:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "add_user_to_match"
-      folder: "functions-python/add_user_to_match"
+      folder: "add_user_to_match"
 
   create_stripe_checkout:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "create_stripe_checkout"
-      folder: "functions-python/create_stripe_checkout"
+      folder: "create_stripe_checkout"
 
   create_stripe_customer:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "create_stripe_customer"
-      folder: "functions-python/create_stripe_customer"
+      folder: "create_stripe_customer"
 
   create_stripe_product:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "create_stripe_checkout"
-      folder: "functions-python/create_stripe_checkout"
+      folder: "create_stripe_checkout"
 
   add_match:
     uses: './.github/workflows/deploy-python-http.yaml'
     with:
       name: "create_stripe_checkout"
-      folder: "functions-python/match_crud"
+      folder: "match_crud"
