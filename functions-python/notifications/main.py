@@ -34,29 +34,43 @@ def _send_prematch_notification(match_id):
 
     users = match["going"].keys()
 
-    tokens = []
-    for user_id in users:
-        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
-        tokens.extend(user_tokens)
-
     match = db.collection("matches").document(match_id).get().to_dict()
     if match["cancelledAt"] is not None:
         raise Exception("Match is cancelled! Not sending any notification...")
 
     sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
-
     date_time = match["dateTime"]
     date_time_ams = date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
 
+    _send_notification_to_users(
+        title="Ready for the match? " + u"\u26BD\uFE0F",
+        body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
+        users=users,
+    )
+
+
+def _send_notification_to_tokens(title, body, tokens):
     message = messaging.MulticastMessage(
         notification=messaging.Notification(
-            title="Ready for the match? " + u"\u26BD\uFE0F",
-            body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
+            title=title,
+            body=body,
         ),
         tokens=tokens,
     )
     response = messaging.send_multicast(message)
     print('Successfully sent {} messages'.format(response.success_count))
+    if response.failure_count > 0:
+        [print(r.exception) for r in response.responses if r.exception]
+
+
+def _send_notification_to_users(title, body, users):
+    db = firestore.client()
+
+    tokens = []
+    for user_id in users:
+        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
+        tokens.extend(user_tokens)
+    _send_notification_to_tokens(title, body, tokens)
 
 
 """
@@ -128,7 +142,8 @@ def _schedule_prematch_notification(match_id, date_time):
 
 
 if __name__ == '__main__':
-    db = firestore.client()
-    match_id = "ZAEd7UF1ULPJyruQdUEi"
-    d = db.collection("matches").document("ZAEd7UF1ULPJyruQdUEi").get().to_dict()["dateTime"]
-    _schedule_prematch_notification(match_id, d)
+    _send_notification_to_users(
+        title="Ready for the match? " + u"\u26BD\uFE0F",
+        body="Your match today is at {} at {}".format(datetime.now().strftime("%H:%M"), "Tortellini Arena"),
+        users=["bQHD0EM265V6GuSZuy1uQPHzb602"]
+    )
