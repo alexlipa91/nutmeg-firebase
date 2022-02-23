@@ -36,3 +36,4 @@ jobs:
           region: europe-central2
           event_trigger_type: providers/cloud.firestore/eventTypes/document.create
           event_trigger_resource: projects/nutmeg-9099c/databases/(default)/documents/${{ inputs.resource }}
+          secret_environment_variables: STRIPE_PROD_KEY=projects/956073807168/secrets/stripeProdKey:latest,STRIPE_TEST_KEY=projects/956073807168/secrets/stripeTestKey:latest

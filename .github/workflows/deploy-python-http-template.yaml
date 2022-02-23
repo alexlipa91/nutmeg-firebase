@@ -7,6 +7,9 @@ on:
       folder:
         required: true
         type: string
+      secrets:
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -31,3 +34,4 @@ jobs:
           name: ${{ inputs.name }}
           runtime: 'python37'
           region: europe-central2
+          secret_environment_variables: STRIPE_PROD_KEY=projects/956073807168/secrets/stripeProdKey:latest,STRIPE_TEST_KEY=projects/956073807168/secrets/stripeTestKey:latest
