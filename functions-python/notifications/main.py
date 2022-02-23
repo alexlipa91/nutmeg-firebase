@@ -73,6 +73,10 @@ def schedule_prematch_notification(data, context):
     match_id = data["value"]["name"].split("/")[-1]
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
 
+    _schedule_prematch_notification(match_id, date_time)
+
+
+def _schedule_prematch_notification(match_id, date_time):
     # schedule task
     client = tasks_v2.CloudTasksClient()
 
@@ -124,4 +128,7 @@ def schedule_prematch_notification(data, context):
 
 
 if __name__ == '__main__':
-    _send_prematch_notification("3dD9fotUuuuGySkDhU5o")
+    db = firestore.client()
+    match_id = "ZAEd7UF1ULPJyruQdUEi"
+    d = db.collection("matches").document("ZAEd7UF1ULPJyruQdUEi").get().to_dict()["dateTime"]
+    _schedule_prematch_notification(match_id, d)
