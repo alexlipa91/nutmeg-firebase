@@ -5,9 +5,8 @@ on:
         required: true
         type: string
       folder:
-        required: false
+        required: true
         type: string
-        default: ${{ inputs.name }}
 
 jobs:
   deploy:
