@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       firestore_event:
-        required: true
+        required: false
         type: string
         default: document.create
 
