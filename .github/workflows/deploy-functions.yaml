@@ -1,0 +1,39 @@
+on:
+  push
+
+jobs:
+  get_all_matches_v2:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "get_all_matches_v2"
+
+  get_match_v2:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "get_match_v2"
+
+  add_user_to_match:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "add_user_to_match"
+
+  create_stripe_checkout:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "create_stripe_checkout"
+
+  create_stripe_customer:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "create_stripe_customer"
+
+  create_stripe_product:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "create_stripe_checkout"
+
+  add_match:
+    uses: './.github/workflows/deploy-python-http.yaml'
+    with:
+      name: "create_stripe_checkout"
+      folder: "functions-python/match_crud"

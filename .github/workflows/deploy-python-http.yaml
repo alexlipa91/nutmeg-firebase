@@ -5,8 +5,9 @@ on:
         required: true
         type: string
       folder:
-        required: true
+        required: false
         type: string
+        default: ${{ inputs.name }}
 
 jobs:
   deploy:
@@ -27,7 +28,7 @@ jobs:
       - id: 'deploy'
         uses: 'google-github-actions/deploy-cloud-functions@v0'
         with:
-          source_dir: ${{ inputs.folder }}
+          source_dir: functions-python/${{ inputs.folder }}
           name: ${{ inputs.name }}
           runtime: 'python37'
           region: europe-central2
