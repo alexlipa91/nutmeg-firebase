@@ -2,18 +2,6 @@ on:
   push
 
 jobs:
-  get_all_matches_v2:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "get_all_matches_v2"
-      folder: "match_crud_v2"
-
-  get_match_v2:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "get_match_v2"
-      folder: "match_crud_v2"
-
   add_user_to_match:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
@@ -31,3 +19,75 @@ jobs:
     with:
       name: "add_match"
       folder: "match_crud"
+
+  edit_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "edit_match"
+      folder: "match_crud"
+
+  get_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_match"
+      folder: "match_crud"
+
+  get_all_matches:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_all_matches"
+      folder: "match_crud"
+
+  get_all_matches_v2:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_all_matches_v2"
+      folder: "match_crud_v2"
+
+  get_match_v2:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_match_v2"
+      folder: "match_crud_v2"
+
+  send_prematch_notification:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "send_prematch_notification"
+      folder: "notifications"
+
+  remove_user_from_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "remove_user_from_match"
+      folder: "remove_user_from_match"
+
+  stripe_checkout_webhook:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "stripe_checkout_webhook"
+      folder: "stripe-checkout-webhook"
+
+  stripe_checkout_webhook_test:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "stripe_checkout_webhook_test"
+      folder: "stripe-checkout-webhook"
+
+  add_user:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "add_user"
+      folder: "user_crud"
+
+  edit_user:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "edit_user"
+      folder: "user_crud"
+
+  get_user:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_user"
+      folder: "user_crud"

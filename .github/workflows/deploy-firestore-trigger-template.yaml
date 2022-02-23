@@ -10,6 +10,10 @@ on:
       resource:
         required: true
         type: string
+      firestore_event:
+        required: true
+        type: string
+        default: document.create
 
 jobs:
   deploy:
@@ -34,6 +38,6 @@ jobs:
           name: ${{ inputs.name }}
           runtime: 'python37'
           region: europe-central2
-          event_trigger_type: providers/cloud.firestore/eventTypes/document.create
+          event_trigger_type: providers/cloud.firestore/eventTypes/${{ inputs.firestore_event }}
           event_trigger_resource: projects/nutmeg-9099c/databases/(default)/documents/${{ inputs.resource }}
           secret_environment_variables: STRIPE_PROD_KEY=projects/956073807168/secrets/stripeProdKey,STRIPE_TEST_KEY=projects/956073807168/secrets/stripeTestKey

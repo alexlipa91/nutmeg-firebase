@@ -9,3 +9,17 @@ jobs:
       folder: "create_stripe_customer"
       resource: users/{userId}
 
+  create_stripe_product:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "create_stripe_product"
+      folder: "create_stripe_product"
+      resource: matches/{matchId}
+
+  schedule_prematch_notification:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "schedule_prematch_notification"
+      folder: "notifications"
+      resource: matches/{matchId}
+
