@@ -35,4 +35,4 @@ jobs:
           runtime: 'python37'
           region: europe-central2
           event_trigger_type: providers/cloud.firestore/eventTypes/document.create
-          event_trigger_resouce: projects/nutmeg-9099c/databases/(default)/documents/${{ inputs.resource }}
+          event_trigger_resource: projects/nutmeg-9099c/databases/(default)/documents/${{ inputs.resource }}
