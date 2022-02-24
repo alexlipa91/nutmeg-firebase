@@ -3,7 +3,7 @@ import asyncio
 from google.cloud.firestore import AsyncClient
 
 
-def get_users_to_rate_impl(request):
+def get_users_to_rate(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request.args, request_json))
 
