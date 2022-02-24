@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import traceback
 
 import firebase_admin
 from google.cloud.firestore import AsyncClient
@@ -44,7 +45,12 @@ async def _get_all_matches_firestore_v2():
     res = {}
 
     for m in collection:
-        res[m.id] = await _format_match_data_v2(m.to_dict())
+        try:
+            data = await _format_match_data_v2(m.to_dict())
+            res[m.id] = data
+        except Exception:
+            print("Failed to read match data with id '{}".format(m.id))
+            traceback.print_exc()
 
     return res
 

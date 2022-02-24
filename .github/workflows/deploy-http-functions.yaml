@@ -91,3 +91,9 @@ jobs:
     with:
       name: "get_user"
       folder: "user_crud"
+
+  store_user_token:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "store_user_token"
+      folder: "user_crud"

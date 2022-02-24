@@ -34,6 +34,22 @@ def get_user(request):
     return {"data": _get_user_firestore(request_data["id"])}, 200
 
 
+def store_user_token(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    return {"data": _store_user_token_firestore(request_data["id"], request_data["token"])}, 200
+
+
+def _store_user_token_firestore(user_id, token):
+    db = firestore.client()
+
+    doc_ref = db.collection("users").document(user_id)
+    doc_ref.update({"tokens": firestore.firestore.ArrayUnion([token])})
+
+
 def _edit_user_firestore(user_id, user_data):
     db = firestore.client()
 
@@ -62,13 +78,4 @@ def _get_user_firestore(user_id):
 
 
 if __name__ == '__main__':
-    db = firestore.client()
-
-    going = db.collection("matches").document("crFHcsL52YvzXl0LFJ28").collection("going")
-
-    for s in db.collection("matches").document("crFHcsL52YvzXl0LFJ28").collection("subscriptions").stream():
-        d = s.to_dict()
-        if d['status'] == 'going':
-            print(d['userId'])
-            going.document(d['userId']).set({'userId': d['userId'], 'createdAt': d['createdAt'], 'paymentIntent': ""})
-
+    _store_user_token_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1", "t")
