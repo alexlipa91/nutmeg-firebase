@@ -1,5 +1,7 @@
 on:
-  push
+  push:
+    branches:
+      - master
 
 jobs:
   add_user_to_match:
