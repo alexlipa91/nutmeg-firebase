@@ -62,6 +62,12 @@ jobs:
       name: "add_review"
       folder: "ratings"
 
+  get_users_to_rate:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_users_to_rate"
+      folder: "ratings"
+
   remove_user_from_match:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
