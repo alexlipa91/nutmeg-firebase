@@ -56,6 +56,12 @@ jobs:
       name: "send_prematch_notification"
       folder: "notifications"
 
+  add_rating:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "add_review"
+      folder: "ratings"
+
   remove_user_from_match:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
