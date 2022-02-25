@@ -66,13 +66,13 @@ def update_stripe_product(data, context):
         description = "Address: " + sport_center["address"]
         print("setting name: '{}' and description: '{}'".format(name, description))
 
-        stripe.Product.modify(product_id, metadata={"name": name, "description": description})
+        stripe.Product.modify(product_id, name=name, description=description)
     else:
         print("no changed detected for stripe product")
 
     if old_price != price:
         print("setting price: {}".format(price))
-        stripe.Price.modify(price_id, metadata={"unit_amount": price})
+        stripe.Price.modify(price_id, unit_amount=price)
 
 
 def _get_sport_center_details(sport_center_id):
