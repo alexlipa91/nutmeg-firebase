@@ -64,12 +64,14 @@ def update_stripe_product(data, context):
         name = "Nutmeg Match - " + sport_center["name"] \
            + " - " + date_time.astimezone(pytz.timezone("Europe/Amsterdam")).strftime("%a %-d %b %H:%M")
         description = "Address: " + sport_center["address"]
+        print("setting name: '{}' and description: '{}'".format(name, description))
 
         stripe.Product.modify(product_id, metadata={"name": name, "description": description})
     else:
         print("no changed detected for stripe product")
 
     if old_price != price:
+        print("setting price: {}".format(price))
         stripe.Price.modify(price_id, metadata={"unit_amount": price})
 
 
