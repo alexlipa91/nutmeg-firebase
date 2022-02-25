@@ -38,6 +38,41 @@ def create_stripe_product(data, context):
     _store_in_firebase(match_id, product_id, price_id)
 
 
+def update_stripe_product(data, context):
+    print(data)
+    trigger_resource = context.resource
+
+    print('Function triggered by change to: %s' % trigger_resource)
+    product_id = data["value"]["fields"]["stripeProductId"]["stringValue"]
+    price_id = data["oldValue"]["fields"]["stripePriceId"]["stringValue"]
+
+    old_is_test = data["oldValue"]["fields"]["isTest"]["booleanValue"]
+    old_date_time = datetime.strptime(data["oldValue"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+    old_sport_center = _get_sport_center_details(data["oldValue"]["fields"]["sportCenterId"]["stringValue"])
+    old_price = data["oldValue"]["fields"]["pricePerPerson"]["integerValue"]
+
+    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+    sport_center = _get_sport_center_details(data["value"]["fields"]["sportCenterId"]["stringValue"])
+    is_test = data["value"]["fields"]["isTest"]["booleanValue"]
+    price = data["oldValue"]["fields"]["pricePerPerson"]["integerValue"]
+
+    if old_is_test != is_test:
+        raise Exception("Cannot modify product since isTest value changed")
+
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    if old_date_time != date_time or old_sport_center != sport_center:
+        name = "Nutmeg Match - " + sport_center["name"] \
+           + " - " + date_time.astimezone(pytz.timezone("Europe/Amsterdam")).strftime("%a %-d %b %H:%M")
+        description = "Address: " + sport_center["address"]
+
+        stripe.Product.modify(product_id, metadata={"name": name, "description": description})
+    else:
+        print("no changed detected for stripe product")
+
+    if old_price != price:
+        stripe.Price.modify(price_id, metadata={"unit_amount": price})
+
+
 def _get_sport_center_details(sport_center_id):
     db = firestore.client()
     return db.collection('sport_centers').document(sport_center_id).get().to_dict()
