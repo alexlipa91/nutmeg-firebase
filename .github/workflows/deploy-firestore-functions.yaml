@@ -22,7 +22,7 @@ jobs:
       name: "update_stripe_product"
       folder: "create_stripe_product"
       resource: matches/{matchId}
-      firestore_event: document.create
+      firestore_event: document.update
 
   schedule_prematch_notification:
     uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
