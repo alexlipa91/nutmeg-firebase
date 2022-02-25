@@ -42,6 +42,12 @@ def update_stripe_product(data, context):
     print(data)
     trigger_resource = context.resource
 
+    db = firestore.client()
+
+    path_parts = trigger_resource.split('/documents/')[1].split('/')
+    collection_path = path_parts[0]
+    document_id = '/'.join(path_parts[1:])
+
     print('Function triggered by change to: %s' % trigger_resource)
     product_id = data["value"]["fields"]["stripeProductId"]["stringValue"]
     price_id = data["oldValue"]["fields"]["stripePriceId"]["stringValue"]
@@ -74,7 +80,7 @@ def update_stripe_product(data, context):
         print("deactivating old price and setting new price: {}".format(price))
         stripe.Price.modify(price_id, active=False)
         new_price_id = _create_stripe_price(price, prod_id=product_id, is_test=is_test)
-        data["value"]["fields"]["pricePerPerson"]["integerValue"] = new_price_id
+        db.collection(collection_path).document(document_id).update({"stripePriceId": new_price_id})
     else:
         print("no changes detected for stripe price")
 
