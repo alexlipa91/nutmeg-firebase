@@ -71,8 +71,9 @@ def update_stripe_product(data, context):
         print("no changed detected for stripe product")
 
     if old_price != price:
-        print("setting price: {}".format(price))
-        stripe.Price.modify(price_id, unit_amount=price)
+        print("deactivating old price and setting new price: {}".format(price))
+        stripe.Price.modify(price_id, active=False)
+        _create_stripe_price(price, prod_id=product_id, is_test=is_test)
     else:
         print("no changes detected for stripe price")
 
