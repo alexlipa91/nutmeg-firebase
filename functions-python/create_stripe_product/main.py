@@ -54,7 +54,7 @@ def update_stripe_product(data, context):
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
     sport_center = _get_sport_center_details(data["value"]["fields"]["sportCenterId"]["stringValue"])
     is_test = data["value"]["fields"]["isTest"]["booleanValue"]
-    price = data["oldValue"]["fields"]["pricePerPerson"]["integerValue"]
+    price = data["value"]["fields"]["pricePerPerson"]["integerValue"]
 
     if old_is_test != is_test:
         raise Exception("Cannot modify product since isTest value changed")
@@ -73,6 +73,8 @@ def update_stripe_product(data, context):
     if old_price != price:
         print("setting price: {}".format(price))
         stripe.Price.modify(price_id, unit_amount=price)
+    else:
+        print("no changes detected for stripe price")
 
 
 def _get_sport_center_details(sport_center_id):
