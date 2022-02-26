@@ -29,7 +29,11 @@ async def _get_users_to_rate_firestore(user_id, match_id):
         going_users.remove(user_id)
 
     doc = await ratings_doc_ref.get(field_paths=["scores"])
-    rated_users = set(doc.to_dict().get("scores", {}).get(user_id, {}).keys())
+
+    if doc.exists:
+        rated_users = set(doc.to_dict().get("scores", {}).get(user_id, {}).keys())
+    else:
+        return going_users
 
     to_rate = set(going_users)
     for rated in rated_users:
@@ -39,3 +43,7 @@ async def _get_users_to_rate_firestore(user_id, match_id):
     print("users going: {}\tusers rated {}, users still to rate {}".format(going_users, rated_users, to_rate))
 
     return to_rate
+
+if __name__ == '__main__':
+    print(asyncio.run(_get_users_to_rate_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+                                             "ZAEd7UF1ULPJyruQdUEi")))
