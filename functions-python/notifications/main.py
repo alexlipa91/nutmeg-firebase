@@ -103,38 +103,22 @@ def _schedule_prematch_notification(match_id, date_time):
 
     parent = client.queue_path(project, location, queue)
 
-    # Construct the request body.
-    task = {
-        "http_request": {  # Specify the type of request.
-            "http_method": tasks_v2.HttpMethod.POST,
-            "url": url,  # The full url path that the task will be sent to.
-        }
-    }
-
-    if payload is not None:
-        if isinstance(payload, dict):
-            # Convert dict to JSON string
-            payload = json.dumps(payload)
-            # specify http content-type to application/json
-            task["http_request"]["headers"] = {"Content-type": "application/json"}
-
-    # The API expects a payload of type bytes.
-    converted_payload = payload.encode()
-
-    # Add the payload to the request.
-    task["http_request"]["body"] = converted_payload
-
     # Create Timestamp protobuf.
     date_time_to_send = date_time - timedelta(hours=1)
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(date_time_to_send)
 
-    # Add the timestamp to the tasks.
-    task["schedule_time"] = timestamp
-
-    if task_name is not None:
-        # Add the name to tasks.
-        task["name"] = client.task_path(project, location, queue, task_name)
+    # Construct the request body.
+    task = {
+        "http_request": {  # Specify the type of request.
+            "http_method": tasks_v2.HttpMethod.POST,
+            "url": url,  # The full url path that the task will be sent to.
+            "headers": {"Content-type": "application/json"},
+            "body": json.dumps(payload).encode()
+        },
+        "schedule_time": timestamp,
+        "name": client.task_path(project, location, queue, task_name)
+    }
 
     # Use the client to build and send the task.
     response = client.create_task(request={"parent": parent, "task": task})

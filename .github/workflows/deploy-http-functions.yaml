@@ -1,5 +1,7 @@
 on:
-  push
+  push:
+    branches:
+      - master
 
 jobs:
   add_user_to_match:
@@ -55,6 +57,24 @@ jobs:
     with:
       name: "send_prematch_notification"
       folder: "notifications"
+
+  add_rating:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "add_rating"
+      folder: "ratings/add_rating"
+
+  get_users_to_rate:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_users_to_rate"
+      folder: "ratings/get_users_to_rate"
+
+  close_rating_round:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "close_rating_round"
+      folder: "ratings/close_rating_round"
 
   remove_user_from_match:
     uses: './.github/workflows/deploy-python-http-template.yaml'

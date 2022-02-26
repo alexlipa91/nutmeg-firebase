@@ -57,3 +57,7 @@ async def _get_all_matches_firestore_v2():
 
 def _serialize_date(date):
     return datetime.datetime.isoformat(date)
+
+
+if __name__ == '__main__':
+    print(asyncio.run(_get_match_firestore_v2("3dD9fotUuuuGySkDhU5o")))
