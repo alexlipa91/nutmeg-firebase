@@ -1,5 +1,7 @@
 import json
 from datetime import datetime, timedelta
+
+import pytz
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 
@@ -55,9 +57,9 @@ def _schedule_close_rating_round(match_id, date_time):
     print("Created task {}".format(response.name))
 
 
-# if __name__ == '__main__':
-#     d = datetime.now().astimezone(tz=pytz.timezone("Europe/Amsterdam"))
-#     d = d - timedelta(days=1)
-#     d = d + timedelta(seconds=30)
-#     print(d)
-#     print(_schedule_close_rating_round("ZAEd7UF1ULPJyruQdUEi", d))
+if __name__ == '__main__':
+    d = datetime.now().astimezone(tz=pytz.timezone("Europe/Amsterdam"))
+    d = d - timedelta(days=1)
+    d = d + timedelta(seconds=30)
+    print(d)
+    print(_schedule_close_rating_round("ZAEd7UF1ULPJyruQdUEi", d))

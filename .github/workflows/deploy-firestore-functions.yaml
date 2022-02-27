@@ -39,3 +39,11 @@ jobs:
       name: "schedule_close_rating_round"
       folder: "ratings/schedule_close_rating_round"
       resource: matches/{matchId}
+
+  clean_up_match:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "clean_up_match"
+      folder: "match_crud_v2/clean_up_match"
+      resource: matches/{matchId}
+      firestore_event: document.delete
