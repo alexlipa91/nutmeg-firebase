@@ -29,9 +29,7 @@ async def _get_users_to_rate_firestore(user_id, match_id):
         return going_users
 
     rated_users = list()
-    doc = await ratings_doc.to_dict()["scores"]
-    print(doc.to_dict())
-    scores = doc.to_dict()["scores"]
+    scores = ratings_doc.to_dict()["scores"]
 
     if doc.exists:
         for user_receiving, users_giver in scores.items():
