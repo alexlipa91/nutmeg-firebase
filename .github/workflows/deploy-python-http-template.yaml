@@ -27,6 +27,7 @@ jobs:
           filters: |
             ${{ inputs.folder }}:
               - 'functions-python/${{ inputs.folder }}/**'
+          list-files: 'csv'
 
       - id: 'auth'
         if: steps.changes.outputs.src == 'true'
