@@ -17,18 +17,20 @@ def get_users_to_rate(request):
 async def _get_users_to_rate_firestore(user_id, match_id):
     db = AsyncClient()
 
-    ratings_doc_ref = db.collection("ratings").document(match_id)
+    ratings_doc = await db.collection("ratings").document(match_id).get()
 
-    # get going users
+    # get going users (except current user)
     doc = await db.collection("matches").document(match_id).get(field_paths=["going"])
     going_users = set(doc.to_dict().get("going", {}).keys())
-
-    # remove the person giving the rate
     if user_id in going_users:
         going_users.remove(user_id)
 
+    if not ratings_doc.exists:
+        return going_users
+
     rated_users = list()
-    doc = await ratings_doc_ref.get(field_paths=["scores"])
+    doc = await ratings_doc.to_dict()["scores"]
+    print(doc.to_dict())
     scores = doc.to_dict()["scores"]
 
     if doc.exists:
@@ -51,4 +53,4 @@ async def _get_users_to_rate_firestore(user_id, match_id):
 
 if __name__ == '__main__':
     print(asyncio.run(_get_users_to_rate_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1",
-                                             "ZAEd7UF1ULPJyruQdUEi")))
+                                             "3dD9fotUuuuGySkDhU5o")))
