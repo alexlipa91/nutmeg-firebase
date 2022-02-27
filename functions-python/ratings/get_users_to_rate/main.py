@@ -5,12 +5,11 @@ from google.cloud.firestore import AsyncClient
 
 def get_users_to_rate(request):
     request_json = request.get_json(silent=True)
-    print("data {}".format(request.args, request_json))
+    print("data {}".format(request_json))
 
     request_data = request_json["data"]
 
     users = asyncio.run(_get_users_to_rate_firestore(request_data["user_id"], request_data["match_id"]))
-    print(users)
 
     return {"data": {"users": list(users)}}, 200
 
@@ -28,10 +27,16 @@ async def _get_users_to_rate_firestore(user_id, match_id):
     if user_id in going_users:
         going_users.remove(user_id)
 
+    rated_users = list()
     doc = await ratings_doc_ref.get(field_paths=["scores"])
+    scores = doc.to_dict()["scores"]
 
     if doc.exists:
-        rated_users = set(doc.to_dict().get("scores", {}).get(user_id, {}).keys())
+        for user_receiving, users_giver in scores.items():
+            for user_giver in users_giver:
+                if user_giver == user_id:
+                    rated_users.append(user_receiving)
+                    break
     else:
         return going_users
 
@@ -40,7 +45,7 @@ async def _get_users_to_rate_firestore(user_id, match_id):
         if rated in to_rate:
             to_rate.remove(rated)
 
-    print("users going: {}\tusers rated {}, users still to rate {}".format(going_users, rated_users, to_rate))
+    print("users going: {}\tusers rated {}, users still to rate {}".format(len(going_users), len(rated_users), len(to_rate)))
 
     return to_rate
 
