@@ -28,8 +28,11 @@ async def _close_rating_round_firestore(match_id):
     final_scores = {}
     for u in scores:
         only_positive = list(filter(lambda s: s > 0, scores[u].values()))
-        s = Decimal(sum(only_positive) / len(only_positive))
-        final_scores[u] = float(round(s, 2))
+        if len(only_positive) == 0:
+            final_scores[u] = 0
+        else:
+            s = Decimal(sum(only_positive) / len(only_positive))
+            final_scores[u] = float(round(s, 2))
 
     man_of_the_match, score = max(final_scores.items(), key=lambda x: x[1])
     print("final scores {}; man of the match: {}".format(final_scores, man_of_the_match))
@@ -47,4 +50,4 @@ async def _close_rating_round_firestore(match_id):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_close_rating_round_firestore("m")))
+    print(asyncio.run(_close_rating_round_firestore("VHASFBaOxVzol9gICmSe")))
