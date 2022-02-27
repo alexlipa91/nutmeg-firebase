@@ -31,8 +31,13 @@ async def _get_match_firestore_v2(match_id):
 
 
 async def _format_match_data_v2(match_data):
-    # serialize date
+    # serialize dates
     match_data["dateTime"] = _serialize_date(match_data["dateTime"])
+    if match_data.get("cancelledAt", None):
+        match_data["cancelledAt"] = _serialize_date(match_data["cancelledAt"])
+    if match_data.get("scoresComputedAt", None):
+        match_data["scoresComputedAt"] = _serialize_date(match_data["scoresComputedAt"])
+
     for u in match_data.get("going", []):
         match_data["going"][u]["createdAt"] = _serialize_date(match_data["going"][u]["createdAt"])
     return match_data
@@ -60,4 +65,4 @@ def _serialize_date(date):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_get_match_firestore_v2("3dD9fotUuuuGySkDhU5o")))
+    print(asyncio.run(_get_match_firestore_v2("VHASFBaOxVzol9gICmSe")))
