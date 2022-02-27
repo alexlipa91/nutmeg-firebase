@@ -25,19 +25,19 @@ jobs:
         id: changes
         with:
           filters: |
-            ${{ inputs.folder }}:
+            folder:
               - 'functions-python/${{ inputs.folder }}/**'
           list-files: 'csv'
 
       - id: 'auth'
-        if: steps.changes.outputs.src == 'true'
+        if: steps.changes.outputs.folder == 'true'
         uses: 'google-github-actions/auth@v0'
         with:
           workload_identity_provider: 'projects/956073807168/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
           service_account: 'deploy-cloud-functions@nutmeg-9099c.iam.gserviceaccount.com'
 
       - id: 'deploy'
-        if: steps.changes.outputs.src == 'true'
+        if: steps.changes.outputs.folder == 'true'
         uses: 'google-github-actions/deploy-cloud-functions@v0'
         with:
           source_dir: functions-python/${{ inputs.folder }}
