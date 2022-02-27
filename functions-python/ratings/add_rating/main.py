@@ -12,7 +12,7 @@ def _get_db():
 
 def add_rating(request):
     request_json = request.get_json(silent=True)
-    print("data {}".format(request.args, request_json))
+    print("data {}".format(request_json))
 
     request_data = request_json["data"]
 

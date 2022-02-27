@@ -69,4 +69,4 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
 
 
 if __name__ == '__main__':
-    _add_user_to_match_firestore("0fn2zd8IjTDgoYtC1C6Z", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", "", 0)
+    _add_user_to_match_firestore("VHASFBaOxVzol9gICmSe", "bQHD0EM265V6GuSZuy1uQPHzb602", "", 0)

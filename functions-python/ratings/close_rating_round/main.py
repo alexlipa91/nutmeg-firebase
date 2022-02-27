@@ -7,7 +7,7 @@ from decimal import Decimal
 
 def close_rating_round(request):
     request_json = request.get_json(silent=True)
-    print("data {}".format(request.args, request_json))
+    print("data {}".format(request_json))
 
     request_data = request_json["data"]
 
@@ -34,7 +34,7 @@ async def _close_rating_round_firestore(match_id):
             s = Decimal(sum(only_positive) / len(only_positive))
             final_scores[u] = float(round(s, 2))
 
-    man_of_the_match, score = max(final_scores.items(), key=lambda x: x[1])
+    man_of_the_match, man_of_the_match_score = max(final_scores.items(), key=lambda x: x[1])
     print("final scores {}; man of the match: {}".format(final_scores, man_of_the_match))
 
     # store in ratings for match
@@ -42,12 +42,13 @@ async def _close_rating_round_firestore(match_id):
 
     # store in users
     for user, score in final_scores.items():
-        await db.collection("users").document(user).set({"scoreMatches": {match_id: score}}, merge=True)
+        await db.collection("users").document(user).set({"scoreMatches": {match_id: man_of_the_match_score}}, merge=True)
 
     # mark match as rated and store man_of_the_match
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
-                                                           "manOfTheMatch": {man_of_the_match: score}}, merge=True)
+                                                           "manOfTheMatch": {man_of_the_match: man_of_the_match_score}},
+                                                          merge=True)
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_close_rating_round_firestore("VHASFBaOxVzol9gICmSe")))
+    print(asyncio.run(_close_rating_round_firestore("ZAEd7UF1ULPJyruQdUEi")))

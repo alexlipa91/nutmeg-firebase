@@ -33,3 +33,9 @@ jobs:
       folder: "notifications"
       resource: matches/{matchId}
 
+  schedule_close_rating_round:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "schedule_close_rating_round"
+      folder: "ratings/schedule_close_rating_round"
+      resource: matches/{matchId}
