@@ -15,10 +15,10 @@ def clean_up_match(data, context):
     print('Function triggered by change to: %s' % trigger_resource)
     print(data)
 
-    match_id = data["value"]["name"].split("/")[-1]
+    match_id = data["oldValue"]["name"].split("/")[-1]
 
-    product_id = data["value"]["fields"]["stripeProductId"]["stringValue"]
-    is_test = data["value"]["fields"]["isTest"]["booleanValue"]
+    product_id = data["oldValue"]["fields"]["stripeProductId"]["stringValue"]
+    is_test = data["oldValue"]["fields"]["isTest"]["booleanValue"]
 
     _clean_up_match(match_id, product_id, is_test)
 
