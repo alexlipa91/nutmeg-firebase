@@ -117,3 +117,9 @@ jobs:
     with:
       name: "store_user_token"
       folder: "user_crud"
+
+  reset_ratings_for_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "reset_ratings_for_match"
+      folder: "ratings/reset_ratings_for_match"
