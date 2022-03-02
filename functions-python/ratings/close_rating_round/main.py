@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 
+from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
 from decimal import Decimal
 
@@ -40,9 +41,12 @@ async def _close_rating_round_firestore(match_id):
     # store in ratings for match
     await db.collection("ratings").document(match_id).set({"finalScores": final_scores}, merge=True)
 
-    # store in users
+    # store score for users
     for user, score in final_scores.items():
         await db.collection("users").document(user).set({"scoreMatches": {match_id: man_of_the_match_score}}, merge=True)
+
+    # store man of the match info in user doc
+    await db.collection("users").document(man_of_the_match).update({"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
 
     # mark match as rated and store man_of_the_match
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
