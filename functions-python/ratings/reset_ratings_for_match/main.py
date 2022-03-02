@@ -30,9 +30,12 @@ async def _reset_ratings_for_match(match_id):
     users_going = (await match_doc.get()).to_dict()["going"].keys()
 
     for u in users_going:
-        await db.collection("users").document(u).update({
+        try:
+            await db.collection("users").document(u).update({
             "scoreMatches.{}".format(match_id): firestore.firestore.DELETE_FIELD
-        })
+            })
+        except:
+            print("Failed to update {} user document".format(u))
 
 if __name__ == '__main__':
-    asyncio.run(_reset_ratings_for_match("VHASFBaOxVzol9gICmSe"))
+    asyncio.run(_reset_ratings_for_match("ZAEd7UF1ULPJyruQdUEi"))
