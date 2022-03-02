@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import firebase_admin
 from firebase_admin import firestore
 
@@ -74,8 +76,18 @@ def _add_user_firestore(user_id, user_data):
 
 def _get_user_firestore(user_id):
     db = firestore.client()
-    return db.collection('users').document(user_id).get().to_dict()
+    data = db.collection('users').document(user_id).get().to_dict()
+
+    if "joined_matches" in data:
+        for m in data["joined_matches"]:
+            data["joined_matches"][m] = _serialize_date(data["joined_matches"][m])
+
+    return data
+
+
+def _serialize_date(date):
+    return datetime.isoformat(date)
 
 
 if __name__ == '__main__':
-    _store_user_token_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1", "t")
+    print(_get_user_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
