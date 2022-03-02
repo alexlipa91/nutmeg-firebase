@@ -123,3 +123,12 @@ jobs:
     with:
       name: "reset_ratings_for_match"
       folder: "ratings/reset_ratings_for_match"
+
+  get_ratings_by_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_ratings_by_match"
+      folder: "ratings/get_ratings_by_match"
+
+
+  get_ratings_by_match
