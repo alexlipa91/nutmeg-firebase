@@ -32,3 +32,7 @@ async def _get_ratings_by_match(match_id):
     response = [(user, list(scores.values())) for user, scores in ratings_data["scores"].items()]
     return dict(response)
 
+
+# if __name__ == '__main__':
+#     print(asyncio.run(_get_ratings_by_match("8fmbZokYTfjRDVyGPt1s")))
+
