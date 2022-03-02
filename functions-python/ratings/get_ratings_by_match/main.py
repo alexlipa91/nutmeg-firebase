@@ -16,9 +16,9 @@ def get_ratings_by_match(request):
 
     request_data = request_json["data"]
 
-    asyncio.run(_get_ratings_by_match(request_data["match_id"]))
+    resp = asyncio.run(_get_ratings_by_match(request_data["match_id"]))
 
-    return {"data": {}}, 200
+    return {"data": resp}, 200
 
 
 async def _get_ratings_by_match(match_id):
@@ -33,6 +33,6 @@ async def _get_ratings_by_match(match_id):
     return dict(response)
 
 
-# if __name__ == '__main__':
-#     print(asyncio.run(_get_ratings_by_match("8fmbZokYTfjRDVyGPt1s")))
+if __name__ == '__main__':
+    print(asyncio.run(_get_ratings_by_match("ZAEd7UF1ULPJyruQdUEi")))
 
