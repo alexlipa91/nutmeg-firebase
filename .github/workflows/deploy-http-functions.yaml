@@ -129,6 +129,3 @@ jobs:
     with:
       name: "get_ratings_by_match"
       folder: "ratings/get_ratings_by_match"
-
-
-  get_ratings_by_match
