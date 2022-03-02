@@ -38,9 +38,6 @@ async def _close_rating_round_firestore(match_id):
     man_of_the_match, man_of_the_match_score = max(final_scores.items(), key=lambda x: x[1])
     print("final scores {}; man of the match: {}".format(final_scores, man_of_the_match))
 
-    # store in ratings for match
-    await db.collection("ratings").document(match_id).set({"finalScores": final_scores}, merge=True)
-
     # store score for users
     for user, score in final_scores.items():
         await db.collection("users").document(user).set({"scoreMatches": {match_id: man_of_the_match_score}}, merge=True)
