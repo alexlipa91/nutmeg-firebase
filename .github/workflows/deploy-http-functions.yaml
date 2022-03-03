@@ -135,3 +135,9 @@ jobs:
     with:
       name: "send_notification_to_users"
       folder: "notifications"
+
+  send_start_voting_notification:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "send_start_voting_notification"
+      folder: "notifications"

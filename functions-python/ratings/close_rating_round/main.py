@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 
-from firebase_admin import firestore
+from firebase_admin import firestore, messaging
 from google.cloud.firestore import AsyncClient
 from decimal import Decimal
 
@@ -21,6 +21,11 @@ async def _close_rating_round_firestore(match_id):
     db = AsyncClient()
 
     timestamp = datetime.datetime.utcnow()
+
+    match_doc = await db.collection("matches").document(match_id).get()
+    match_data = match_doc.to_dict()
+    if match_data["cancelledAt"]:
+        raise Exception("Match is canceled")
 
     ratings_doc = await db.collection("ratings").document(match_id).get()
     scores = ratings_doc.to_dict()["scores"]
@@ -52,6 +57,53 @@ async def _close_rating_round_firestore(match_id):
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
                                                            "manOfTheMatch": {man_of_the_match: man_of_the_match_score}},
                                                           merge=True)
+
+    _send_close_voting_notification(match_id, man_of_the_match, match_data["sportCenterId"])
+
+
+def _send_close_voting_notification(match_id, motm, sport_center_id):
+    db = firestore.client()
+
+    sport_center = db.collection('sport_centers').document(sport_center_id).get().to_dict()["name"]
+
+    _send_notification_to_users(
+        title="Congratulations! " + u"\U0001F3C6",
+        body="You were rated best player of the match at {}".format(sport_center),
+        users=[motm],
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "match_id": match_id
+        }
+    )
+
+
+def _send_notification_to_users(title, body, data, users):
+    db = firestore.client()
+
+    tokens = []
+    for user_id in users:
+        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
+        tokens.extend(user_tokens)
+    _send_notification_to_tokens(title, body, data, tokens)
+
+
+def _send_notification_to_tokens(title, body, data, tokens):
+    message = messaging.MulticastMessage(
+        notification=messaging.Notification(
+            title=title,
+            body=body
+        ),
+        data=data,
+        tokens=tokens,
+    )
+    response = messaging.send_multicast(message)
+    print('Successfully sent {} messages'.format(response.success_count))
+    if response.failure_count > 0:
+        [print(r.exception) for r in response.responses if r.exception]
+
+
+
+
 
 
 if __name__ == '__main__':

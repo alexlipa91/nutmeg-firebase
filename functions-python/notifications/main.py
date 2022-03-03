@@ -24,6 +24,19 @@ def send_prematch_notification(request):
     return {"data": {}}, 200
 
 
+def send_start_voting_notification(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    match_id = request_data["match_id"]
+
+    _send_prematch_notification(match_id)
+
+    return {"data": {}}, 200
+
+
 def send_notification_to_users(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -56,6 +69,31 @@ def _send_prematch_notification(match_id):
     _send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
+        users=users,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "match_id": match_id
+        }
+    )
+
+
+def _send_start_voting_notification(match_id):
+    db = firestore.client()
+
+    match = db.collection("matches").document(match_id).get().to_dict()
+    if match.get("cancelledAt", None) is not None:
+        print("match cancelled...skipping")
+        return
+
+    users = match["going"].keys()
+
+    match = db.collection("matches").document(match_id).get().to_dict()
+    if match["cancelledAt"] is not None:
+        raise Exception("Match is cancelled! Not sending any notification...")
+
+    _send_notification_to_users(
+        title="Start to vote " + u"\u26BD\uFE0F",
+        body="Rate performance of today's match players",
         users=users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
@@ -107,20 +145,26 @@ def schedule_prematch_notification(data, context):
 
 
 def _schedule_prematch_notification(match_id, date_time):
+    send_at = date_time - timedelta(hours=1)
+
+    _schedule_task(task_name="send_prematch_notification_for_{}".format(match_id),
+                   function_path="send_prematch_notification",
+                   payload={'data': {"match_id": match_id}},
+                   date_time_to_send=send_at)
+
+
+def _schedule_task(task_name, function_path, payload, date_time_to_send):
     # schedule task
     client = tasks_v2.CloudTasksClient()
 
     project = 'nutmeg-9099c'
     queue = 'match-notifications'
     location = 'europe-west1'
-    url = 'https://europe-central2-nutmeg-9099c.cloudfunctions.net/send_prematch_notification'
-    payload = {'data': {"match_id": match_id}}
-    task_name = "send_prematch_notification_for_{}".format(match_id)
+    url = 'https://europe-central2-nutmeg-9099c.cloudfunctions.net/{}'.format(function_path)
 
     parent = client.queue_path(project, location, queue)
 
     # Create Timestamp protobuf.
-    date_time_to_send = date_time - timedelta(hours=1)
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(date_time_to_send)
 
@@ -141,12 +185,42 @@ def _schedule_prematch_notification(match_id, date_time):
     print("Created task {}".format(response.name))
 
 
+"""
+gcloud functions deploy schedule_start_voting_notification \
+                         --runtime python37 \
+                         --trigger-event "providers/cloud.firestore/eventTypes/document.create" \
+                         --trigger-resource "projects/nutmeg-9099c/databases/(default)/documents/matches/{matchId}" \
+                         --region europe-central2
+"""
+def schedule_start_voting_notification(data, context):
+    trigger_resource = context.resource
+    print('Function triggered by change to: %s' % trigger_resource)
+
+    match_id = data["value"]["name"].split("/")[-1]
+    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+
+    _schedule_start_voting_notification(match_id, date_time)
+
+
+def _schedule_start_voting_notification(match_id, date_time):
+    send_at = date_time + timedelta(hours=3)
+
+    _schedule_task(task_name="send_start_voting_notification_{}".format(match_id),
+                   function_path="send_start_voting_notification",
+                   payload={'data': {"match_id": match_id}},
+                   date_time_to_send=send_at)
+
+
 if __name__ == '__main__':
     _send_notification_to_users(
-        title="Ready for the match? " + u"\u26BD\uFE0F",
-        body="Your match today is at {} at {}".format(datetime.now().strftime("%H:%M"), "Tortellini Arena"),
-        users=["IwrZWBFb4LZl3Kto1V3oUKPnCni1"],
+        title="allahsamalam allasam pass the ball " + u"\u26BD\uFE0F",
+        body="Hope you'll get as many 5 points as possible and many shoarma tonight",
+        users=[
+            # "IwrZWBFb4LZl3Kto1V3oUKPnCni1"
+            # "bQHD0EM265V6GuSZuy1uQPHzb602"
+        ],
         data={
+            # "openURL": "https://facebook.com",
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "match_id": "VHASFBaOxVzol9gICmSe"
         }

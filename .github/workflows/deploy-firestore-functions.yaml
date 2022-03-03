@@ -47,3 +47,10 @@ jobs:
       folder: "match_crud_v2/clean_up_match"
       resource: matches/{matchId}
       firestore_event: document.delete
+
+  schedule_start_voting_notification:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "schedule_start_voting_notification"
+      folder: "notifications"
+      resource: matches/{matchId}
