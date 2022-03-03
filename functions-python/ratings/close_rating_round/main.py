@@ -4,6 +4,10 @@ import datetime
 from firebase_admin import firestore, messaging
 from google.cloud.firestore import AsyncClient
 from decimal import Decimal
+import firebase_admin
+
+
+firebase_admin.initialize_app()
 
 
 def close_rating_round(request):
@@ -102,9 +106,5 @@ def _send_notification_to_tokens(title, body, data, tokens):
         [print(r.exception) for r in response.responses if r.exception]
 
 
-
-
-
-
 if __name__ == '__main__':
-    print(asyncio.run(_close_rating_round_firestore("ZAEd7UF1ULPJyruQdUEi")))
+    print(asyncio.run(_close_rating_round_firestore("M7D5FVub9c2m7fhNWAA2")))
