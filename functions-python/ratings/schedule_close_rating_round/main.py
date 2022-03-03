@@ -36,7 +36,7 @@ def _schedule_close_rating_round(match_id, date_time):
     parent = client.queue_path(project, location, queue)
 
     # Create Timestamp protobuf.
-    date_time_task = date_time + timedelta(days=1)
+    date_time_task = date_time + timedelta(days=2)
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(date_time_task)
 

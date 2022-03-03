@@ -4,6 +4,8 @@ import traceback
 
 import firebase_admin
 from google.cloud.firestore import AsyncClient
+from firebase_admin import firestore
+
 
 firebase_admin.initialize_app()
 
@@ -60,9 +62,18 @@ async def _get_all_matches_firestore_v2():
     return res
 
 
+def delete_test():
+    db = firestore.client()
+    res = db.collection(u'matches').where("isTest", "==",  True).get()
+    print(res)
+
+
 def _serialize_date(date):
     return datetime.datetime.isoformat(date)
 
 
+
+
 if __name__ == '__main__':
-    print(asyncio.run(_get_match_firestore_v2("VHASFBaOxVzol9gICmSe")))
+    delete_test()
+    # print(asyncio.run(_get_match_firestore_v2("VHASFBaOxVzol9gICmSe")))
