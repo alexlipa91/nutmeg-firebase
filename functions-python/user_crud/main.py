@@ -78,7 +78,7 @@ def _get_user_firestore(user_id):
     db = firestore.client()
     data = db.collection('users').document(user_id).get().to_dict()
 
-    if "joined_matches" in data:
+    if data and "joined_matches" in data:
         for m in data["joined_matches"]:
             data["joined_matches"][m] = _serialize_date(data["joined_matches"][m])
 
@@ -90,4 +90,4 @@ def _serialize_date(date):
 
 
 if __name__ == '__main__':
-    print(_get_user_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
+    print(_get_user_firestore("qbf8zQiHJFMNnYgwUSbaXnmR6zu2"))

@@ -148,6 +148,6 @@ if __name__ == '__main__':
         users=["IwrZWBFb4LZl3Kto1V3oUKPnCni1"],
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "match_id": "sasasa"
+            "match_id": "VHASFBaOxVzol9gICmSe"
         }
     )
