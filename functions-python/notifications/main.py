@@ -24,6 +24,17 @@ def send_prematch_notification(request):
     return {"data": {}}, 200
 
 
+def send_notification_to_users(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    _send_notification_to_users(request_data["title"], request_data["body"], request_data["data"], request_data["users"])
+
+    return {"data": {}}, 200
+
+
 def _send_prematch_notification(match_id):
     db = firestore.client()
 
@@ -42,7 +53,7 @@ def _send_prematch_notification(match_id):
     date_time = match["dateTime"]
     date_time_ams = date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
 
-    send_notification_to_users(
+    _send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
         users=users,
@@ -68,7 +79,7 @@ def _send_notification_to_tokens(title, body, data, tokens):
         [print(r.exception) for r in response.responses if r.exception]
 
 
-def send_notification_to_users(title, body, data, users):
+def _send_notification_to_users(title, body, data, users):
     db = firestore.client()
 
     tokens = []
@@ -131,7 +142,7 @@ def _schedule_prematch_notification(match_id, date_time):
 
 
 if __name__ == '__main__':
-    send_notification_to_users(
+    _send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(datetime.now().strftime("%H:%M"), "Tortellini Arena"),
         users=["IwrZWBFb4LZl3Kto1V3oUKPnCni1"],
