@@ -25,6 +25,9 @@ async def _close_rating_round_firestore(match_id):
     ratings_doc = await db.collection("ratings").document(match_id).get()
     scores = ratings_doc.to_dict()["scores"]
 
+    if not ratings_doc.exists:
+        raise Exception("No ratings for this match")
+
     # do calculations
     final_scores = {}
     for u in scores:
