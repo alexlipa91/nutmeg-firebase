@@ -129,3 +129,9 @@ jobs:
     with:
       name: "get_ratings_by_match"
       folder: "ratings/get_ratings_by_match"
+
+  send_notification_to_users:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "send_notification_to_users"
+      folder: "notifications"

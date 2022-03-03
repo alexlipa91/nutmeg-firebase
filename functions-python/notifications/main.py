@@ -42,19 +42,24 @@ def _send_prematch_notification(match_id):
     date_time = match["dateTime"]
     date_time_ams = date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
 
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
         users=users,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "match_id": match_id
+        }
     )
 
 
-def _send_notification_to_tokens(title, body, tokens):
+def _send_notification_to_tokens(title, body, data, tokens):
     message = messaging.MulticastMessage(
         notification=messaging.Notification(
             title=title,
-            body=body,
+            body=body
         ),
+        data=data,
         tokens=tokens,
     )
     response = messaging.send_multicast(message)
@@ -63,14 +68,14 @@ def _send_notification_to_tokens(title, body, tokens):
         [print(r.exception) for r in response.responses if r.exception]
 
 
-def _send_notification_to_users(title, body, users):
+def send_notification_to_users(title, body, data, users):
     db = firestore.client()
 
     tokens = []
     for user_id in users:
         user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
         tokens.extend(user_tokens)
-    _send_notification_to_tokens(title, body, tokens)
+    _send_notification_to_tokens(title, body, data, tokens)
 
 
 """
@@ -126,8 +131,12 @@ def _schedule_prematch_notification(match_id, date_time):
 
 
 if __name__ == '__main__':
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(datetime.now().strftime("%H:%M"), "Tortellini Arena"),
-        users=["bQHD0EM265V6GuSZuy1uQPHzb602"]
+        users=["IwrZWBFb4LZl3Kto1V3oUKPnCni1"],
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "match_id": "sasasa"
+        }
     )

@@ -29,8 +29,12 @@ async def _get_users_to_rate_firestore(user_id, match_id):
         return going_users
 
     rated_users = list()
-    scores = ratings_doc.to_dict()["scores"]
+    ratings_doc_data = ratings_doc.to_dict()
 
+    if "scores" not in ratings_doc_data:
+        return going_users
+
+    scores = ratings_doc_data["scores"]
     if doc.exists:
         for user_receiving, users_giver in scores.items():
             for user_giver in users_giver:
@@ -51,4 +55,4 @@ async def _get_users_to_rate_firestore(user_id, match_id):
 
 if __name__ == '__main__':
     print(asyncio.run(_get_users_to_rate_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1",
-                                             "3dD9fotUuuuGySkDhU5o")))
+                                             "VHASFBaOxVzol9gICmSe")))
