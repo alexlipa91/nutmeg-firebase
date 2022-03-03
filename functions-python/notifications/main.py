@@ -32,7 +32,7 @@ def send_start_voting_notification(request):
 
     match_id = request_data["match_id"]
 
-    _send_prematch_notification(match_id)
+    _send_start_voting_notification(match_id)
 
     return {"data": {}}, 200
 

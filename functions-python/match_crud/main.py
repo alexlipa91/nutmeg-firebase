@@ -107,3 +107,20 @@ async def _get_all_matches_firestore():
 
 def _serialize_date(date):
     return datetime.datetime.isoformat(date)
+
+
+def _add_match_with_user_firestore(user):
+    d = datetime.datetime.now() + datetime.timedelta(hours=2)
+    m = {}
+    m["sportCenterId"] = "ChIJ3zv5cYsJxkcRAr4WnAOlCT4"
+    m["sport"] = "BvwIYDpu0f3RIT4EaWBH"
+    m["pricePerPerson"] = 1000
+    m["maxPlayers"] = 10
+    m["dateTime"] = d.isoformat()
+    m["duration"] = 60
+    m["going"] = {user: {"createdAt" : d.now()  }}
+    return _add_match_firestore(m)
+
+
+if __name__ == '__main__':
+    print(_add_match_with_user_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
