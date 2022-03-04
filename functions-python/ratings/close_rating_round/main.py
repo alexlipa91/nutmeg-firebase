@@ -16,6 +16,9 @@ def close_rating_round(request):
 
     request_data = request_json["data"]
 
+    # FIXME disable ratings
+    # return {"reason": "disabled"}, 500
+
     asyncio.run(_close_rating_round_firestore(request_data["match_id"]))
 
     return {"data": {}}, 200
@@ -108,4 +111,4 @@ def _send_notification_to_tokens(title, body, data, tokens):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_close_rating_round_firestore("M7D5FVub9c2m7fhNWAA2")))
+    print(asyncio.run(_close_rating_round_firestore("FjSpAqpJX7q6wi4jyjlO")))

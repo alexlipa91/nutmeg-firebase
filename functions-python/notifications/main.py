@@ -32,6 +32,9 @@ def send_start_voting_notification(request):
 
     match_id = request_data["match_id"]
 
+    # FIXME disable ratings
+    # return {"reason": "disabled"}, 500
+
     _send_start_voting_notification(match_id)
 
     return {"data": {}}, 200
@@ -212,16 +215,17 @@ def _schedule_start_voting_notification(match_id, date_time):
 
 
 if __name__ == '__main__':
-    _send_notification_to_users(
-        title="allahsamalam allasam pass the ball " + u"\u26BD\uFE0F",
-        body="Hope you'll get as many 5 points as possible and many shoarma tonight",
-        users=[
-            # "IwrZWBFb4LZl3Kto1V3oUKPnCni1"
-            # "bQHD0EM265V6GuSZuy1uQPHzb602"
-        ],
-        data={
-            # "openURL": "https://facebook.com",
-            "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "match_id": "VHASFBaOxVzol9gICmSe"
-        }
-    )
+    # _send_notification_to_users(
+    #     title="allahsamalam allasam pass the ball " + u"\u26BD\uFE0F",
+    #     body="Hope you'll get as many 5 points as possible and many shoarma tonight",
+    #     users=[
+    #         # "IwrZWBFb4LZl3Kto1V3oUKPnCni1"
+    #         # "bQHD0EM265V6GuSZuy1uQPHzb602"
+    #     ],
+    #     data={
+    #         # "openURL": "https://facebook.com",
+    #         "click_action": "FLUTTER_NOTIFICATION_CLICK",
+    #         "match_id": "VHASFBaOxVzol9gICmSe"
+    #     }
+    # )
+    _send_start_voting_notification("FjSpAqpJX7q6wi4jyjlO")
