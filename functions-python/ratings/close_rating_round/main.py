@@ -47,6 +47,7 @@ async def _close_rating_round_firestore(match_id):
             s = Decimal(sum(only_positive) / len(only_positive))
             final_scores[u] = float(round(s, 2))
 
+    # who has the biggest dick in the match?        
     man_of_the_match, man_of_the_match_score = max(final_scores.items(), key=lambda x: x[1])
     print("final scores {}; man of the match: {}".format(final_scores, man_of_the_match))
 
