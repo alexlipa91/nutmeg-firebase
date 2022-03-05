@@ -51,6 +51,9 @@ def _edit_match_firestore(match_id, match_data):
     if not doc_ref.get().exists:
         raise Exception("Match {} does not exists".format(match_id))
 
+    if "dateTime" in match_data:
+        match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
+
     doc_ref.update(match_data)
 
 
@@ -109,17 +112,17 @@ def _serialize_date(date):
     return datetime.datetime.isoformat(date)
 
 
-def _add_match_with_user_firestore(user):
-    d = datetime.datetime.now() + datetime.timedelta(hours=2)
-    m = {}
-    m["sportCenterId"] = "ChIJ3zv5cYsJxkcRAr4WnAOlCT4"
-    m["sport"] = "BvwIYDpu0f3RIT4EaWBH"
-    m["pricePerPerson"] = 1000
-    m["maxPlayers"] = 10
-    m["dateTime"] = d.isoformat()
-    m["duration"] = 60
-    m["going"] = {user: {"createdAt" : d.now()  }}
-    return _add_match_firestore(m)
+# def _add_match_with_user_firestore(user):
+#     d = datetime.datetime.now() + datetime.timedelta(hours=2)
+#     m = {}
+#     m["sportCenterId"] = "ChIJ3zv5cYsJxkcRAr4WnAOlCT4"
+#     m["sport"] = "BvwIYDpu0f3RIT4EaWBH"
+#     m["pricePerPerson"] = 1000
+#     m["maxPlayers"] = 10
+#     m["dateTime"] = d.isoformat()
+#     m["duration"] = 60
+#     m["going"] = {user: {"createdAt": d.now()}}
+#     return _add_match_firestore(m)
 
 
 if __name__ == '__main__':
