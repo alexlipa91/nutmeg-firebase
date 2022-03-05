@@ -69,7 +69,7 @@ async def _close_rating_round_firestore(match_id):
     _send_close_voting_notification(match_id, man_of_the_match, match_data["sportCenterId"])
 
 
-def _send_close_voting_notification(match_id, motm, sport_center_id):
+def _send_close_voting_notification(match_id, motm, score, sport_center_id):
     db = firestore.client()
 
     sport_center = db.collection('sport_centers').document(sport_center_id).get().to_dict()["name"]
@@ -80,7 +80,9 @@ def _send_close_voting_notification(match_id, motm, sport_center_id):
         users=[motm],
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "match_id": match_id
+            "match_id": match_id,
+            "event": "potm",
+            "score": score
         }
     )
 

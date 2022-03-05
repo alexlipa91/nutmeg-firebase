@@ -24,7 +24,7 @@ def edit_match(request):
 
     request_data = request_json["data"]
 
-    _edit_match_firestore(request.args["id"], request_data["data"])
+    _edit_match_firestore(request_data["id"], request_data["data"])
     return {"data": {}}, 200
 
 
