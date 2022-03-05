@@ -66,7 +66,7 @@ async def _close_rating_round_firestore(match_id):
                                                            "manOfTheMatch": {man_of_the_match: man_of_the_match_score}},
                                                           merge=True)
 
-    _send_close_voting_notification(match_id, man_of_the_match, match_data["sportCenterId"])
+    _send_close_voting_notification(match_id, man_of_the_match, man_of_the_match_score, match_data["sportCenterId"])
 
 
 def _send_close_voting_notification(match_id, motm, score, sport_center_id):
@@ -82,7 +82,6 @@ def _send_close_voting_notification(match_id, motm, score, sport_center_id):
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "match_id": match_id,
             "event": "potm",
-            "score": score
         }
     )
 
