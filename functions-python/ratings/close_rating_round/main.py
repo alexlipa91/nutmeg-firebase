@@ -54,22 +54,23 @@ async def _close_rating_round_firestore(match_id):
     man_of_the_match, man_of_the_match_score = max(final_scores.items(), key=lambda x: x[1])
     print("final scores {}; man of the match: {}".format(final_scores, man_of_the_match))
 
-    # store score for users
-    for user, score in final_scores.items():
-        await db.collection("users").document(user).set({"scoreMatches": {match_id: man_of_the_match_score}}, merge=True)
+    if not match_data["isTest"]:
+        # store score for users
+        for user, score in final_scores.items():
+            await db.collection("users").document(user).set({"scoreMatches": {match_id: man_of_the_match_score}}, merge=True)
 
-    # store man of the match info in user doc
-    await db.collection("users").document(man_of_the_match).update({"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
+        # store man of the match info in user doc
+        await db.collection("users").document(man_of_the_match).update({"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
 
     # mark match as rated and store man_of_the_match
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
                                                            "manOfTheMatch": {man_of_the_match: man_of_the_match_score}},
                                                           merge=True)
 
-    _send_close_voting_notification(match_id, man_of_the_match, man_of_the_match_score, match_data["sportCenterId"])
+    _send_close_voting_notification(match_id, man_of_the_match, match_data["sportCenterId"])
 
 
-def _send_close_voting_notification(match_id, motm, score, sport_center_id):
+def _send_close_voting_notification(match_id, motm, sport_center_id):
     db = firestore.client()
 
     sport_center = db.collection('sport_centers').document(sport_center_id).get().to_dict()["name"]
