@@ -35,10 +35,13 @@ async def _close_rating_round_firestore(match_id):
         raise Exception("Match is canceled")
 
     ratings_doc = await db.collection("ratings").document(match_id).get()
-    scores = ratings_doc.to_dict()["scores"]
-
     if not ratings_doc.exists:
-        raise Exception("No ratings for this match")
+        print("No ratings for this match")
+        # mark match as rated and store man_of_the_match
+        await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
+        return
+
+    scores = ratings_doc.to_dict()["scores"]
 
     # do calculations
     final_scores = {}

@@ -27,6 +27,9 @@ async def _get_ratings_by_match(match_id):
     ratings_doc_ref = db.collection("ratings").document(match_id)
     ratings_doc = await ratings_doc_ref.get()
 
+    if not ratings_doc.exists:
+        return {}
+
     ratings_data = ratings_doc.to_dict()
 
     response = [(user, list(scores.values())) for user, scores in ratings_data["scores"].items()]
@@ -34,5 +37,5 @@ async def _get_ratings_by_match(match_id):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_get_ratings_by_match("ZAEd7UF1ULPJyruQdUEi")))
+    print(asyncio.run(_get_ratings_by_match("FjSpAqpJX7q6wi4jyjlO")))
 
