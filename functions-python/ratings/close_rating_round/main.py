@@ -67,13 +67,26 @@ async def _close_rating_round_firestore(match_id):
                                                            "manOfTheMatch": {man_of_the_match: man_of_the_match_score}},
                                                           merge=True)
 
-    _send_close_voting_notification(match_id, man_of_the_match, match_data["sportCenterId"])
+    _send_close_voting_notification(match_id, set(match_data["going"].keys()),
+                                    man_of_the_match, match_data["sportCenterId"])
 
 
-def _send_close_voting_notification(match_id, motm, sport_center_id):
+def _send_close_voting_notification(match_id, going_users, motm, sport_center_id):
     db = firestore.client()
 
     sport_center = db.collection('sport_centers').document(sport_center_id).get().to_dict()["name"]
+
+    going_users.remove(motm)
+
+    _send_notification_to_users(
+        title="Match stats are available!",
+        body="Check out the stats from the match at {}".format(sport_center),
+        users=list(going_users),
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "match_id": match_id,
+        }
+    )
 
     _send_notification_to_users(
         title="Congratulations! " + u"\U0001F3C6",
