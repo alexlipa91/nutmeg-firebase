@@ -95,8 +95,8 @@ def _send_start_voting_notification(match_id):
         raise Exception("Match is cancelled! Not sending any notification...")
 
     _send_notification_to_users(
-        title="Start to vote " + u"\u26BD\uFE0F",
-        body="Rate performance of today's match players",
+        title="Rate players! " + u"\u2B50\uFE0F",
+        body="You have 24h to rate the players of today's match.",
         users=users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
