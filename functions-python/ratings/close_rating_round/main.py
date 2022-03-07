@@ -91,16 +91,16 @@ def _send_close_voting_notification(match_id, going_users, motm, sport_center_id
         }
     )
 
-    _send_notification_to_users(
-        title="Congratulations! " + u"\U0001F3C6",
-        body="You were rated best player of the match at {}".format(sport_center),
-        users=[motm],
-        data={
-            "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "match_id": match_id,
-            "event": "potm",
-        }
-    )
+    # _send_notification_to_users(
+    #     title="Congratulations! " + u"\U0001F3C6",
+    #     body="You were rated best player of the match at {}".format(sport_center),
+    #     users=[motm],
+    #     data={
+    #         "click_action": "FLUTTER_NOTIFICATION_CLICK",
+    #         "match_id": match_id,
+    #         "event": "potm",
+    #     }
+    # )
 
 
 def _send_notification_to_users(title, body, data, users):
@@ -129,4 +129,4 @@ def _send_notification_to_tokens(title, body, data, tokens):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_close_rating_round_firestore("FjSpAqpJX7q6wi4jyjlO")))
+    print(asyncio.run(_close_rating_round_firestore("gAYBoHYPUmX1GMfCajou")))

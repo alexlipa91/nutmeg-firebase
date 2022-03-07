@@ -229,4 +229,4 @@ if __name__ == '__main__':
     #         "match_id": "VHASFBaOxVzol9gICmSe"
     #     }
     # )
-    _send_start_voting_notification("FjSpAqpJX7q6wi4jyjlO")
+    _send_start_voting_notification("gAYBoHYPUmX1GMfCajou")
