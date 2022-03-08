@@ -57,7 +57,7 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
     man_of_the_match, man_of_the_match_score = max(final_scores.items(), key=lambda x: x[1])
     print("final scores {}; man of the match: {}".format(final_scores, man_of_the_match))
 
-    if not match_data["isTest"]:
+    if "isTest" not in match_data or not match_data["isTest"]:
         # store score for users
         for user, score in final_scores.items():
             await db.collection("users").document(user).set({"scoreMatches": {match_id: score}}, merge=True)
