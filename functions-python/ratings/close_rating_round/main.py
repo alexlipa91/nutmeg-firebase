@@ -24,7 +24,7 @@ def close_rating_round(request):
     return {"data": {}}, 200
 
 
-async def _close_rating_round_firestore(match_id):
+async def _close_rating_round_firestore(match_id, send_notification=True):
     db = AsyncClient()
 
     timestamp = datetime.datetime.utcnow()
@@ -60,7 +60,7 @@ async def _close_rating_round_firestore(match_id):
     if not match_data["isTest"]:
         # store score for users
         for user, score in final_scores.items():
-            await db.collection("users").document(user).set({"scoreMatches": {match_id: man_of_the_match_score}}, merge=True)
+            await db.collection("users").document(user).set({"scoreMatches": {match_id: score}}, merge=True)
 
         # store man of the match info in user doc
         await db.collection("users").document(man_of_the_match).update({"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
@@ -69,9 +69,9 @@ async def _close_rating_round_firestore(match_id):
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
                                                            "manOfTheMatch": {man_of_the_match: man_of_the_match_score}},
                                                           merge=True)
-
-    _send_close_voting_notification(match_id, set(match_data["going"].keys()),
-                                    man_of_the_match, match_data["sportCenterId"])
+    if send_notification:
+        _send_close_voting_notification(match_id, set(match_data["going"].keys()),
+                                        man_of_the_match, match_data["sportCenterId"])
 
 
 def _send_close_voting_notification(match_id, going_users, motm, sport_center_id):
@@ -129,4 +129,4 @@ def _send_notification_to_tokens(title, body, data, tokens):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_close_rating_round_firestore("gAYBoHYPUmX1GMfCajou")))
+    print(asyncio.run(_close_rating_round_firestore("gIPS0HjiGcpDy1prded0", send_notification=False)))
