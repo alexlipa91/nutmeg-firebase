@@ -141,3 +141,9 @@ jobs:
     with:
       name: "send_start_voting_notification"
       folder: "notifications"
+
+  cancel_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "cancel_match"
+      folder: "cancel_match"
