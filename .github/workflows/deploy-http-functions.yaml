@@ -147,3 +147,10 @@ jobs:
     with:
       name: "cancel_match"
       folder: "cancel_match"
+
+  run_post_match_tasks:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "run_post_match_tasks"
+      folder: "run_post_match_tasks"
+

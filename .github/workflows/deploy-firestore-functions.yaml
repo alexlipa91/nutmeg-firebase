@@ -40,6 +40,13 @@ jobs:
       folder: "ratings/schedule_close_rating_round"
       resource: matches/{matchId}
 
+  schedule_run_post_match_tasks:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "run_post_match_tasks"
+      folder: "run_post_match_tasks"
+      resource: matches/{matchId}
+
   clean_up_match:
     uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
     with:
