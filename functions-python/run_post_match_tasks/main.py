@@ -32,7 +32,7 @@ def _run_post_match_tasks(match_id):
     if not match_data["isTest"]:
         for u in match_data["going"].keys():
             db.collection("users").document(u).update(
-                {"joined_matches": {match_id: match_data["dateTime"]}})
+                {"joined_matches.{}".format(match_id): match_data["dateTime"]})
 
 
 def schedule_run_post_match_tasks(data, context):
@@ -78,3 +78,6 @@ def _schedule_run_post_match_tasks(match_id, date_time):
     response = client.create_task(request={"parent": parent, "task": task})
     print("Created task {}".format(response.name))
 
+
+if __name__ == '__main__':
+    _run_post_match_tasks("RUYqgXuQmgG4XtevdyJO")
