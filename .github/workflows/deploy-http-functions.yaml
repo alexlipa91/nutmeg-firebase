@@ -154,3 +154,9 @@ jobs:
       name: "run_post_match_tasks"
       folder: "run_post_match_tasks"
 
+  firestore_db_export:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "firestore_db_export"
+      folder: "firestore_db_export"
+
