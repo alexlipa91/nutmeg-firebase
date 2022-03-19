@@ -18,7 +18,7 @@ def schedule_close_rating_round(data, context):
 
     match_id = data["value"]["name"].split("/")[-1]
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
-    duration = data["value"]["fields"]["duration"]["integerValue"]
+    duration = int(data["value"]["fields"]["duration"]["integerValue"])
 
     _schedule_close_rating_round(match_id, date_time, duration)
 

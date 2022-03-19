@@ -86,7 +86,7 @@ def schedule_run_post_match_tasks(data, context):
     match_id = data["value"]["name"].split("/")[-1]
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
 
-    _schedule_run_post_match_tasks(match_id, date_time, data["value"]["fields"]["duration"]["integerValue"])
+    _schedule_run_post_match_tasks(match_id, date_time, int(data["value"]["fields"]["duration"]["integerValue"]))
 
 
 def _schedule_run_post_match_tasks(match_id, date_time, duration):
