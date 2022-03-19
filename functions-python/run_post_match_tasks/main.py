@@ -98,7 +98,7 @@ def _schedule_run_post_match_tasks(match_id, date_time, duration):
     location = 'europe-west1'
     url = 'https://europe-central2-nutmeg-9099c.cloudfunctions.net/run_post_match_tasks'
     payload = {'data': {"match_id": match_id}}
-    task_name = "run_post_match_tasks_test_v2_{}".format(match_id)
+    task_name = "run_post_match_tasks_test_{}".format(match_id)
 
     parent = client.queue_path(project, location, queue)
 
