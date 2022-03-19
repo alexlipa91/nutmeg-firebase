@@ -189,32 +189,6 @@ def _schedule_task(task_name, function_path, payload, date_time_to_send):
     print("Created task {}".format(response.name))
 
 
-"""
-gcloud functions deploy schedule_start_voting_notification \
-                         --runtime python37 \
-                         --trigger-event "providers/cloud.firestore/eventTypes/document.create" \
-                         --trigger-resource "projects/nutmeg-9099c/databases/(default)/documents/matches/{matchId}" \
-                         --region europe-central2
-"""
-def schedule_start_voting_notification(data, context):
-    trigger_resource = context.resource
-    print('Function triggered by change to: %s' % trigger_resource)
-
-    match_id = data["value"]["name"].split("/")[-1]
-    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
-
-    _schedule_start_voting_notification(match_id, date_time)
-
-
-def _schedule_start_voting_notification(match_id, date_time):
-    send_at = date_time + timedelta(hours=3)
-
-    _schedule_task(task_name="send_start_voting_notification_{}".format(match_id),
-                   function_path="send_start_voting_notification",
-                   payload={'data': {"match_id": match_id}},
-                   date_time_to_send=send_at)
-
-
 if __name__ == '__main__':
     # _send_notification_to_users(
     #     title="allahsamalam allasam pass the ball " + u"\u26BD\uFE0F",
