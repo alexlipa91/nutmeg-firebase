@@ -18,11 +18,12 @@ def schedule_close_rating_round(data, context):
 
     match_id = data["value"]["name"].split("/")[-1]
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+    duration = data["value"]["fields"]["duration"]["integerValue"]
 
-    _schedule_close_rating_round(match_id, date_time)
+    _schedule_close_rating_round(match_id, date_time, duration)
 
 
-def _schedule_close_rating_round(match_id, date_time):
+def _schedule_close_rating_round(match_id, date_time, duration):
     # schedule task
     client = tasks_v2.CloudTasksClient()
 
@@ -36,7 +37,7 @@ def _schedule_close_rating_round(match_id, date_time):
     parent = client.queue_path(project, location, queue)
 
     # Create Timestamp protobuf.
-    date_time_task = date_time + timedelta(days=1)
+    date_time_task = date_time + timedelta(minutes=duration) + timedelta(days=1)
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(date_time_task)
 
