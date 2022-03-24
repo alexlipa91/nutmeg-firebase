@@ -160,3 +160,9 @@ jobs:
       name: "firestore_db_export"
       folder: "firestore_db_export"
 
+  get_sportcenter:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_sportcenter"
+      folder: "sportcenters_crud"
+
