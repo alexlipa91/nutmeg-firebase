@@ -2,6 +2,7 @@ from datetime import datetime
 
 import firebase_admin
 from firebase_admin import firestore
+from firebase_admin import auth
 
 firebase_admin.initialize_app()
 
@@ -19,11 +20,15 @@ def add_user(request):
 
 def edit_user(request):
     request_json = request.get_json(silent=True)
+
+    auth_data = auth.verify_id_token(request.headers["Authorization"].split(" ")[1])
+    uid = auth.get_user(auth_data["user_id"])
+
     print("args {}, data {}".format(request.args, request_json))
 
     request_data = request_json["data"]
 
-    _edit_user_firestore(request_data["id"], request_data["data"])
+    _edit_user_firestore(request_data["id"], request_data["data"], uid.custom_claims.get("isAdmin", False))
     return {"data": {}}, 200
 
 
@@ -52,12 +57,18 @@ def _store_user_token_firestore(user_id, token):
     doc_ref.update({"tokens": firestore.firestore.ArrayUnion([token])})
 
 
-def _edit_user_firestore(user_id, user_data):
+def _edit_user_firestore(user_id, user_data, is_admin):
     db = firestore.client()
 
     doc_ref = db.collection("users").document(user_id)
     if not doc_ref.get().exists:
         raise Exception("User {} does not exists".format(user_id))
+
+    if db.collection('users').document(user_id).get().to_dict()["credits"] != user_data["credits"]:
+        if not is_admin:
+            raise Exception("Not admin cannot update user credits")
+        else:
+            print("Modifying credit amount since caller is admin")
 
     doc_ref.update(user_data)
 
@@ -87,7 +98,3 @@ def _get_user_firestore(user_id):
 
 def _serialize_date(date):
     return datetime.isoformat(date)
-
-
-if __name__ == '__main__':
-    print(_get_user_firestore("qbf8zQiHJFMNnYgwUSbaXnmR6zu2"))
