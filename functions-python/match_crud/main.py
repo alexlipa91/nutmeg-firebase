@@ -59,13 +59,17 @@ def _edit_match_firestore(match_id, match_data):
 
 def _add_match_firestore(match_data):
     assert match_data.get("sportCenterId", None) is not None, "Required field missing"
-    assert match_data.get("sportInfo", None) is not None, "Required field missing"
+    # assert match_data.get("sportInfo", None) is not None, "Required field missing"
     assert match_data.get("pricePerPerson", None) is not None, "Required field missing"
     assert match_data.get("maxPlayers", None) is not None, "Required field missing"
     assert match_data.get("dateTime", None) is not None, "Required field missing"
     assert match_data.get("duration", None) is not None, "Required field missing"
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
+
+    # fixme changed name of the field
+    if "sport" in match_data:
+        match_data["sportInfo"] = match_data["sport"]
 
     db = firestore.client()
 
@@ -123,7 +127,3 @@ def _serialize_date(date):
 #     m["duration"] = 60
 #     m["going"] = {user: {"createdAt": d.now()}}
 #     return _add_match_firestore(m)
-
-
-if __name__ == '__main__':
-    print(_add_match_with_user_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
