@@ -59,7 +59,7 @@ def _edit_match_firestore(match_id, match_data):
 
 def _add_match_firestore(match_data):
     assert match_data.get("sportCenterId", None) is not None, "Required field missing"
-    # assert match_data.get("sportInfo", None) is not None, "Required field missing"
+    assert match_data.get("sportInfo", None) is not None, "Required field missing"
     assert match_data.get("pricePerPerson", None) is not None, "Required field missing"
     assert match_data.get("maxPlayers", None) is not None, "Required field missing"
     assert match_data.get("dateTime", None) is not None, "Required field missing"
@@ -68,8 +68,8 @@ def _add_match_firestore(match_data):
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
     # fixme changed name of the field
-    if "sport" in match_data:
-        match_data["sportInfo"] = match_data["sport"]
+    if "sport" not in match_data:
+        match_data["sport"] = "BvwIYDpu0f3RIT4EaWBH"
 
     db = firestore.client()
 
