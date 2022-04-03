@@ -1,10 +1,10 @@
 import asyncio
 import datetime
-import json
+import os
 
 import dateutil.parser
 import firebase_admin
-import requests
+import stripe
 from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
 
@@ -21,13 +21,7 @@ def add_match(request):
     organizer_id = request_data["organizerId"]
 
     match_id = _add_match_firestore(request_data)
-
-    r = requests.post("https://europe-central2-nutmeg-9099c.cloudfunctions.net/create_stripe_connected_account",
-                      headers={"Content-Type": "application/json"},
-                      data=json.dumps({'data': {"user_id": organizer_id, "is_test": is_test}}))
-
-    if r.status_code != 200:
-        raise Exception("Failed to create organizer stripe account. Reason: " + r.reason)
+    _create_stripe_connected_account(organizer_id, is_test)
 
     return {"data": {"id": match_id}}, 200
 
@@ -128,6 +122,39 @@ async def _get_all_matches_firestore():
 
 def _serialize_date(date):
     return datetime.datetime.isoformat(date)
+
+
+def _create_stripe_connected_account(user_id, is_test):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    db = firestore.client()
+
+    user_doc_ref = db.collection('users').document(user_id)
+
+    user_data = user_doc_ref.get().to_dict()
+    if field_name in user_data:
+        print("{} already created".format(field_name))
+        return user_data[field_name]
+
+    response = stripe.Account.create(
+        type="custom",
+        country="NL",
+        capabilities={
+            "transfers": {"requested": True},
+        },
+        business_type="individual",
+        business_profile={
+            "product_description": "Football matches organized on Nutmeg for user {}".format(user_id)
+        },
+        metadata={
+            "userId": user_id
+        }
+    )
+
+    user_doc_ref.update({
+        field_name: response.id
+    })
+    return response.id
 
 
 # def _add_match_with_user_firestore(user):
