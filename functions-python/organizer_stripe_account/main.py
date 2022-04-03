@@ -19,7 +19,7 @@ def onboard_account(request):
     match_id = request_data["match_id"]
 
     account_id = _get_account_id(user_id, is_test)
-    are_charges_enabled = _are_charges_enabled(account_id, is_test)
+    are_charges_enabled = _is_account_complete(account_id, is_test)
 
     if are_charges_enabled:
         data = {"enabled": True}
@@ -36,9 +36,9 @@ def _get_account_id(user_id, is_test):
     return db.collection('users').document(user_id).get().to_dict()[field_name]
 
 
-def _are_charges_enabled(account_id, is_test):
+def _is_account_complete(account_id, is_test):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
-    return stripe.Account.retrieve(account_id)["charges_enabled"]
+    return len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
 
 
 def _onboard_account(stripe_account_id, match_id, is_test=False):
