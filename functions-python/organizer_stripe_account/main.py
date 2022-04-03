@@ -59,16 +59,33 @@ def _create_stripe_connected_account(user_id, is_test):
 def onboard_account(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))
-
     request_data = request_json["data"]
 
-    account_id = request_data["account_id"]
+    user_id = request_data["user_id"]
     is_test = request_data["is_test"]
     match_id = request_data["match_id"]
 
-    url = _onboard_account(account_id, match_id, is_test=is_test)
+    account_id = _get_account_id(user_id, is_test)
+    are_charges_enabled = _are_charges_enabled(account_id, is_test)
 
-    return {"data": {"url": url}}, 200
+    if are_charges_enabled:
+        data = {"enabled": True}
+    else:
+        url = _onboard_account(account_id, match_id, is_test=is_test)
+        data = {"enabled": False, "url": url}
+
+    return {"data": data}, 200
+
+
+def _get_account_id(user_id, is_test):
+    db = firestore.client()
+    field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    return db.collection('users').document(user_id).get().to_dict()[field_name]
+
+
+def _are_charges_enabled(account_id, is_test):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    return stripe.Account.retrieve(account_id)["charges_enabled"]
 
 
 def _onboard_account(stripe_account_id, match_id, is_test=False):
