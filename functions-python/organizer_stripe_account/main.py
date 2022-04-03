@@ -4,6 +4,7 @@ import stripe
 
 import firebase_admin
 from firebase_admin import firestore
+from firebase_dynamic_links import DynamicLinks
 
 firebase_admin.initialize_app()
 
@@ -24,6 +25,15 @@ def create_stripe_connected_account(request):
 
 def _create_stripe_connected_account(user_id, is_test):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    db = firestore.client()
+
+    user_doc_ref = db.collection('users').document(user_id)
+
+    user_data = user_doc_ref.get().to_dict()
+    if field_name in user_data:
+        print("{} already created".format(field_name))
+        return user_data[field_name]
 
     response = stripe.Account.create(
         type="custom",
@@ -40,9 +50,7 @@ def _create_stripe_connected_account(user_id, is_test):
         }
     )
 
-    db = firestore.client()
-    field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
-    db.collection('users').document(user_id).update({
+    user_doc_ref.update({
         field_name: response.id
     })
     return response.id
@@ -56,24 +64,46 @@ def onboard_account(request):
 
     account_id = request_data["account_id"]
     is_test = request_data["is_test"]
+    match_id = request_data["match_id"]
 
-    url = _onboard_account(account_id, is_test=is_test)
+    url = _onboard_account(account_id, match_id, is_test=is_test)
 
     return {"data": {"url": url}}, 200
 
 
-def _onboard_account(stripe_account_id, is_test=False):
+def _onboard_account(stripe_account_id, match_id, is_test=False):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+
+    redirect_link = _build_redirect_to_app_link(match_id)
 
     response = stripe.AccountLink.create(
         account=stripe_account_id,
-        # todo add redirects
-        refresh_url="https://example.com/reauth",
-        return_url="https://example.com/return",
+        refresh_url=redirect_link,
+        return_url=redirect_link,
         type="account_onboarding",
         collect="currently_due",
     )
     return response.url
+
+
+def _build_redirect_to_app_link(match_id):
+    api_key = 'AIzaSyAjyxMFOrglJXpK6QlzJR_Mh8hNH3NcGS0'
+    domain = 'nutmegapp.page.link'
+    dl = DynamicLinks(api_key, domain)
+    params = {
+        "androidInfo": {
+            "androidPackageName": 'com.nutmeg.nutmeg',
+            "androidMinPackageVersionCode": '1'
+        },
+        "iosInfo": {
+            "iosBundleId": 'com.nutmeg.app',
+            "iosAppStoreId": '1592985083',
+        }
+    }
+    short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?match_id={}'.format(match_id),
+                                          True, params)
+    return short_link
+
 
 
 # if __name__ == '__main__':

@@ -1,8 +1,10 @@
 import asyncio
 import datetime
+import json
 
 import dateutil.parser
 import firebase_admin
+import requests
 from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
 
@@ -15,7 +17,19 @@ def add_match(request):
 
     request_data = request_json["data"]
 
-    return {"data": {"id": _add_match_firestore(request_data)}}, 200
+    is_test = request_data.get("isTest", False)
+    organizer_id = request_data["organizerId"]
+
+    match_id = _add_match_firestore(request_data)
+
+    r = requests.post("https://europe-central2-nutmeg-9099c.cloudfunctions.net/create_stripe_connected_account",
+                      headers={"Content-Type": "application/json"},
+                      data=json.dumps({'data': {"user_id": organizer_id, "is_test": is_test}}))
+
+    if r.status_code != 200:
+        raise Exception("Failed to create organizer stripe account. Reason: " + r.reason)
+
+    return {"data": {"id": match_id}}, 200
 
 
 def edit_match(request):
