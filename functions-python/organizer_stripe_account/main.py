@@ -70,7 +70,7 @@ def _build_redirect_to_app_link(match_id):
             "iosAppStoreId": '1592985083',
         }
     }
-    short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?match_id={}'.format(match_id),
+    short_link = dl.generate_dynamic_link('https://nutmegapp.com/match?id={}'.format(match_id),
                                           True, params)
     return short_link
 
