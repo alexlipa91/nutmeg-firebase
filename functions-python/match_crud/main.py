@@ -21,7 +21,7 @@ def add_match(request):
     organizer_id = request_data["organizerId"]
 
     match_id = _add_match_firestore(request_data)
-    _create_stripe_connected_account(organizer_id, is_test)
+    _update_user_account(organizer_id, is_test)
 
     return {"data": {"id": match_id}}, 200
 
@@ -124,17 +124,17 @@ def _serialize_date(date):
     return datetime.datetime.isoformat(date)
 
 
-def _create_stripe_connected_account(user_id, is_test):
+def _update_user_account(user_id, is_test, match_id, match_datetime):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
-    field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
     db = firestore.client()
 
     user_doc_ref = db.collection('users').document(user_id)
 
     user_data = user_doc_ref.get().to_dict()
-    if field_name in user_data:
-        print("{} already created".format(field_name))
-        return user_data[field_name]
+    if organizer_id_field_name in user_data:
+        print("{} already created".format(organizer_id_field_name))
+        return user_data[organizer_id_field_name]
 
     response = stripe.Account.create(
         type="custom",
@@ -151,8 +151,11 @@ def _create_stripe_connected_account(user_id, is_test):
         }
     )
 
+    # add organizer id and increase number of organized matches
+    organised_list_field_name = "organised_matches" if not is_test else "organised_test_matches"
     user_doc_ref.update({
-        field_name: response.id
+        organizer_id_field_name: response.id,
+        "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
     })
     return response.id
 
