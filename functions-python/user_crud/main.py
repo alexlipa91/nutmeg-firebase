@@ -1,6 +1,8 @@
+import os
 from datetime import datetime
 
 import firebase_admin
+import stripe
 from firebase_admin import firestore
 from firebase_admin import auth
 
@@ -93,7 +95,18 @@ def _get_user_firestore(user_id):
         for m in data["joined_matches"]:
             data["joined_matches"][m] = _serialize_date(data["joined_matches"][m])
 
+    if "stripeConnectedAccountTestId" in data:
+        data["isConnectedAccountTestComplete"] = _is_account_complete(data["stripeConnectedAccountTestId"], True)
+
+    if "stripeConnectedAccountId" in data:
+        data["isConnectedAccountComplete"] = _is_account_complete(data["stripeConnectedAccountId"], False)
+
     return data
+
+
+def _is_account_complete(account_id, is_test):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    return len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
 
 
 def _serialize_date(date):
