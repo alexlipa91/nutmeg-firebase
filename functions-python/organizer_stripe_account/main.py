@@ -16,7 +16,7 @@ def onboard_account(request):
 
     user_id = request_data["user_id"]
     is_test = request_data["is_test"]
-    match_id = request_data["match_id"]
+    path = request_data["path"]
 
     account_id = _get_account_id(user_id, is_test)
     are_charges_enabled = _is_account_complete(account_id, is_test)
@@ -24,7 +24,7 @@ def onboard_account(request):
     if are_charges_enabled:
         data = {"enabled": True}
     else:
-        url = _onboard_account(account_id, match_id, is_test=is_test)
+        url = _onboard_account(account_id, path, is_test=is_test)
         data = {"enabled": False, "url": url}
 
     return {"data": data}, 200
@@ -41,10 +41,10 @@ def _is_account_complete(account_id, is_test):
     return len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
 
 
-def _onboard_account(stripe_account_id, match_id, is_test=False):
+def _onboard_account(stripe_account_id, path, is_test=False):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
-    redirect_link = _build_redirect_to_app_link(match_id)
+    redirect_link = _build_redirect_to_app_link(path)
 
     response = stripe.AccountLink.create(
         account=stripe_account_id,
@@ -56,7 +56,7 @@ def _onboard_account(stripe_account_id, match_id, is_test=False):
     return response.url
 
 
-def _build_redirect_to_app_link(match_id):
+def _build_redirect_to_app_link(path):
     api_key = 'AIzaSyAjyxMFOrglJXpK6QlzJR_Mh8hNH3NcGS0'
     domain = 'nutmegapp.page.link'
     dl = DynamicLinks(api_key, domain)
@@ -70,7 +70,7 @@ def _build_redirect_to_app_link(match_id):
             "iosAppStoreId": '1592985083',
         }
     }
-    short_link = dl.generate_dynamic_link('https://nutmegapp.com/match?id={}'.format(match_id),
+    short_link = dl.generate_dynamic_link('https://nutmegapp.com/'.format(path),
                                           True, params)
     return short_link
 
