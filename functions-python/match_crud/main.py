@@ -21,7 +21,7 @@ def add_match(request):
     organizer_id = request_data["organizerId"]
 
     match_id = _add_match_firestore(request_data)
-    _update_user_account(organizer_id, is_test)
+    _update_user_account(organizer_id, is_test, match_id)
 
     return {"data": {"id": match_id}}, 200
 
@@ -124,7 +124,7 @@ def _serialize_date(date):
     return datetime.datetime.isoformat(date)
 
 
-def _update_user_account(user_id, is_test, match_id, match_datetime):
+def _update_user_account(user_id, is_test, match_id):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
     organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
     db = firestore.client()
