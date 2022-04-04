@@ -137,7 +137,7 @@ def _update_user_account(user_id, is_test, match_id):
         return user_data[organizer_id_field_name]
 
     response = stripe.Account.create(
-        type="custom",
+        type="express",
         country="NL",
         capabilities={
             "transfers": {"requested": True},
