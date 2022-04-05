@@ -91,7 +91,10 @@ def _get_user_firestore(user_id):
     db = firestore.client()
     data = db.collection('users').document(user_id).get().to_dict()
 
-    if data and "joined_matches" in data:
+    if not data:
+        return None
+
+    if "joined_matches" in data:
         for m in data["joined_matches"]:
             data["joined_matches"][m] = _serialize_date(data["joined_matches"][m])
 
@@ -111,3 +114,14 @@ def _is_account_complete(account_id, is_test):
 
 def _serialize_date(date):
     return datetime.isoformat(date)
+
+
+if __name__ == '__main__':
+    # stripe.api_key = os.environ["STRIPE_PROD_KEY"]
+    # db = firestore.client()
+    # for t in db.collection("matches").document("Ozn0feqcNjETQ2fCnOlT").collection("transactions").get():
+    #     data = t.to_dict()
+    #     print(data["type"])
+    #     print(data.get("paymentIntent", None))
+    # print(stripe.PaymentIntent.retrieve("pi_3Kic2rGRb87bTNwH2wt7JlRe"))
+    print(_get_user_firestore("JZlioztjrmbJisBLMrh8bwSCjUn1"))
