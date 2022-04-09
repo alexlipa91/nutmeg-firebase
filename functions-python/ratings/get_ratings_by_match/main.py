@@ -21,6 +21,17 @@ def get_ratings_by_match(request):
     return {"data": resp}, 200
 
 
+def get_ratings_by_match_v2(request):
+    request_json = request.get_json(silent=True)
+    print("data {}".format(request_json))
+
+    request_data = request_json["data"]
+
+    resp = asyncio.run(_get_ratings_by_match_v2(request_data["match_id"]))
+
+    return {"data": resp}, 200
+
+
 async def _get_ratings_by_match(match_id):
     db = _get_db()
 
@@ -36,6 +47,19 @@ async def _get_ratings_by_match(match_id):
     return dict(response)
 
 
+async def _get_ratings_by_match_v2(match_id):
+    db = _get_db()
+
+    ratings_doc_ref = db.collection("ratings").document(match_id)
+    ratings_doc = await ratings_doc_ref.get()
+
+    if not ratings_doc.exists:
+        return {}
+
+    ratings_data = ratings_doc.to_dict()
+    return ratings_data["scores"]
+
+
 if __name__ == '__main__':
-    print(asyncio.run(_get_ratings_by_match("FjSpAqpJX7q6wi4jyjlO")))
+    print(asyncio.run(_get_ratings_by_match_v2("EKPi6qHMI2du2sHykRlG")))
 
