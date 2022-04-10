@@ -62,4 +62,3 @@ async def _get_ratings_by_match_v2(match_id):
 
 if __name__ == '__main__':
     print(asyncio.run(_get_ratings_by_match_v2("EKPi6qHMI2du2sHykRlG")))
-
