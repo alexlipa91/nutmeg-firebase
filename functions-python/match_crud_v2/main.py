@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import traceback
+from enum import Enum
 
 import firebase_admin
 from google.cloud.firestore import AsyncClient
@@ -8,6 +9,16 @@ from firebase_admin import firestore
 
 
 firebase_admin.initialize_app()
+
+
+class MatchStatus(Enum):
+    CANCELLED = "cancelled"
+    RATED = "rated"
+    TO_RATE = "to_rate"
+    PLAYING = "playing"
+    PRE_PLAYING = "pre_playing"
+    FULL = "full"
+    OPEN = "open"
 
 
 def get_match_v2(request):
@@ -33,6 +44,9 @@ async def _get_match_firestore_v2(match_id):
 
 
 async def _format_match_data_v2(match_data):
+    # add status
+    match_data["status"] = _get_status(match_data).value
+
     # serialize dates
     match_data["dateTime"] = _serialize_date(match_data["dateTime"])
     if match_data.get("cancelledAt", None):
@@ -62,6 +76,30 @@ async def _get_all_matches_firestore_v2():
     return res
 
 
+def _get_status(match_data):
+    if match_data.get("cancelledAt", None):
+        return MatchStatus.CANCELLED
+    if match_data.get("scoresComputedAt", None):
+        return MatchStatus.RATED
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    start = match_data["dateTime"]
+    cannot_leave_at = start - datetime.timedelta(hours=1)
+    end = start + datetime.timedelta(minutes=match_data["duration"])
+
+    # cannot_leave_at   |   start   |   end
+
+    if now > end:
+        return MatchStatus.TO_RATE
+    if now > start:
+        return MatchStatus.PLAYING
+    if now > cannot_leave_at:
+        return MatchStatus.PRE_PLAYING
+    if len(match_data.get("going", [])) == match_data["maxPlayers"]:
+        return MatchStatus.FULL
+    return MatchStatus.OPEN
+
+
 def delete_test():
     db = firestore.client()
     res = db.collection(u'matches').where("isTest", "==",  True).get()
@@ -70,8 +108,6 @@ def delete_test():
 
 def _serialize_date(date):
     return datetime.datetime.isoformat(date)
-
-
 
 
 if __name__ == '__main__':
