@@ -115,9 +115,7 @@ def _send_notification_to_tokens(title, body, data, tokens):
         tokens=tokens,
     )
     response = messaging.send_multicast(message)
-    print('Successfully sent {} messages'.format(response.success_count))
-    if response.failure_count > 0:
-        [print(r.exception) for r in response.responses if r.exception]
+    print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
 
 
 def _send_notification_to_users(title, body, data, users):
