@@ -52,7 +52,7 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
     for u in scores:
         only_positive = list(filter(lambda s: s > 0, scores[u].values()))
         if len(only_positive) == 0:
-            final_scores[u] = 0
+            final_scores[u] = (0, 0)
         else:
             s = Decimal(sum(only_positive) / len(only_positive))
             final_scores[u] = (float(round(s, 2)), len(only_positive))
