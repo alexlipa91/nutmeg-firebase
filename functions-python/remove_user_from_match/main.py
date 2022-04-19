@@ -19,7 +19,7 @@ def remove_user_from_match(request):
 
     match_id = request_data["match_id"]
     user_id = request_data["user_id"]
-    refund_type = request_data.get("type", None)
+    refund_type = request_data.get("type", "credits")
 
     _remove_user_from_match_firestore(match_id, user_id, refund_type)
 
