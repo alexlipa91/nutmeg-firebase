@@ -90,10 +90,10 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
     doc = db.collection('users').document(organizer_id)
 
     data = doc.get(
-        field_paths={"stripeId", "stripeTestId"}) \
+        field_paths={"stripeConnectedAccountId", "stripeConnectedAccountTestId"}) \
         .to_dict()
 
-    return data["stripeId" if not test_mode else "stripeTestId"]
+    return data["stripeConnectedAccountId" if not test_mode else "stripeConnectedAccountTestId"]
 
 
 def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id, credits_used, test_mode):
