@@ -55,9 +55,7 @@ def create_stripe_checkout(request):
 def _get_match_info(match_id):
     db = firestore.client()
 
-    data = db.collection('matches').document(match_id).get(
-        field_paths={"pricePerPerson", "stripeProductId"}) \
-        .to_dict()
+    data = db.collection('matches').document(match_id).get().to_dict()
 
     return data
 
