@@ -74,6 +74,20 @@ def _build_redirect_to_app_link():
     return short_link
 
 
+def _create_transfer_for_payment(payment_id, fee, connect_account_id, match_id, is_test):
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    payment = stripe.PaymentIntent.retrieve(payment_id)
+    charge = payment["charges"]["data"][0]["id"]
+    amount = payment["amount"]
+
+    transfer = stripe.Transfer.create(
+        source_transaction=charge,
+        amount=amount - fee,
+        currency="eur",
+        destination=connect_account_id,
+        transfer_group=match_id,
+    )
+    return transfer.id
 
 # if __name__ == '__main__':
     # print(_create_stripe_connected_account("IwrZWBFb4LZl3Kto1V3oUKPnCni1", is_test=True))

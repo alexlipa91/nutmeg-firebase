@@ -183,3 +183,9 @@ jobs:
     with:
       name: "get_refund_amount"
       folder: "remove_user_from_match"
+
+  is_connected_account_complete:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "is_connected_account_complete"
+      folder: "user_crud"

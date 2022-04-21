@@ -52,6 +52,15 @@ def store_user_token(request):
     return {"data": _store_user_token_firestore(request_data["id"], request_data["token"])}, 200
 
 
+def is_connected_account_complete(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    return {"data": request_data["account_id"]}, 200
+
+
 def _store_user_token_firestore(user_id, token):
     db = firestore.client()
 
@@ -97,12 +106,6 @@ def _get_user_firestore(user_id):
     if "joined_matches" in data:
         for m in data["joined_matches"]:
             data["joined_matches"][m] = _serialize_date(data["joined_matches"][m])
-
-    if "stripeConnectedAccountTestId" in data:
-        data["isConnectedAccountTestComplete"] = _is_account_complete(data["stripeConnectedAccountTestId"], True)
-
-    if "stripeConnectedAccountId" in data:
-        data["isConnectedAccountComplete"] = _is_account_complete(data["stripeConnectedAccountId"], False)
 
     return data
 
