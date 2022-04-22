@@ -96,7 +96,8 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
     return data["stripeConnectedAccountId" if not test_mode else "stripeConnectedAccountTestId"]
 
 
-def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id, credits_used, test_mode):
+def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id,
+                             credits_used, test_mode):
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
 
     if credits_used == 0 and price_id is not None:
@@ -121,7 +122,7 @@ def _create_checkout_session(customer_id, user_id, match_id, price_per_person, p
         line_items=[line_item],
         mode="payment",
         customer=customer_id,
-        metadata={"user_id": user_id, "match_id": match_id, "credits_used": 0}
+        metadata={"user_id": user_id, "match_id": match_id, "credits_used": credits_used},
     )
     return session
 
