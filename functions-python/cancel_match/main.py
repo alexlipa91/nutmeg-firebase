@@ -1,7 +1,8 @@
 import firebase_admin
-from firebase_admin import firestore, messaging
+from firebase_admin import firestore
 from datetime import datetime
 from google.cloud.firestore_v1 import Increment
+from nutmeg_utils.notifications import send_notification_to_users
 
 
 firebase_admin.initialize_app()
@@ -75,40 +76,14 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, user_doc_r
         # update user credits count
         transaction.update(user_doc_refs[u], {'credits': Increment(credits_refunded)})
 
-    _send_notification_to_users(title="Match cancelled!",
-                                body="Your match at {} has been cancelled! € {} credits have been added to your account"
-                                .format(sport_center, "{:.2f}".format(price)),
-                                data={
-                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                                    "match_id": match_id
-                                },
-                                users=list(users))
-
-
-def _send_notification_to_users(title, body, data, users):
-    db = firestore.client()
-
-    tokens = set()
-    for user_id in users:
-        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
-        for t in user_tokens:
-            tokens.add(t)
-    _send_notification_to_tokens(title, body, data, list(tokens))
-
-
-def _send_notification_to_tokens(title, body, data, tokens):
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        data=data,
-        tokens=tokens,
-    )
-    response = messaging.send_multicast(message)
-    print('Successfully sent {} messages'.format(response.success_count))
-    if response.failure_count > 0:
-        [print(r.exception) for r in response.responses if r.exception]
+    send_notification_to_users(title="Match cancelled!",
+                               body="Your match at {} has been cancelled! € {} credits have been added to your account"
+                               .format(sport_center, "{:.2f}".format(price)),
+                               data={
+                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                   "match_id": match_id
+                               },
+                               users=list(users))
 
 
 if __name__ == '__main__':

@@ -1,11 +1,11 @@
 import asyncio
 import datetime
 
-from firebase_admin import firestore, messaging
+from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
 from decimal import Decimal
 import firebase_admin
-
+from nutmeg_utils.notifications import send_notification_to_users
 
 firebase_admin.initialize_app()
 
@@ -94,7 +94,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
     for p in potms:
         going_users.remove(p)
 
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Match stats are available!",
         body="Check out the stats from the match at {}".format(sport_center),
         users=list(going_users),
@@ -104,7 +104,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
         }
     )
 
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Congratulations! " + u"\U0001F3C6",
         body="You won the Player of the Match award for the {} match".format(sport_center),
         users=list(potms),
@@ -114,31 +114,6 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
             "event": "potm",
         }
     )
-
-
-def _send_notification_to_users(title, body, data, users):
-    db = firestore.client()
-
-    tokens = []
-    for user_id in users:
-        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
-        tokens.extend(user_tokens)
-    _send_notification_to_tokens(title, body, data, tokens)
-
-
-def _send_notification_to_tokens(title, body, data, tokens):
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        data=data,
-        tokens=tokens,
-    )
-    response = messaging.send_multicast(message)
-    print('Successfully sent {} messages'.format(response.success_count))
-    if response.failure_count > 0:
-        [print(r.exception) for r in response.responses if r.exception]
 
 
 if __name__ == '__main__':

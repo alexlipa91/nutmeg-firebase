@@ -1,11 +1,12 @@
 import json
 
 import firebase_admin
-from firebase_admin import firestore, messaging
+from firebase_admin import firestore
 from datetime import datetime, timedelta
 import pytz
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
+from nutmeg_utils.notifications import send_notification_to_users
 
 tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
@@ -42,7 +43,7 @@ def _run_post_match_tasks(match_id):
     # send start voting notification
     users = match_data["going"].keys()
 
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
         body="You have 24h to rate the players of today's match.",
         users=users,
@@ -51,32 +52,6 @@ def _run_post_match_tasks(match_id):
             "match_id": match_id
         }
     )
-
-
-def _send_notification_to_users(title, body, data, users):
-    db = firestore.client()
-
-    tokens = set()
-    for user_id in users:
-        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
-        for t in user_tokens:
-            tokens.add(t)
-    _send_notification_to_tokens(title, body, data, list(tokens))
-
-
-def _send_notification_to_tokens(title, body, data, tokens):
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        data=data,
-        tokens=tokens,
-    )
-    response = messaging.send_multicast(message)
-    print('Successfully sent {} messages'.format(response.success_count))
-    if response.failure_count > 0:
-        [print(r.exception) for r in response.responses if r.exception]
 
 
 def schedule_run_post_match_tasks(data, context):
