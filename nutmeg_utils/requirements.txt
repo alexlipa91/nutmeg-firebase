@@ -1,0 +1,2 @@
+google-cloud-tasks==2.7.2
+firebase-admin==5.2.0
