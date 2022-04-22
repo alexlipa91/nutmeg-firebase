@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 
 import firebase_admin
 import pytz
-from firebase_admin import firestore, messaging
+from firebase_admin import firestore
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
+from nutmeg_utils.notifications import send_notification_to_users
 
 
 firebase_admin.initialize_app()
@@ -46,7 +47,7 @@ def send_notification_to_users(request):
 
     request_data = request_json["data"]
 
-    _send_notification_to_users(request_data["title"], request_data["body"], request_data["data"], request_data["users"])
+    send_notification_to_users(request_data["title"], request_data["body"], request_data["data"], request_data["users"])
 
     return {"data": {}}, 200
 
@@ -69,7 +70,7 @@ def _send_prematch_notification(match_id):
     date_time = match["dateTime"]
     date_time_ams = date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
 
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
         users=users,
@@ -94,7 +95,7 @@ def _send_start_voting_notification(match_id):
     if match["cancelledAt"] is not None:
         raise Exception("Match is cancelled! Not sending any notification...")
 
-    _send_notification_to_users(
+    send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
         body="You have 24h to rate the players of today's match.",
         users=users,
@@ -103,31 +104,6 @@ def _send_start_voting_notification(match_id):
             "match_id": match_id
         }
     )
-
-
-def _send_notification_to_tokens(title, body, data, tokens):
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
-        data=data,
-        tokens=tokens,
-    )
-    response = messaging.send_multicast(message)
-    print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
-
-
-def _send_notification_to_users(title, body, data, users):
-    db = firestore.client()
-
-    tokens = set()
-    for user_id in users:
-        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
-        for t in user_tokens:
-            tokens.add(t)
-    _send_notification_to_tokens(title, body, data, list(tokens))
-
 
 """
 gcloud functions deploy schedule_prematch_notification \
@@ -201,4 +177,4 @@ if __name__ == '__main__':
     #         "match_id": "VHASFBaOxVzol9gICmSe"
     #     }
     # )
-    _send_start_voting_notification("gAYBoHYPUmX1GMfCajou")
+    _send_start_voting_notification("rgCoJyCTgOHn7Qlxzz21")
