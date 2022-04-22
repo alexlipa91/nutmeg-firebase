@@ -6,7 +6,7 @@ import pytz
 from firebase_admin import firestore
 from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
-from nutmeg_utils.notifications import send_notification_to_users
+from nutmeg_utils import notifications
 
 
 firebase_admin.initialize_app()
@@ -47,7 +47,8 @@ def send_notification_to_users(request):
 
     request_data = request_json["data"]
 
-    send_notification_to_users(request_data["title"], request_data["body"], request_data["data"], request_data["users"])
+    notifications.send_notification_to_users(request_data["title"], request_data["body"], request_data["data"],
+                                             request_data["users"])
 
     return {"data": {}}, 200
 
@@ -70,7 +71,7 @@ def _send_prematch_notification(match_id):
     date_time = match["dateTime"]
     date_time_ams = date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
 
-    send_notification_to_users(
+    notifications.send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
         body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
         users=users,
@@ -95,7 +96,7 @@ def _send_start_voting_notification(match_id):
     if match["cancelledAt"] is not None:
         raise Exception("Match is cancelled! Not sending any notification...")
 
-    send_notification_to_users(
+    notifications.send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
         body="You have 24h to rate the players of today's match.",
         users=users,
