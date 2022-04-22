@@ -1,13 +1,10 @@
-import json
 from datetime import datetime, timedelta
 
 import firebase_admin
 import pytz
 from firebase_admin import firestore
-from google.cloud import tasks_v2
-from google.protobuf import timestamp_pb2
 from nutmeg_utils import notifications
-
+from nutmeg_utils.schedule_function import schedule_function
 
 firebase_admin.initialize_app()
 
@@ -106,6 +103,7 @@ def _send_start_voting_notification(match_id):
         }
     )
 
+
 """
 gcloud functions deploy schedule_prematch_notification \
                          --runtime python37 \
@@ -120,62 +118,10 @@ def schedule_prematch_notification(data, context):
     match_id = data["value"]["name"].split("/")[-1]
     date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
 
-    _schedule_prematch_notification(match_id, date_time)
+    schedule_function(
+        task_name="send_prematch_notification_{}".format(match_id),
+        function_name="send_prematch_notification",
+        function_payload={"match_id": match_id},
+        date_time_to_execute=date_time - timedelta(hours=1)
+    )
 
-
-def _schedule_prematch_notification(match_id, date_time):
-    send_at = date_time - timedelta(hours=1)
-
-    _schedule_task(task_name="send_prematch_notification_for_{}".format(match_id),
-                   function_path="send_prematch_notification",
-                   payload={'data': {"match_id": match_id}},
-                   date_time_to_send=send_at)
-
-
-def _schedule_task(task_name, function_path, payload, date_time_to_send):
-    # schedule task
-    client = tasks_v2.CloudTasksClient()
-
-    project = 'nutmeg-9099c'
-    queue = 'match-notifications'
-    location = 'europe-west1'
-    url = 'https://europe-central2-nutmeg-9099c.cloudfunctions.net/{}'.format(function_path)
-
-    parent = client.queue_path(project, location, queue)
-
-    # Create Timestamp protobuf.
-    timestamp = timestamp_pb2.Timestamp()
-    timestamp.FromDatetime(date_time_to_send)
-
-    # Construct the request body.
-    task = {
-        "http_request": {  # Specify the type of request.
-            "http_method": tasks_v2.HttpMethod.POST,
-            "url": url,  # The full url path that the task will be sent to.
-            "headers": {"Content-type": "application/json"},
-            "body": json.dumps(payload).encode()
-        },
-        "schedule_time": timestamp,
-        "name": client.task_path(project, location, queue, task_name)
-    }
-
-    # Use the client to build and send the task.
-    response = client.create_task(request={"parent": parent, "task": task})
-    print("Created task {}".format(response.name))
-
-
-if __name__ == '__main__':
-    # _send_notification_to_users(
-    #     title="allahsamalam allasam pass the ball " + u"\u26BD\uFE0F",
-    #     body="Hope you'll get as many 5 points as possible and many shoarma tonight",
-    #     users=[
-    #         # "IwrZWBFb4LZl3Kto1V3oUKPnCni1"
-    #         # "bQHD0EM265V6GuSZuy1uQPHzb602"
-    #     ],
-    #     data={
-    #         # "openURL": "https://facebook.com",
-    #         "click_action": "FLUTTER_NOTIFICATION_CLICK",
-    #         "match_id": "VHASFBaOxVzol9gICmSe"
-    #     }
-    # )
-    _send_start_voting_notification("rgCoJyCTgOHn7Qlxzz21")
