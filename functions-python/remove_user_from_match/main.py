@@ -48,7 +48,7 @@ def _remove_user_from_match_firestore(match_id, user_id, refund_type="credits"):
 
     if refund_type == "credits":
         _remove_user_from_match_firestore_transaction(db.transaction(), match_doc_ref, user_doc_ref,
-                                                      transactions_doc_ref, user_id, match_id)
+                                                      transactions_doc_ref, user_id, match_id, refund_type="refund"),
     elif refund_type == "stripe":
         _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_doc_ref,
                                                                     transactions_doc_ref, user_id, match_id)
