@@ -1,1 +1,2 @@
 stripe
+-e git+https://github.com/alexlipa91/nutmeg-firebase.git@aadcb48f126fa459633093d2ef48f57f4e2b90c3#subdirectory=nutmeg_utils&egg=nutmeg_utils

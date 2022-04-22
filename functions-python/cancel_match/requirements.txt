@@ -1,2 +1,2 @@
 firebase-admin==5.2.0
--e git+https://github.com/alexlipa91/nutmeg-firebase.git@03bce1859a095a11d8837bed82c6f131c3dbcefc#subdirectory=nutmeg_utils&egg=nutmeg_utils
+-e git+https://github.com/alexlipa91/nutmeg-firebase.git@aadcb48f126fa459633093d2ef48f57f4e2b90c3#subdirectory=nutmeg_utils&egg=nutmeg_utils

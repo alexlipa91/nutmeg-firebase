@@ -1,7 +1,5 @@
-import json
-
 import stripe
-import requests
+from nutmeg_utils.functions_client import call_function
 
 
 def stripe_checkout_webhook_test(request):
@@ -32,26 +30,12 @@ def _exec(request, secret):
     # Handle the event
     if event["type"] == "checkout.session.completed":
         print("checkout successful")
-        _add_user_request(event_data["metadata"]["match_id"], event_data["metadata"]["user_id"],
-                          event_data["payment_intent"])
+        call_function("add_user_to_match", {
+            "match_id": event_data["metadata"]["match_id"],
+            "user_id": event_data["metadata"]["user_id"],
+            "payment_intent": event_data["payment_intent"]
+        })
     else:
         print("checkout not successful")
 
     return {}, 200
-
-
-def _add_user_request(match_id, user_id, payment_intent):
-    data = {
-        "match_id": match_id,
-        "user_id": user_id,
-        "payment_intent": payment_intent
-    }
-    r = requests.post("https://europe-central2-nutmeg-9099c.cloudfunctions.net/add_user_to_match",
-                      headers={"Content-Type": "application/json"},
-                      data=json.dumps({'data': data}))
-
-    if r.status_code != 200:
-        raise Exception("Failed to add user when calling function. Reason: " + r.reason)
-
-# if __name__ == '__main__':
-#     _add_user_request("test_match_id", "IwrZWBFb4LZl3Kto1V3oUKPnCni1")
