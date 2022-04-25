@@ -1,0 +1,2 @@
+stripe
+-e git+https://github.com/alexlipa91/nutmeg-firebase.git@5412155c2f361aa27b5986624c50af5ecac79f3c#subdirectory=nutmeg_utils&egg=nutmeg_utils
