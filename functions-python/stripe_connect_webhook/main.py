@@ -2,11 +2,11 @@ import stripe
 
 
 def stripe_connect_updated_webhook_test(request):
-    _exec(request, "whsec_fcxfBL6XriWegpXd9gJ5He40ouSSmRyK")
+    _exec(request, "whsec_KGzrAzxe6TUl0i4am32VLp2GhvbyvnUj")
 
 
 def stripe_connect_updated_webhook(request):
-    _exec(request, "whsec_sdXI3JvzFXiTtTqChMWxiljMepY84Htp")
+    _exec(request, "whsec_jEdf6MDlKWoL3KDbTDOnjyy5Fbas02vp")
 
 
 def _exec(request, secret):
