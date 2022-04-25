@@ -1,7 +1,4 @@
-import flask
 import stripe
-
-from nutmeg_utils.functions_client import call_function
 
 
 def stripe_connect_updated_webhook_test(request):
