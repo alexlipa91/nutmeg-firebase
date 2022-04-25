@@ -12,13 +12,13 @@ firebase_admin.initialize_app()
 
 
 class MatchStatus(Enum):
-    CANCELLED = "cancelled"
-    RATED = "rated"
-    TO_RATE = "to_rate"
-    PLAYING = "playing"
-    PRE_PLAYING = "pre_playing"
-    FULL = "full"
-    OPEN = "open"
+    CANCELLED = "cancelled"             # match has been canceled (cancelation can triggered both before or after match start time)
+    RATED = "rated"                     # all players have rated and POTM has been determined 
+    TO_RATE = "to_rate"                 # match has been played and now is in rating window; users can rate 
+    PLAYING = "playing"                 # we are in between match start and end time  
+    PRE_PLAYING = "pre_playing"         # we are right before match start time (right now 1h) so users cannot leave anymore 
+    FULL = "full"                       # max number of players are registered as going for the match
+    OPEN = "open"                       # match is in the future and is open for users to join
 
 
 def get_match_v2(request):
