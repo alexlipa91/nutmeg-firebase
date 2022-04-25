@@ -1,15 +1,20 @@
+import firebase_admin
 import stripe
+from firebase_admin import firestore
+
+
+firebase_admin.initialize_app()
 
 
 def stripe_connect_updated_webhook_test(request):
-    _exec(request, "whsec_KGzrAzxe6TUl0i4am32VLp2GhvbyvnUj")
+    _exec(request, "whsec_KGzrAzxe6TUl0i4am32VLp2GhvbyvnUj", True)
 
 
 def stripe_connect_updated_webhook(request):
-    _exec(request, "whsec_jEdf6MDlKWoL3KDbTDOnjyy5Fbas02vp")
+    _exec(request, "whsec_jEdf6MDlKWoL3KDbTDOnjyy5Fbas02vp", False)
 
 
-def _exec(request, secret):
+def _exec(request, secret, is_test):
     event = None
     payload = request.data
     sig_header = request.headers['STRIPE_SIGNATURE']
@@ -23,23 +28,19 @@ def _exec(request, secret):
         # Invalid signature
         raise e
 
-    print(event)
     event_data = event["data"]["object"]
 
     # Handle the event
-    # if event["type"] == "account.updated":
-    #     print("checkout successful")
-    #     call_function("add_user_to_match", {
-    #         "match_id": event_data["metadata"]["match_id"],
-    #         "user_id": event_data["metadata"]["user_id"],
-    #         "payment_intent": event_data["payment_intent"]
-    #     })
-    # else:
-    #     print("checkout not successful")
-    #
-    # return {}, 200
+    if event["type"] == "account.updated" and event_data["charges_enabled"]:
+        user_id = event_data["metadata"]["userId"]
+        field_name = "chargesEnabledOnStripe" if not is_test else "chargesEnabledOnStripeTest"
+
+        db = firestore.client()
+        db.collection("users").document(user_id).update({
+            field_name: True
+        })
+        print("user {} can now receive payments on stripe".format(user_id))
+    else:
+        print("event not handled")
+
     return {}, 200
-
-
-if __name__ == '__main__':
-    app.run()
