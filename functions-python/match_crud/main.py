@@ -81,6 +81,8 @@ def _add_match_firestore(match_data):
 
     # add it as draft
     match_data["unpublished"] = True
+    # add nutmeg fee to price
+    match_data["pricePerPerson"] = match_data["pricePerPerson"] + 50
 
     db = firestore.client()
 
