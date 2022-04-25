@@ -1,5 +1,6 @@
 import os
 
+import flask
 import stripe
 
 import firebase_admin
@@ -29,6 +30,13 @@ def onboard_account(request):
     return {"data": data}, 200
 
 
+def refresh_onboard_url(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    return flask.redirect(_onboard_account(request.args["id"], bool(request.args["is_test"])))
+
+
 def _get_account_id(user_id, is_test):
     db = firestore.client()
     field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
@@ -44,11 +52,13 @@ def _onboard_account(stripe_account_id, is_test=False):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     redirect_link = _build_redirect_to_app_link()
+    refresh_link = "https://europe-central2-nutmeg-9099c.cloudfunctions.net/refresh_onboard_url?is_test={}&id={}"\
+        .format(is_test, stripe_account_id)
 
     response = stripe.AccountLink.create(
         account=stripe_account_id,
         # fixme add a proper refresh url
-        refresh_url=redirect_link,
+        refresh_url=refresh_link,
         return_url=redirect_link,
         type="account_onboarding",
         collect="currently_due",

@@ -195,3 +195,9 @@ jobs:
     with:
       name: "create_stripe_connected_account"
       folder: "create_stripe_connected_account"
+
+  refresh_onboard_url:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "refresh_onboard_url"
+      folder: "organizer_stripe_account"
