@@ -1,4 +1,5 @@
 import firebase_admin
+import flask
 from firebase_admin import firestore
 
 import os
@@ -50,6 +51,28 @@ def create_stripe_checkout(request):
 
     data = {'data': {'session_id': session.id, 'url': session.url}}
     return data, 200
+
+
+def go_to_stripe_checkout(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, body {}".format(request.args, request_json))
+
+    test_mode = request.args["is_test"]
+    match_id = request.args["match_id"]
+    user_id = request.args["user_id"]
+
+    match_info = _get_match_info(match_id)
+
+    session = _create_checkout_session_with_destination_charges(
+        _get_stripe_customer_id(user_id, test_mode),
+        _get_stripe_connected_account_id(match_info["organizerId"], test_mode),
+        user_id,
+        match_info["organizerId"],
+        match_id,
+        match_info["stripePriceId"],
+        0,
+        test_mode)
+    return flask.redirect(session.url)
 
 
 def _get_match_info(match_id):
@@ -171,4 +194,3 @@ def _build_redirect_to_app_link(match_id, outcome):
     short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?outcome={}&match_id={}'.format(outcome, match_id),
                                           True, params)
     return short_link
-

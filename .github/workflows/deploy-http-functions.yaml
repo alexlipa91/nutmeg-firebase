@@ -201,3 +201,9 @@ jobs:
     with:
       name: "go_to_account_login_link"
       folder: "organizer_stripe_account"
+
+  go_to_stripe_checkout:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "go_to_stripe_checkout"
+      folder: "create_stripe_checkout"
