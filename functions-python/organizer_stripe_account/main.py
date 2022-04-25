@@ -37,6 +37,17 @@ def refresh_onboard_url(request):
     return flask.redirect(_onboard_account(request.args["id"], bool(request.args["is_test"])))
 
 
+def go_to_account_login_link(request):
+    print("args {}".format(request.args))
+
+    is_test = bool(request.args["is_test"])
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    url = stripe.Account.create_login_link(_get_account_id(request.args["user_id"], is_test))
+    print("redirecting to {}".format(url))
+
+    return flask.redirect(url)
+
+
 def _get_account_id(user_id, is_test):
     db = firestore.client()
     field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
@@ -100,8 +111,22 @@ def _create_transfer_for_payment(payment_id, fee, connect_account_id, match_id, 
     )
     return transfer.id
 
-# if __name__ == '__main__':
+
+if __name__ == '__main__':
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not True else "STRIPE_TEST_KEY"]
+    acc = stripe.Account.retrieve("acct_1KsVKiGfLz0eleaC")
+    print(acc)
     # print(_create_stripe_connected_account("IwrZWBFb4LZl3Kto1V3oUKPnCni1", is_test=True))
     # print(_onboard_account("acct_1Kh9wQ2fjkOIw12U", is_test=True))
 
+    print(stripe.Account.create_login_link("acct_1KsVKiGfLz0eleaC"))
 
+    # response = stripe.Account.cre.create(
+    #     account="acct_1KsVKiGfLz0eleaC",
+    #     fixme add a proper refresh url
+        # refresh_url="https://wwww.google.com",
+        # return_url="https://wwww.google.com",
+        # type="account_update",
+        # collect="currently_due",
+    # )
+    # print(response.url)

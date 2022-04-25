@@ -201,3 +201,9 @@ jobs:
     with:
       name: "refresh_onboard_url"
       folder: "organizer_stripe_account"
+
+  go_to_account_login_link:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "go_to_account_login_link"
+      folder: "organizer_stripe_account"
