@@ -70,7 +70,7 @@ def go_to_stripe_checkout(request):
         match_info["organizerId"],
         match_id,
         match_info["stripePriceId"],
-        0,
+        50,
         test_mode)
     return flask.redirect(session.url)
 
