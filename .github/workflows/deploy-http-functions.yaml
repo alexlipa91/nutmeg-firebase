@@ -184,22 +184,22 @@ jobs:
       name: "get_refund_amount"
       folder: "remove_user_from_match"
 
-  is_connected_account_complete:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "is_connected_account_complete"
-      folder: "user_crud"
-
   create_stripe_connected_account:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
       name: "create_stripe_connected_account"
       folder: "create_stripe_connected_account"
 
-  refresh_onboard_url:
+  is_account_onboarded:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
-      name: "refresh_onboard_url"
+      name: "is_account_onboarded"
+      folder: "organizer_stripe_account"
+
+  go_to_onboard_connected_account:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "go_to_onboard_connected_account"
       folder: "organizer_stripe_account"
 
   go_to_account_login_link:

@@ -52,15 +52,6 @@ def store_user_token(request):
     return {"data": _store_user_token_firestore(request_data["id"], request_data["token"])}, 200
 
 
-def is_connected_account_complete(request):
-    request_json = request.get_json(silent=True)
-    print("args {}, data {}".format(request.args, request_json))
-
-    request_data = request_json["data"]
-
-    return {"data": request_data["account_id"]}, 200
-
-
 def _store_user_token_firestore(user_id, token):
     db = firestore.client()
 

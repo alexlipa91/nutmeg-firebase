@@ -10,7 +10,7 @@ from firebase_dynamic_links import DynamicLinks
 firebase_admin.initialize_app()
 
 
-def onboard_account(request):
+def is_account_onboarded(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))
     request_data = request_json["data"]
@@ -19,18 +19,12 @@ def onboard_account(request):
     is_test = request_data["is_test"]
 
     account_id = _get_account_id(user_id, is_test)
-    are_charges_enabled = _is_account_complete(account_id, is_test)
+    is_complete = _is_account_complete(account_id, is_test)
 
-    if are_charges_enabled:
-        data = {"enabled": True}
-    else:
-        url = _onboard_account(account_id, user_id, is_test=is_test)
-        data = {"enabled": False, "url": url}
-
-    return {"data": data}, 200
+    return {"data": {"is_complete": is_complete}}, 200
 
 
-def refresh_onboard_url(request):
+def go_to_onboard_connected_account(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
@@ -38,7 +32,7 @@ def refresh_onboard_url(request):
     user_id = request.args["id"]
 
     account_id = _get_account_id(user_id, is_test=is_test)
-    return flask.redirect(_onboard_account(account_id, user_id, is_test=is_test))
+    return flask.redirect(_onboard_account_url(account_id, user_id, is_test=is_test))
 
 
 def go_to_account_login_link(request):
@@ -63,7 +57,7 @@ def _is_account_complete(account_id, is_test):
     return len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
 
 
-def _onboard_account(stripe_account_id, user_id, is_test=False):
+def _onboard_account_url(stripe_account_id, user_id, is_test=False):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     redirect_link = _build_redirect_to_app_link()
