@@ -47,6 +47,7 @@ def _onboard_account(stripe_account_id, is_test=False):
 
     response = stripe.AccountLink.create(
         account=stripe_account_id,
+        # fixme add a proper refresh url
         refresh_url=redirect_link,
         return_url=redirect_link,
         type="account_onboarding",
@@ -69,7 +70,7 @@ def _build_redirect_to_app_link():
             "iosAppStoreId": '1592985083',
         }
     }
-    short_link = dl.generate_dynamic_link('https://nutmegapp.com/somewhere',
+    short_link = dl.generate_dynamic_link('https://nutmegapp.com/onboardOrganizer',
                                           True, params)
     return short_link
 
