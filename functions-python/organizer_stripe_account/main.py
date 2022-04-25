@@ -24,7 +24,7 @@ def onboard_account(request):
     if are_charges_enabled:
         data = {"enabled": True}
     else:
-        url = _onboard_account(account_id, is_test=is_test)
+        url = _onboard_account(account_id, user_id, is_test=is_test)
         data = {"enabled": False, "url": url}
 
     return {"data": data}, 200
@@ -34,7 +34,11 @@ def refresh_onboard_url(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    return flask.redirect(_onboard_account(request.args["id"], bool(request.args["is_test"])))
+    is_test = bool(request.args["is_test"])
+    user_id = request.args["id"]
+
+    account_id = _get_account_id(user_id, is_test=is_test)
+    return flask.redirect(_onboard_account(account_id, user_id, is_test=is_test))
 
 
 def go_to_account_login_link(request):
@@ -59,12 +63,12 @@ def _is_account_complete(account_id, is_test):
     return len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
 
 
-def _onboard_account(stripe_account_id, is_test=False):
+def _onboard_account(stripe_account_id, user_id, is_test=False):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     redirect_link = _build_redirect_to_app_link()
     refresh_link = "https://europe-central2-nutmeg-9099c.cloudfunctions.net/refresh_onboard_url?is_test={}&id={}"\
-        .format(is_test, stripe_account_id)
+        .format(is_test, user_id)
 
     response = stripe.AccountLink.create(
         account=stripe_account_id,
@@ -114,12 +118,12 @@ def _create_transfer_for_payment(payment_id, fee, connect_account_id, match_id, 
 
 if __name__ == '__main__':
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not True else "STRIPE_TEST_KEY"]
-    acc = stripe.Account.retrieve("acct_1KsVKiGfLz0eleaC")
-    print(acc)
+    # acc = stripe.Account.retrieve("acct_1KsVKiGfLz0eleaC")
+    # print(acc)
     # print(_create_stripe_connected_account("IwrZWBFb4LZl3Kto1V3oUKPnCni1", is_test=True))
     # print(_onboard_account("acct_1Kh9wQ2fjkOIw12U", is_test=True))
 
-    print(stripe.Account.create_login_link("acct_1KsVKiGfLz0eleaC"))
+    print(stripe.Account.create_login_link("acct_1KsVJWGfaHLUA8xo"))
 
     # response = stripe.Account.cre.create(
     #     account="acct_1KsVKiGfLz0eleaC",
