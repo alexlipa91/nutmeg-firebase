@@ -19,6 +19,7 @@ class MatchStatus(Enum):
     PRE_PLAYING = "pre_playing"         # we are right before match start time (right now 1h) so users cannot leave anymore 
     FULL = "full"                       # max number of players are registered as going for the match
     OPEN = "open"                       # match is in the future and is open for users to join
+    UNPUBLISHED = "unpublished"         # match created but not visible to others
 
 
 def get_match_v2(request):
@@ -77,6 +78,9 @@ async def _get_all_matches_firestore_v2():
 
 
 def _get_status(match_data):
+    if match_data.get("unpublished", False):
+        return MatchStatus.UNPUBLISHED
+
     if match_data.get("cancelledAt", None):
         return MatchStatus.CANCELLED
     if match_data.get("scoresComputedAt", None):

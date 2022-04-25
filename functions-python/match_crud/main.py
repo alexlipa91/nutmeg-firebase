@@ -79,6 +79,9 @@ def _add_match_firestore(match_data):
     if "sport" not in match_data:
         match_data["sport"] = "BvwIYDpu0f3RIT4EaWBH"
 
+    # add it as draft
+    match_data["unpublished"] = True
+
     db = firestore.client()
 
     doc_ref = db.collection('matches').document()
