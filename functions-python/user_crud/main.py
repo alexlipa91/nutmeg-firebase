@@ -52,6 +52,24 @@ def store_user_token(request):
     return {"data": _store_user_token_firestore(request_data["id"], request_data["token"])}, 200
 
 
+def is_organizer_account_complete(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    user_id = request_data["user_id"]
+    is_test = request_data["is_test"]
+
+    field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    account_id = _get_user_firestore(user_id)[field_name]
+
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+    is_complete = len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
+
+    return {"data": {"is_complete": is_complete}}, 200
+
+
 def _store_user_token_firestore(user_id, token):
     db = firestore.client()
 
@@ -99,11 +117,6 @@ def _get_user_firestore(user_id):
             data["joined_matches"][m] = _serialize_date(data["joined_matches"][m])
 
     return data
-
-
-def _is_account_complete(account_id, is_test):
-    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
-    return len(stripe.Account.retrieve(account_id)["requirements"]["currently_due"]) == 0
 
 
 def _serialize_date(date):

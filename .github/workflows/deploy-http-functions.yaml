@@ -207,3 +207,9 @@ jobs:
     with:
       name: "go_to_stripe_checkout"
       folder: "create_stripe_checkout"
+
+  is_organizer_account_complete:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "is_organizer_account_complete"
+      folder: "user_crud"
