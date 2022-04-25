@@ -1,3 +1,0 @@
-firebase-admin==5.2.0
-stripe
-py-firebase-dynamic-links==1.0.1
