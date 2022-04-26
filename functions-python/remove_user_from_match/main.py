@@ -111,15 +111,15 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
 
     # issue_refund
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
-    net_amount = _get_net_refund_amount(payment_intent)
-    refund = stripe.Refund.create(payment_intent=payment_intent, amount=net_amount)
+    refund_amount = _get_refund_amount_from_payment_intent(payment_intent)
+    refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
 
     # record transaction
     refund_type = "stripe_refund"
     transaction.set(transaction_doc_ref,
                     {"type": refund_type, "userId": user_id, "createdAt": timestamp,
                      "refund_id": refund.id,
-                     "moneyRefunded": net_amount})
+                     "moneyRefunded": refund_amount})
 
 
 def _get_payment_intent(match_id, user_id):
@@ -144,21 +144,21 @@ def _get_payment_intent(match_id, user_id):
     return last_trans["paymentIntent"]
 
 
-def _get_net_refund_amount(pi):
-    balance_transaction = stripe.PaymentIntent.retrieve(pi)["charges"]["data"][0]["balance_transaction"]
-    net = stripe.BalanceTransaction.retrieve(balance_transaction)["net"]
-    return net
-
-
 def _get_refund_amount(match_id, user_id):
     db = firestore.client()
 
     test_mode = db.collection("matches").document(match_id).get().to_dict()["isTest"]
-
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
-    return _get_net_refund_amount(_get_payment_intent(match_id, user_id))
+    return _get_refund_amount_from_payment_intent(_get_payment_intent(match_id, user_id))
+
+
+def _get_refund_amount_from_payment_intent(pi):
+    fee = 50
+    return stripe.PaymentIntent.retrieve(pi)["amount"] - fee
 
 
 if __name__ == '__main__':
-    _remove_user_from_match_firestore("WvORB60BiudmuXHwl1dP", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", refund_type="stripe")
+    # stripe.api_key = os.environ["STRIPE_TEST_KEY" if True else "STRIPE_PROD_KEY"]
+    # _remove_user_from_match_firestore("9ox0N3DyoStzdLf91Bxg", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", refund_type="stripe")
     # print(_get_refund_amount("WvORB60BiudmuXHwl1dP", "IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
+    print(_get_refund_amount("9ox0N3DyoStzdLf91Bxg", "IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
