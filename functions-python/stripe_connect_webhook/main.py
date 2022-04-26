@@ -48,7 +48,7 @@ def _exec(request, secret, is_test):
         })
         print("user {} can now receive payments on stripe".format(user_id))
 
-        for m in user_data["organised_matches" if not is_test else "organised_test_matches"].keys():
+        for m in user_data["created_matches" if not is_test else "created_test_matches"].keys():
             if db.collection("matches").document(m).get(field_paths=["unpublished_reason"]).to_dict()\
                     .get("unpublished_reason", None) == "organizer_not_onboarded":
                 print("removing un-publishing blocker because of organizer from match {}".format(m))

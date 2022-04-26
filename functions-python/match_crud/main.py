@@ -165,7 +165,7 @@ def _update_user_account(user_id, is_test, match_id):
     )
 
     # add organizer id and increase number of organized matches
-    organised_list_field_name = "organised_matches" if not is_test else "organised_test_matches"
+    organised_list_field_name = "created_matches" if not is_test else "created_test_matches"
     user_doc_ref.update({
         organizer_id_field_name: response.id,
         "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
