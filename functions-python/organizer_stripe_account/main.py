@@ -40,10 +40,10 @@ def go_to_account_login_link(request):
 
     is_test = bool(request.args["is_test"])
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
-    url = stripe.Account.create_login_link(_get_account_id(request.args["user_id"], is_test))
-    print("redirecting to {}".format(url))
+    response = stripe.Account.create_login_link(_get_account_id(request.args["user_id"], is_test))
+    print("redirecting to {}".format(response.url))
 
-    return flask.redirect(url)
+    return flask.redirect(response.url)
 
 
 def _get_account_id(user_id, is_test):
@@ -115,16 +115,20 @@ if __name__ == '__main__':
     # acc = stripe.Account.retrieve("acct_1KsVKiGfLz0eleaC")
     # print(acc)
     # print(_create_stripe_connected_account("IwrZWBFb4LZl3Kto1V3oUKPnCni1", is_test=True))
-    # print(_onboard_account("acct_1Kh9wQ2fjkOIw12U", is_test=True))
+    # print(_onboard_account_url("acct_1Kh9wQ2fjkOIw12U", is_test=True))
+    #
+    # print(stripe.Account.create_login_link("acct_1KsZKNGfOYri6GmK"))
 
-    print(stripe.Account.create_login_link("acct_1KsVJWGfaHLUA8xo"))
-
-    # response = stripe.Account.cre.create(
-    #     account="acct_1KsVKiGfLz0eleaC",
+    # response = stripe.AccountLink.create(
+    #     account="acct_1KsahYGbk3pXbt2E",
     #     fixme add a proper refresh url
-        # refresh_url="https://wwww.google.com",
-        # return_url="https://wwww.google.com",
-        # type="account_update",
+        # refresh_url="https://www.google.com",
+        # return_url="https://www.google.com",
+        # type="account_onboarding",
         # collect="currently_due",
     # )
+    # print(response)
+    # )
     # print(response.url)
+    go_to_account_login_link("IwrZWBFb4LZl3Kto1V3oUKPnCni1")
+
