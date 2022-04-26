@@ -142,35 +142,39 @@ def _update_user_account(user_id, is_test, match_id):
     organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
     db = firestore.client()
 
+    # add to created matches
     user_doc_ref = db.collection('users').document(user_id)
+    organised_list_field_name = "created_matches" if not is_test else "created_test_matches"
+    user_updates = {
+        "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
+    }
 
+    # check if we need to create a stripe connected account
     user_data = user_doc_ref.get().to_dict()
     if organizer_id_field_name in user_data:
         print("{} already created".format(organizer_id_field_name))
-        return user_data[organizer_id_field_name]
-
-    response = stripe.Account.create(
-        type="express",
-        country="NL",
-        capabilities={
+        organizer_id = user_data[organizer_id_field_name]
+    else:
+        response = stripe.Account.create(
+            type="express",
+            country="NL",
+            capabilities={
             "transfers": {"requested": True},
         },
-        business_type="individual",
-        business_profile={
-            "product_description": "Football matches organized on Nutmeg for user {}".format(user_id)
-        },
-        metadata={
-            "userId": user_id
-        }
-    )
+            business_type="individual",
+            business_profile={
+                "product_description": "Football matches organized on Nutmeg for user {}".format(user_id)
+            },
+            metadata={
+                "userId": user_id
+            }
+        )
+        organizer_id = response.id
+        user_updates[organizer_id_field_name] = response.id
 
-    # add organizer id and increase number of organized matches
-    organised_list_field_name = "created_matches" if not is_test else "created_test_matches"
-    user_doc_ref.update({
-        organizer_id_field_name: response.id,
-        "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
-    })
-    return response.id
+    user_doc_ref.update(user_updates)
+
+    return organizer_id
 
 
 # def _add_match_with_user_firestore(user):
