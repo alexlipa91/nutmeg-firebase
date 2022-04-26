@@ -84,7 +84,8 @@ def _add_match_firestore(match_data):
     organizer_data = db.collection('users').document(match_data["organizerId"]).get().to_dict()
     field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
 
-    if organizer_data.get(field_name, False):
+    if not organizer_data.get(field_name, False):
+        print("{} is False on organizer account: set match as unpublished".format(field_name))
         # add it as draft
         match_data["unpublished_reason"] = "organizer_not_onboarded"
 
