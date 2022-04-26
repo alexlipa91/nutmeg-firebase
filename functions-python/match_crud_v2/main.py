@@ -78,7 +78,7 @@ async def _get_all_matches_firestore_v2():
 
 
 def _get_status(match_data):
-    if match_data.get("unpublished", False):
+    if match_data.get("unpublished_reason", None):
         return MatchStatus.UNPUBLISHED
 
     if match_data.get("cancelledAt", None):

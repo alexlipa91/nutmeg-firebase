@@ -79,8 +79,15 @@ def _add_match_firestore(match_data):
     if "sport" not in match_data:
         match_data["sport"] = "BvwIYDpu0f3RIT4EaWBH"
 
-    # add it as draft
-    match_data["unpublished"] = True
+    # check if organizer can receive payments and if not do not publish yet
+    db = firestore.client()
+    organizer_data = db.collection('users').document(match_data["organizerId"]).get().to_dict()
+    field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
+
+    if organizer_data.get(field_name, False):
+        # add it as draft
+        match_data["unpublished_reason"] = "organizer_not_onboarded"
+
     # add nutmeg fee to price
     match_data["pricePerPerson"] = match_data["pricePerPerson"] + 50
 
