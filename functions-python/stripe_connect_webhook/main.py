@@ -9,15 +9,7 @@ from google.cloud.firestore_v1 import DELETE_FIELD
 firebase_admin.initialize_app()
 
 
-def stripe_connect_updated_webhook_test(request):
-    _exec(request, True)
-
-
 def stripe_connect_updated_webhook(request):
-    _exec(request, False)
-
-
-def _exec(request, is_test):
     event = None
     payload = request.data
     sig_header = request.headers['STRIPE_SIGNATURE']
@@ -31,6 +23,7 @@ def _exec(request, is_test):
         # Invalid signature
         raise e
 
+    is_test = event["livemode"].lower() == "false"
     event_data = event["data"]["object"]
 
     # Handle the event
