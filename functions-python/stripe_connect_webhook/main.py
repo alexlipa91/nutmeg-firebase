@@ -1,3 +1,5 @@
+import os
+
 import firebase_admin
 import stripe
 from firebase_admin import firestore
@@ -8,20 +10,20 @@ firebase_admin.initialize_app()
 
 
 def stripe_connect_updated_webhook_test(request):
-    _exec(request, "whsec_KGzrAzxe6TUl0i4am32VLp2GhvbyvnUj", True)
+    _exec(request, True)
 
 
 def stripe_connect_updated_webhook(request):
-    _exec(request, "whsec_jEdf6MDlKWoL3KDbTDOnjyy5Fbas02vp", False)
+    _exec(request, False)
 
 
-def _exec(request, secret, is_test):
+def _exec(request, is_test):
     event = None
     payload = request.data
     sig_header = request.headers['STRIPE_SIGNATURE']
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, secret)
+        event = stripe.Webhook.construct_event(payload, sig_header, os.environ['STRIPE_WEBHOOK_SECRET'])
     except ValueError as e:
         # Invalid payload
         raise e
