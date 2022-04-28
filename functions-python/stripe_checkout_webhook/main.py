@@ -4,7 +4,7 @@ import stripe
 from nutmeg_utils.functions_client import call_function
 
 
-def stripe_checkout_webhook_test(request):
+def stripe_checkout_webhook(request):
     _exec(request)
 
 
@@ -18,6 +18,8 @@ def _exec(request):
     sig_header = request.headers['STRIPE_SIGNATURE']
 
     secret = os.environ['STRIPE_WEBHOOK_SECRET']
+    print("value is")
+    print(secret)
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, secret)
