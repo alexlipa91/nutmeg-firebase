@@ -18,7 +18,6 @@ def stripe_checkout_webhook(request):
         # Invalid signature
         raise e
 
-    is_test = event["livemode"].lower() == "false"
     event_data = event["data"]["object"]
 
     # Handle the event

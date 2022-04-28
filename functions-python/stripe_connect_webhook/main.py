@@ -10,6 +10,14 @@ firebase_admin.initialize_app()
 
 
 def stripe_connect_updated_webhook(request):
+    _exec(request)
+
+
+def stripe_connect_updated_webhook_test(request):
+    _exec(request)
+
+
+def _exec(request):
     event = None
     payload = request.data
     sig_header = request.headers['STRIPE_SIGNATURE']

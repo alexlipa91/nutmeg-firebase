@@ -214,3 +214,9 @@ jobs:
       name: "stripe_connect_updated_webhook"
       folder: "stripe_connect_webhook"
 
+  stripe_connect_updated_webhook_test:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "stripe_connect_updated_webhook_test"
+      folder: "stripe_connect_webhook"
+
