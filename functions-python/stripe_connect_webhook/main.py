@@ -23,9 +23,6 @@ def _exec(request):
     sig_header = request.headers['STRIPE_SIGNATURE']
 
     secret = os.environ['STRIPE_WEBHOOK_SECRET']
-    print("signature is {}".format(sig_header))
-    print("value is")
-    print(secret)
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, secret)
@@ -36,7 +33,7 @@ def _exec(request):
         # Invalid signature
         raise e
 
-    is_test = event["livemode"].lower() == "false"
+    is_test = event["livemode"]
     event_data = event["data"]["object"]
 
     # Handle the event
