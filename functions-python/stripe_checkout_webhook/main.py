@@ -1,22 +1,16 @@
+import os
+
 import stripe
 from nutmeg_utils.functions_client import call_function
 
 
-def stripe_checkout_webhook_test(request):
-    _exec(request, "whsec_fcxfBL6XriWegpXd9gJ5He40ouSSmRyK")
-
-
 def stripe_checkout_webhook(request):
-    _exec(request, "whsec_sdXI3JvzFXiTtTqChMWxiljMepY84Htp")
-
-
-def _exec(request, secret):
     event = None
     payload = request.data
     sig_header = request.headers['STRIPE_SIGNATURE']
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, secret)
+        event = stripe.Webhook.construct_event(payload, sig_header, os.environ['STRIPE_WEBHOOK_SECRET'])
     except ValueError as e:
         # Invalid payload
         raise e
@@ -24,7 +18,7 @@ def _exec(request, secret):
         # Invalid signature
         raise e
 
-    print(event)
+    is_test = event["livemode"].lower() == "false"
     event_data = event["data"]["object"]
 
     # Handle the event
