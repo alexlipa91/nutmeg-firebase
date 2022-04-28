@@ -33,7 +33,7 @@ def _exec(request):
         # Invalid signature
         raise e
 
-    is_test = event["livemode"]
+    is_test = not event["livemode"]
     event_data = event["data"]["object"]
 
     # Handle the event
