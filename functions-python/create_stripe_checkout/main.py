@@ -57,21 +57,21 @@ def go_to_stripe_checkout(request):
     request_json = request.get_json(silent=True)
     print("args {}, body {}".format(request.args, request_json))
 
-    test_mode = request.args["is_test"]
+    is_test = request.args["is_test"].lower() == "true"
     match_id = request.args["match_id"]
     user_id = request.args["user_id"]
 
     match_info = _get_match_info(match_id)
 
     session = _create_checkout_session_with_destination_charges(
-        _get_stripe_customer_id(user_id, test_mode),
-        _get_stripe_connected_account_id(match_info["organizerId"], test_mode),
+        _get_stripe_customer_id(user_id, is_test),
+        _get_stripe_connected_account_id(match_info["organizerId"], is_test),
         user_id,
         match_info["organizerId"],
         match_id,
         match_info["stripePriceId"],
         50,
-        test_mode)
+        is_test)
     return flask.redirect(session.url)
 
 

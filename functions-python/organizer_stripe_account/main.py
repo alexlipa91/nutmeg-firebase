@@ -28,7 +28,7 @@ def go_to_onboard_connected_account(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    is_test = bool(request.args["is_test"])
+    is_test = request.args["is_test"].lower() == "true"
     user_id = request.args["id"]
 
     account_id = _get_account_id(user_id, is_test=is_test)
@@ -38,7 +38,7 @@ def go_to_onboard_connected_account(request):
 def go_to_account_login_link(request):
     print("args {}".format(request.args))
 
-    is_test = bool(request.args["is_test"])
+    is_test = request.args["is_test"].lower() == "true"
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
     response = stripe.Account.create_login_link(_get_account_id(request.args["user_id"], is_test))
     print("redirecting to {}".format(response.url))
