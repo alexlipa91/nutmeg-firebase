@@ -23,7 +23,6 @@ def _exec(request):
     sig_header = request.headers['STRIPE_SIGNATURE']
 
     secret = os.environ['STRIPE_WEBHOOK_SECRET']
-    print(secret)
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, secret)
