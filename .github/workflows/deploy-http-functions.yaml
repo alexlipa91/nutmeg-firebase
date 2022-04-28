@@ -88,6 +88,12 @@ jobs:
       name: "stripe_checkout_webhook"
       folder: "stripe_checkout_webhook"
 
+  stripe_checkout_webhook_test:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "stripe_checkout_webhook_test"
+      folder: "stripe_checkout_webhook"
+
   add_user:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
