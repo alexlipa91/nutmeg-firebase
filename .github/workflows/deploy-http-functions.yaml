@@ -87,12 +87,14 @@ jobs:
     with:
       name: "stripe_checkout_webhook"
       folder: "stripe_checkout_webhook"
+      secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeCheckoutWebhookSecret
 
   stripe_checkout_webhook_test:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
       name: "stripe_checkout_webhook_test"
       folder: "stripe_checkout_webhook"
+      secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeCheckoutWebhookSecretTest
 
   add_user:
     uses: './.github/workflows/deploy-python-http-template.yaml'
@@ -219,10 +221,12 @@ jobs:
     with:
       name: "stripe_connect_updated_webhook"
       folder: "stripe_connect_webhook"
+      secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeAccountUpdateSecret
 
   stripe_connect_updated_webhook_test:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
       name: "stripe_connect_updated_webhook_test"
       folder: "stripe_connect_webhook"
+      secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeAccountUpdateSecretTest
 
