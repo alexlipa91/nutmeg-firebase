@@ -159,8 +159,8 @@ def _update_user_account(user_id, is_test, match_id):
             type="express",
             country="NL",
             capabilities={
-            "transfers": {"requested": True},
-        },
+                "transfers": {"requested": True},
+            },
             business_type="individual",
             business_profile={
                 "product_description": "Football matches organized on Nutmeg for user {}".format(user_id)
