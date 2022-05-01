@@ -167,6 +167,12 @@ def _update_user_account(user_id, is_test, match_id):
             },
             metadata={
                 "userId": user_id
+            },
+            settings={
+                "payouts": {
+                    "debit_negative_balances": True,
+                    "schedule": "manual"
+                }
             }
         )
         organizer_id = response.id
