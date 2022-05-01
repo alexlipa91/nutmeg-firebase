@@ -163,7 +163,7 @@ def _update_user_account(user_id, is_test, match_id):
             },
             business_type="individual",
             business_profile={
-                "product_description": "Football matches organized on Nutmeg for user {}".format(user_id)
+                "product_description": "Nutmeg football matches"
             },
             metadata={
                 "userId": user_id
@@ -171,7 +171,9 @@ def _update_user_account(user_id, is_test, match_id):
             settings={
                 "payouts": {
                     "debit_negative_balances": True,
-                    "schedule": "manual"
+                    "schedule": {
+                        "interval": "manual"
+                    }
                 }
             }
         )
