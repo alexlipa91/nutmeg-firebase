@@ -1,11 +1,15 @@
+import datetime
 import os
 
 import flask
 import stripe
+import traceback
 
 import firebase_admin
 from firebase_admin import firestore
 from firebase_dynamic_links import DynamicLinks
+from nutmeg_utils.schedule_function import schedule_function
+from stripe.error import InvalidRequestError
 
 firebase_admin.initialize_app()
 
@@ -110,25 +114,39 @@ def _create_transfer_for_payment(payment_id, fee, connect_account_id, match_id, 
     return transfer.id
 
 
-if __name__ == '__main__':
-    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not True else "STRIPE_TEST_KEY"]
-    # acc = stripe.Account.retrieve("acct_1KsVKiGfLz0eleaC")
-    # print(acc)
-    # print(_create_stripe_connected_account("IwrZWBFb4LZl3Kto1V3oUKPnCni1", is_test=True))
-    # print(_onboard_account_url("acct_1Kh9wQ2fjkOIw12U", is_test=True))
-    #
-    # print(stripe.Account.create_login_link("acct_1KsZKNGfOYri6GmK"))
+def create_organizer_payout(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+    request_data = request_json["data"]
 
-    # response = stripe.AccountLink.create(
-    #     account="acct_1KsahYGbk3pXbt2E",
-    #     fixme add a proper refresh url
-        # refresh_url="https://www.google.com",
-        # return_url="https://www.google.com",
-        # type="account_onboarding",
-        # collect="currently_due",
-    # )
-    # print(response)
-    # )
-    # print(response.url)
-    go_to_account_login_link("IwrZWBFb4LZl3Kto1V3oUKPnCni1")
+    match_id = request_data["match_id"]
+    attempt = request_data.get("attempt", 1)
+
+    db = firestore.client()
+    match_data = db.collection("matches").document(match_id).get().to_dict()
+
+    amount = match_data["pricePerPerson"] * len(match_data["going"].keys())
+    is_test = match_data["isTest"]
+    organizer_account = db.collection("users").document(match_data["organizerId"]).get().to_dict()[
+        "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
+    ]
+
+    try:
+        payout = stripe.Payout.create(
+            amount=amount,
+            currency='eur',
+            stripe_account=organizer_account,
+        )
+        print("payout of {} created: {}".format(amount, payout.id))
+    except InvalidRequestError as e:
+        traceback.print_exc()
+        print("payout creation failed...retry in 24 hours")
+        run_at = datetime.datetime.now() + datetime.timedelta(days=1)
+
+        schedule_function(
+            "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, attempt),
+            "create_organizer_payout",
+            {"data": {"match_id": match_id, "attempt": attempt + 1}},
+            run_at
+        )
 

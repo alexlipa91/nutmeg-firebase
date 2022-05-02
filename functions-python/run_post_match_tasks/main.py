@@ -3,6 +3,7 @@ from firebase_admin import firestore
 from datetime import datetime, timedelta
 from nutmeg_utils.notifications import send_notification_to_users
 from nutmeg_utils.schedule_function import schedule_function
+from nutmeg_utils.functions_client import call_function
 
 firebase_admin.initialize_app()
 
@@ -47,6 +48,9 @@ def _run_post_match_tasks(match_id):
             "match_id": match_id
         }
     )
+
+    # payout
+    call_function("create_organizer_payout", {"match_id": match_id})
 
 
 def schedule_run_post_match_tasks(data, context):
