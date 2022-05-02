@@ -149,4 +149,3 @@ def create_organizer_payout(request):
             {"data": {"match_id": match_id, "attempt": attempt + 1}},
             run_at
         )
-
