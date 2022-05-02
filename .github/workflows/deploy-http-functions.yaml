@@ -224,3 +224,8 @@ jobs:
       folder: "stripe_connect_webhook"
       secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeAccountUpdateSecretTest
 
+  create_organizer_payout:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "create_organizer_payout"
+      folder: "organizer_stripe_account"
