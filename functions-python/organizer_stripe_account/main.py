@@ -145,7 +145,7 @@ def create_organizer_payout(request):
         run_at = datetime.datetime.now() + datetime.timedelta(days=1)
 
         schedule_function(
-            "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, attempt),
+            "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, attempt + 1),
             "create_organizer_payout",
             {"data": {"match_id": match_id, "attempt": attempt + 1}},
             run_at
