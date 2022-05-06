@@ -141,8 +141,8 @@ def create_organizer_payout(request):
         )
         print("payout of {} created: {}".format(amount, payout.id))
         send_notification_to_users(title="Your money is on the way! " + u"\U0001F4B5",
-                                   body="The amount of {:.2f} € for the match on {} is on its way to your bank account"
-                                   .format(amount / 100, datetime.datetime.strftime(match_data["dateTime"], "%Y-%m-%d")),
+                                   body="The amount of € {:.2f} for the match on {} is on its way to your bank account"
+                                   .format(amount / 100, datetime.datetime.strftime(match_data["dateTime"], "%B %-d, %Y")),
                                    data={
                                        "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                        "match_id": match_id
