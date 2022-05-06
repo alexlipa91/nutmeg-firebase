@@ -9,6 +9,7 @@ import firebase_admin
 from firebase_admin import firestore
 from firebase_dynamic_links import DynamicLinks
 from nutmeg_utils.schedule_function import schedule_function
+from nutmeg_utils.notifications import send_notification_to_users
 from stripe.error import InvalidRequestError
 
 firebase_admin.initialize_app()
@@ -139,6 +140,15 @@ def create_organizer_payout(request):
             stripe_account=organizer_account,
         )
         print("payout of {} created: {}".format(amount, payout.id))
+        send_notification_to_users(title="Your money is on the way! " + u"\U0001F4B5",
+                                   body="The amount of {:.2f} € for the match on {} is on its way to your bank account"
+                                   .format(amount / 100, datetime.datetime.strftime(match_data["dateTime"], "%Y-%m-%d")),
+                                   data={
+                                       "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                       "match_id": match_id
+                                   },
+                                   users=[match_data["organizerId"]])
+
     except InvalidRequestError as e:
         traceback.print_exc()
         print("payout creation failed...retry in 24 hours")

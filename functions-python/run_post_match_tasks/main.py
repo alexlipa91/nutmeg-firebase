@@ -50,7 +50,12 @@ def _run_post_match_tasks(match_id):
     )
 
     # payout
-    call_function("create_organizer_payout", {"match_id": match_id})
+    schedule_function(
+        "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
+        "create_organizer_payout",
+        {"data": {"match_id": match_id, "attempt": 1}},
+        datetime.now() + timedelta(days=3)
+    )
 
 
 def schedule_run_post_match_tasks(data, context):
