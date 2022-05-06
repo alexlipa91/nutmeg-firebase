@@ -132,6 +132,7 @@ def create_organizer_payout(request):
     ]
 
     try:
+        stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
         payout = stripe.Payout.create(
             amount=amount,
             currency='eur',
