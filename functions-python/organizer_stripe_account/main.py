@@ -132,7 +132,11 @@ def create_organizer_payout(request):
         "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
     ]
 
-    try:
+    # check if enough balance
+    balance = stripe.Balance.retrieve(stripe_account=organizer_account)
+    available_amount = balance['available'][0]['amount']
+
+    if available_amount >= amount:
         stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
         payout = stripe.Payout.create(
             amount=amount,
@@ -149,9 +153,8 @@ def create_organizer_payout(request):
                                    },
                                    users=[match_data["organizerId"]])
 
-    except InvalidRequestError as e:
-        traceback.print_exc()
-        print("payout creation failed...retry in 24 hours")
+    else:
+        print("not enough balance...retry in 24 hours")
         run_at = datetime.datetime.now() + datetime.timedelta(days=1)
 
         schedule_function(
