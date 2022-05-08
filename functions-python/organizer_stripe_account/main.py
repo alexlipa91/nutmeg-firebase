@@ -3,14 +3,12 @@ import os
 
 import flask
 import stripe
-import traceback
 
 import firebase_admin
 from firebase_admin import firestore
 from firebase_dynamic_links import DynamicLinks
 from nutmeg_utils.schedule_function import schedule_function
 from nutmeg_utils.notifications import send_notification_to_users
-from stripe.error import InvalidRequestError
 
 firebase_admin.initialize_app()
 
@@ -144,6 +142,10 @@ def create_organizer_payout(request):
             stripe_account=organizer_account,
         )
         print("payout of {} created: {}".format(amount, payout.id))
+        db.collection("matches").document(match_id).update({
+            "paid_out_at": firestore.firestore.SERVER_TIMESTAMP,
+            "payout_id": payout.id
+        })
         send_notification_to_users(title="Your money is on the way! " + u"\U0001F4B5",
                                    body="The amount of € {:.2f} for the match on {} is on its way to your bank account"
                                    .format(amount / 100, datetime.datetime.strftime(match_data["dateTime"], "%B %-d, %Y")),
