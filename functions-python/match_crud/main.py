@@ -7,6 +7,8 @@ import firebase_admin
 import stripe
 from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
+from nutmeg_utils.schedule_function import schedule_function
+
 
 firebase_admin.initialize_app()
 
@@ -95,6 +97,16 @@ def _add_match_firestore(match_data):
 
     doc_ref = db.collection('matches').document()
     doc_ref.set(match_data)
+
+    # schedule cancellation check if required
+    if "cancelHoursBefore" in match_data:
+        schedule_function(
+            "cancel_or_confirm_match_{}".format(doc_ref.id),
+            "cancel_or_confirm_match",
+            {"match_id": doc_ref.id},
+            match_data["dateTime"] - datetime.timedelta(hours=match_data["cancelHoursBefore"])
+        )
+
     return doc_ref.id
 
 
