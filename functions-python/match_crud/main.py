@@ -67,7 +67,6 @@ def _edit_match_firestore(match_id, match_data):
 
 def _add_match_firestore(match_data):
     assert match_data.get("sportCenterId", None) is not None, "Required field missing"
-    assert match_data.get("sportInfo", None) is not None, "Required field missing"
     assert match_data.get("pricePerPerson", None) is not None, "Required field missing"
     assert match_data.get("maxPlayers", None) is not None, "Required field missing"
     assert match_data.get("dateTime", None) is not None, "Required field missing"
