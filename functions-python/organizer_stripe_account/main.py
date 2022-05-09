@@ -124,6 +124,10 @@ def create_organizer_payout(request):
     db = firestore.client()
     match_data = db.collection("matches").document(match_id).get().to_dict()
 
+    if not match_data:
+        print("Cannot find match...stopping")
+        return
+
     amount = match_data["pricePerPerson"] * len(match_data["going"].keys())
     is_test = match_data["isTest"]
     organizer_account = db.collection("users").document(match_data["organizerId"]).get().to_dict()[
