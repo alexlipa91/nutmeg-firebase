@@ -121,6 +121,12 @@ def create_organizer_payout(request):
     match_id = request_data["match_id"]
     attempt = request_data.get("attempt", 1)
 
+    executed = _create_organizer_payout(match_id, attempt)
+    print("payout executed: {}".format(executed))
+    return {}, 200
+
+
+def _create_organizer_payout(match_id, attempt):
     db = firestore.client()
     match_data = db.collection("matches").document(match_id).get().to_dict()
 
@@ -134,12 +140,13 @@ def create_organizer_payout(request):
         "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
     ]
 
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+
     # check if enough balance
     balance = stripe.Balance.retrieve(stripe_account=organizer_account)
     available_amount = balance['available'][0]['amount']
 
     if available_amount >= amount:
-        stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
         payout = stripe.Payout.create(
             amount=amount,
             currency='eur',
@@ -158,7 +165,7 @@ def create_organizer_payout(request):
                                        "match_id": match_id
                                    },
                                    users=[match_data["organizerId"]])
-
+        return True
     else:
         print("not enough balance...retry in 24 hours")
         run_at = datetime.datetime.now() + datetime.timedelta(days=1)
@@ -169,3 +176,4 @@ def create_organizer_payout(request):
             {"match_id": match_id, "attempt": attempt + 1},
             run_at
         )
+        return False
