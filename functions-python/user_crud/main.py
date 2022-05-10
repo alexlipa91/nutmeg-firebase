@@ -30,7 +30,11 @@ def edit_user(request):
 
     request_data = request_json["data"]
 
-    _edit_user_firestore(request_data["id"], request_data["data"], uid.custom_claims.get("isAdmin", False))
+    is_admin = False
+    if uid.custom_claims and uid.custom_claims.get("isAdmin", False):
+        is_admin = True
+
+    _edit_user_firestore(request_data["id"], request_data["data"], is_admin)
     return {"data": {}}, 200
 
 
