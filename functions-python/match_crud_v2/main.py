@@ -99,8 +99,6 @@ def _get_status(match_data):
         return MatchStatus.PLAYING
     if now > cannot_leave_at:
         return MatchStatus.PRE_PLAYING
-    if len(match_data.get("going", [])) == match_data["maxPlayers"]:
-        return MatchStatus.FULL
     return MatchStatus.OPEN
 
 
@@ -115,5 +113,4 @@ def _serialize_date(date):
 
 
 if __name__ == '__main__':
-    delete_test()
-    # print(asyncio.run(_get_match_firestore_v2("VHASFBaOxVzol9gICmSe")))
+    print(asyncio.run(_get_match_firestore_v2("4QQ3QAXMkUibO8njPUhs")))
