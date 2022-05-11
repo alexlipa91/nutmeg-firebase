@@ -177,3 +177,22 @@ def _create_organizer_payout(match_id, attempt):
             run_at
         )
         return False
+
+
+def _check_payments(match_id):
+    db = firestore.client()
+
+    is_test = db.collection("matches").document(match_id).get(field_paths=["isTest"]).to_dict()["isTest"]
+
+    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+
+    old_pi = set([])
+    for t in db.collection("matches").document(match_id).collection("transactions").get():
+        t_data = t.to_dict()
+        if t_data["type"] == "joined":
+            pi = stripe.PaymentIntent.retrieve(t_data["paymentIntent"])
+            if not pi["transfer_data"]:
+                old_pi.add(t_data["paymentIntent"])
+
+    print("wrong payments")
+    [print(x) for x in old_pi]
