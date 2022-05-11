@@ -10,12 +10,6 @@ jobs:
       name: "add_user_to_match"
       folder: "add_user_to_match"
 
-  create_stripe_checkout:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "create_stripe_checkout"
-      folder: "create_stripe_checkout"
-
   add_match:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:

@@ -11,48 +11,6 @@ from firebase_dynamic_links import DynamicLinks
 firebase_admin.initialize_app()
 
 
-def create_stripe_checkout(request):
-    request_json = request.get_json(silent=True)
-    print("args {}, body {}".format(request.args, request_json))
-
-    request_data = request_json["data"]
-
-    test_mode = request_data["test_mode"]
-    match_id = request_data["match_id"]
-    user_id = request_data["user_id"]
-    credits_used = request_data.get("credits_used", 0)
-    type = request_data.get("type", "full_to_organiser")
-
-    stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
-
-    match_info = _get_match_info(match_id)
-
-    session = None
-    if type == "full_to_organiser":
-        session = _create_checkout_session(
-            _get_stripe_customer_id(user_id, test_mode),
-            user_id,
-            match_id,
-            match_info["pricePerPerson"],
-            match_info["stripeProductId"],
-            match_info.get("stripePriceId", None),
-            credits_used,
-            test_mode)
-    elif type == "split_with_connect":
-        session = _create_checkout_session_with_destination_charges(
-            _get_stripe_customer_id(user_id, test_mode),
-            _get_stripe_connected_account_id(match_info["organizerId"], test_mode),
-            user_id,
-            match_info["organizerId"],
-            match_id,
-            match_info["stripePriceId"],
-            0,
-            test_mode)
-
-    data = {'data': {'session_id': session.id, 'url': session.url}}
-    return data, 200
-
-
 def go_to_stripe_checkout(request):
     request_json = request.get_json(silent=True)
     print("args {}, body {}".format(request.args, request_json))
@@ -119,6 +77,7 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
     return data["stripeConnectedAccountId" if not test_mode else "stripeConnectedAccountTestId"]
 
 
+# old one
 def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id,
                              credits_used, test_mode):
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
