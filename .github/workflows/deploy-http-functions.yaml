@@ -168,12 +168,6 @@ jobs:
       name: "get_sportcenter"
       folder: "sportcenters_crud"
 
-  get_refund_amount:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "get_refund_amount"
-      folder: "remove_user_from_match"
-
   is_account_onboarded:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
