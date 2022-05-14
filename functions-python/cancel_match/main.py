@@ -1,8 +1,17 @@
+import os
+from enum import Enum
+
 import firebase_admin
+import stripe
 from firebase_admin import firestore
 from datetime import datetime
 from nutmeg_utils.notifications import send_notification_to_users
-from nutmeg_utils.functions_client import call_function
+from nutmeg_utils.payments import get_payment_intent
+
+
+class CancellationTrigger(Enum):
+    MANUAL = "manual"
+    AUTOMATIC = "automatic"
 
 
 firebase_admin.initialize_app()
@@ -16,7 +25,7 @@ def cancel_match(request):
 
     match_id = request_data["match_id"]
 
-    _cancel_match_firestore(match_id)
+    _cancel_match_firestore(match_id, CancellationTrigger.MANUAL)
 
     return {"data": {}}, 200
 
@@ -34,7 +43,7 @@ def cancel_or_confirm_match(request):
 
     if len(match_data["going"].keys()) < match_data["minPlayers"]:
         print("canceling match")
-        _cancel_match_firestore(match_id)
+        _cancel_match_firestore(match_id, CancellationTrigger.AUTOMATIC)
     else:
         print("confirming match")
         db.collection('matches').document(match_id).update({"confirmedAt": datetime.now()})
@@ -42,25 +51,27 @@ def cancel_or_confirm_match(request):
     return {"data": {}}, 200
 
 
-def _cancel_match_firestore(match_id):
+def _cancel_match_firestore(match_id, trigger):
     db = firestore.client()
 
     match_doc_ref = db.collection('matches').document(match_id)
 
     match_data = match_doc_ref.get().to_dict()
 
-    if match_data["cancelledAt"]:
+    if match_data.get("cancelledAt", None):
         raise Exception("Match has already been cancelled")
 
     users_docs = {}
     for u in match_data["going"].keys():
         users_docs[u] = db.collection('users').document(u)
 
-    _cancel_match_firestore_transactional(db.transaction(), match_doc_ref)
+    _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_docs,
+                                          match_id, match_data["isTest"], trigger)
 
 
 @firestore.transactional
-def _cancel_match_firestore_transactional(transaction, match_doc_ref, match_id):
+def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_docs, match_id, is_test, trigger):
+    stripe.api_key = os.environ["STRIPE_TEST_KEY" if is_test else "STRIPE_PROD_KEY"]
     db = firestore.client()
 
     match = match_doc_ref.get(transaction=transaction).to_dict()
@@ -73,13 +84,23 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, match_id):
 
     users = list(match["going"].keys())
     for u in users:
-        print("updating data for {}".format(u))
+        print("processing cancellation for {}: refund and remove from stats".format(u))
 
-        call_function("remove_user_from_match", {
-            "match_id": match_id,
-            "user_id": u,
-            "reason": "automatic_cancellation"
+        # remove match in user list (if present)
+        transaction.update(users_docs[u], {
+            u'joined_matches.' + match_id: firestore.DELETE_FIELD
         })
+
+        # refund
+        payment_intent = get_payment_intent(match_id, u)
+        refund_amount = match["pricePerPerson"]
+        refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+
+        # record transaction
+        transaction_doc_ref = db.collection("matches").document(match_id).collection("transactions").document()
+        transaction.set(transaction_doc_ref,
+                        {"type": trigger.name.lower() + "_cancellation", "userId": u, "createdAt": datetime.now(),
+                         "refund_id": refund.id, "moneyRefunded": refund_amount})
 
     send_notification_to_users(title="Match cancelled!",
                                body="Your match at {} has been cancelled! € {} have been refunded on your payment method"
@@ -89,7 +110,3 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, match_id):
                                    "match_id": match_id
                                },
                                users=list(users))
-
-
-if __name__ == '__main__':
-    _cancel_match_firestore("gAYBoHYPUmX1GMfCajou")
