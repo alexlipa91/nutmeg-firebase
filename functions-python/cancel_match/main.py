@@ -110,3 +110,4 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_docs
                                    "match_id": match_id
                                },
                                users=list(users))
+
