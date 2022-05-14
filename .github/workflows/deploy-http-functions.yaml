@@ -217,3 +217,9 @@ jobs:
     with:
       name: "create_organizer_payout"
       folder: "organizer_stripe_account"
+
+  cancel_or_confirm_match:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "cancel_or_confirm_match"
+      folder: "cancel_match"
