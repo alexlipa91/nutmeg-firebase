@@ -52,7 +52,7 @@ def _run_post_match_tasks(match_id):
     schedule_function(
         "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
         "create_organizer_payout",
-        {"data": {"match_id": match_id, "attempt": 1}},
+        {"match_id": match_id, "attempt": 1},
         datetime.now() + timedelta(days=3)
     )
 
