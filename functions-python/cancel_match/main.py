@@ -61,16 +61,16 @@ def _cancel_match_firestore(match_id, trigger):
     if match_data.get("cancelledAt", None):
         raise Exception("Match has already been cancelled")
 
-    users_docs = {}
+    users_stats_docs = {}
     for u in match_data["going"].keys():
-        users_docs[u] = db.collection('users').document(u)
+        users_stats_docs[u] = db.collection('users_stats').document(u)
 
-    _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_docs,
+    _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_stats_docs,
                                           match_id, match_data["isTest"], trigger)
 
 
 @firestore.transactional
-def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_docs, match_id, is_test, trigger):
+def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stats_docs, match_id, is_test, trigger):
     stripe.api_key = os.environ["STRIPE_TEST_KEY" if is_test else "STRIPE_PROD_KEY"]
     db = firestore.client()
 
@@ -87,7 +87,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_docs
         print("processing cancellation for {}: refund and remove from stats".format(u))
 
         # remove match in user list (if present)
-        transaction.update(users_docs[u], {
+        transaction.update(users_stats_docs[u], {
             u'joined_matches.' + match_id: firestore.DELETE_FIELD
         })
 

@@ -71,7 +71,7 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
     if "isTest" not in match_data or not match_data["isTest"]:
         # store score for users
         for user, score_and_count in final_scores.items():
-            await db.collection("users").document(user).update({"scoreMatches." + match_id: score_and_count[0]})
+            await db.collection("users_stats").document(user).update({"scoreMatches." + match_id: score_and_count[0]})
 
         # store man of the match info in user doc
         for user in potm_scores:

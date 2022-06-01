@@ -29,15 +29,15 @@ def _remove_user_from_match_firestore(match_id, user_id):
     db = firestore.client()
 
     transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
-    user_doc_ref = db.collection('users').document(user_id)
+    user_stat_doc_ref = db.collection('users_stats').document(user_id)
     match_doc_ref = db.collection('matches').document(match_id)
 
-    _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_doc_ref,
+    _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_stat_doc_ref,
                                                                 transactions_doc_ref, user_id, match_id)
 
 
 @firestore.transactional
-def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, match_doc_ref, user_doc_ref,
+def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, match_doc_ref, user_stat_doc_ref,
                                                                 transaction_doc_ref, user_id, match_id):
     timestamp = datetime.now(tz)
 
@@ -54,7 +54,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     })
 
     # remove match in user list
-    transaction.update(user_doc_ref, {
+    transaction.update(user_stat_doc_ref, {
         u'joined_matches.' + match_id: firestore.DELETE_FIELD
     })
 

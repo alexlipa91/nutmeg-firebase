@@ -16,8 +16,7 @@ class MatchStatus(Enum):
     RATED = "rated"                     # all players have rated and POTM has been determined 
     TO_RATE = "to_rate"                 # match has been played and now is in rating window; users can rate 
     PLAYING = "playing"                 # we are in between match start and end time  
-    PRE_PLAYING = "pre_playing"         # we are right before match start time (right now 1h) so users cannot leave anymore 
-    FULL = "full"                       # max number of players are registered as going for the match
+    PRE_PLAYING = "pre_playing"         # we are before match start time and match has been confirmed (automatic cancellation didn't happen)
     OPEN = "open"                       # match is in the future and is open for users to join
     UNPUBLISHED = "unpublished"         # match created but not visible to others
 
@@ -88,7 +87,7 @@ def _get_status(match_data):
 
     now = datetime.datetime.now(datetime.timezone.utc)
     start = match_data["dateTime"]
-    cannot_leave_at = start - datetime.timedelta(hours=1)
+    cannot_leave_at = start - datetime.timedelta(hours=match_data.get("cancelHoursBefore", 0))
     end = start + datetime.timedelta(minutes=match_data["duration"])
 
     # cannot_leave_at   |   start   |   end
@@ -113,4 +112,4 @@ def _serialize_date(date):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_get_match_firestore_v2("4QQ3QAXMkUibO8njPUhs")))
+    print(asyncio.run(_get_match_firestore_v2("61MIUi1Anm1xzIBDpVzt")))

@@ -40,7 +40,7 @@ async def _reset_ratings_for_match(match_id):
 
     for u in users_going:
         try:
-            await db.collection("users").document(u).update({
+            await db.collection("users_stats").document(u).update({
                 "scoreMatches.{}".format(match_id): firestore.firestore.DELETE_FIELD
             })
         except:
