@@ -31,9 +31,12 @@ def _run_post_match_tasks(match_id):
 
     # update stats
     field_name = "joined_matches" if not match_data["isTest"] else "joined_matches_test"
+    summed_field_name = "num_matches_joined" if not match_data["isTest"] else "num_matches_joined_test"
     for u in match_data["going"].keys():
-        db.collection("users").document(u).update(
+        db.collection("users_stats").document(u).update(
             {"{}.{}".format(field_name, match_id): match_data["dateTime"]})
+        db.collection("users").document(u).update(
+            {summed_field_name: firestore.firestore.Increment(1)})
 
     # send start voting notification
     users = match_data["going"].keys()
