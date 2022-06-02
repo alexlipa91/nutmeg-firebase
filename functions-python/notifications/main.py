@@ -62,7 +62,8 @@ def _send_prematch_notification(match_id):
 
     match = db.collection("matches").document(match_id).get().to_dict()
     if match["cancelledAt"] is not None:
-        raise Exception("Match is cancelled! Not sending any notification...")
+        print("Match is cancelled! Not sending any notification...")
+        return
 
     sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
     date_time = match["dateTime"]
@@ -91,7 +92,8 @@ def _send_start_voting_notification(match_id):
 
     match = db.collection("matches").document(match_id).get().to_dict()
     if match["cancelledAt"] is not None:
-        raise Exception("Match is cancelled! Not sending any notification...")
+        print("Match is cancelled! Not sending any notification...")
+        return
 
     notifications.send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
