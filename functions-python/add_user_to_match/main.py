@@ -2,7 +2,6 @@ import firebase_admin
 from firebase_admin import firestore
 from datetime import datetime
 import pytz
-from google.cloud.firestore_v1 import Increment
 
 tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
@@ -46,7 +45,7 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
         raise Exception("User already going")
 
     user = user_stat_doc_ref.get(transaction=transaction).to_dict()
-    available_credits = user['credits']
+    available_credits = user.get('credits', 0)
 
     if credits_used is not None and credits_used != 0 and credits_used > available_credits:
         raise Exception("User has not enough credits. Needed {}, actual {}".format(credits_used, available_credits))
