@@ -47,7 +47,7 @@ def send_pre_cancellation_organizer_notification(request):
 
     match = db.collection("matches").document(match_id).get().to_dict()
     organizer_id = match["organizerId"]
-    num_going = len(match["going"])
+    num_going = len(match.get("going", {}))
     min_players = match["minPlayers"]
 
     if num_going < min_players:
