@@ -180,3 +180,4 @@ def _schedule_start_voting_notification(match_id, date_time):
         function_payload={"match_id": match_id},
         date_time_to_execute=send_at
     )
+
