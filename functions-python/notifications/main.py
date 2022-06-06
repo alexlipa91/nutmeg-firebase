@@ -38,6 +38,35 @@ def send_start_voting_notification(request):
     return {"data": {}}, 200
 
 
+def send_pre_cancellation_organizer_notification(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    match_id = request_data["match_id"]
+
+    db = firestore.client()
+
+    match = db.collection("matches").document(match_id).get().to_dict()
+    organizer_id = match["organizerId"]
+    num_going = len(match["going"])
+    min_players = match["minPlayers"]
+
+    if num_going < min_players:
+        notifications.send_notification_to_users(
+            title="Your match might be canceled in 1 hour!",
+            body="Currently only {} players out of {} have joined your match.".format(num_going, min_players),
+            users=[organizer_id],
+            data={
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "match_id": match_id
+            }
+        )
+
+    return {"data": {}}, 200
+
+
 def send_notification_to_users(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))

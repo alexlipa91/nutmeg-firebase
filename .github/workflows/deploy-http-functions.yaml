@@ -229,3 +229,9 @@ jobs:
     with:
       name: "send_feedback"
       folder: "send_feedback"
+
+  send_pre_cancellation_organizer_notification:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "send_pre_cancellation_organizer_notification"
+      folder: "notification"

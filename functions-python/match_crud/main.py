@@ -100,11 +100,18 @@ def _add_match_firestore(match_data):
 
     # schedule cancellation check if required
     if "cancelHoursBefore" in match_data:
+        cancellation_time = match_data["dateTime"] - datetime.timedelta(hours=match_data["cancelHoursBefore"])
         schedule_function(
             "cancel_or_confirm_match_{}".format(doc_ref.id),
             "cancel_or_confirm_match",
             {"match_id": doc_ref.id},
-            match_data["dateTime"] - datetime.timedelta(hours=match_data["cancelHoursBefore"])
+            cancellation_time
+        )
+        schedule_function(
+            "send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
+            "send_pre_cancellation_organizer_notification",
+            {"match_id": doc_ref.id},
+            cancellation_time - datetime.timedelta(hours=1)
         )
 
     return doc_ref.id
