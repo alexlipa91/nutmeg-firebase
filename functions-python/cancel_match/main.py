@@ -41,7 +41,7 @@ def cancel_or_confirm_match(request):
     db = firestore.client()
     match_data = db.collection('matches').document(match_id).get().to_dict()
 
-    if len(match_data["going"].keys()) < match_data["minPlayers"]:
+    if len(match_data.get("going", {}).keys()) < match_data["minPlayers"]:
         print("canceling match")
         _cancel_match_firestore(match_id, CancellationTrigger.AUTOMATIC)
     else:
@@ -62,7 +62,7 @@ def _cancel_match_firestore(match_id, trigger):
         raise Exception("Match has already been cancelled")
 
     users_stats_docs = {}
-    for u in match_data["going"].keys():
+    for u in match_data.get("going", {}).keys():
         users_stats_docs[u] = db.collection('users_stats').document(u)
 
     _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_stats_docs,
@@ -82,7 +82,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
         "cancelledAt": datetime.now()
     })
 
-    users = list(match["going"].keys())
+    users = list(match.get("going", {}).keys())
     for u in users:
         print("processing cancellation for {}: refund and remove from stats".format(u))
 
