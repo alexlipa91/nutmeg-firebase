@@ -118,6 +118,6 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                    "match_id": match_id
                                },
-                               users=list(match["organizerId"]))
+                               users=[match["organizerId"]])
 
 
