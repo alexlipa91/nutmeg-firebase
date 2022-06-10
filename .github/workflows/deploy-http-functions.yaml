@@ -235,3 +235,9 @@ jobs:
     with:
       name: "send_pre_cancellation_organizer_notification"
       folder: "notifications"
+
+  get_last_user_scores:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_last_user_scores"
+      folder: "user_crud"
