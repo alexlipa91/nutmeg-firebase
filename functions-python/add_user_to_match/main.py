@@ -55,7 +55,7 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
 
     # add match to user
     if not match["isTest"]:
-        transaction.set(user_stat_doc_ref, {"joined_matches": {match_id: match["dateTime"]}}, merge=True)
+        transaction.set(user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True)
 
     # record transaction
     transaction.set(transactions_doc_ref, {"type": "joined", "userId": user_id, "createdAt": timestamp,

@@ -55,7 +55,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
 
     # remove match in user list
     transaction.update(user_stat_doc_ref, {
-        u'joined_matches.' + match_id: firestore.DELETE_FIELD
+        u'joinedMatches.' + match_id: firestore.DELETE_FIELD
     })
 
     # issue_refund

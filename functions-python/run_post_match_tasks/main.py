@@ -29,12 +29,9 @@ def _run_post_match_tasks(match_id):
         print("match cancelled...skipping")
         return
 
-    # update stats
-    field_name = "joined_matches" if not match_data["isTest"] else "joined_matches_test"
+    # update number of played stats
     summed_field_name = "num_matches_joined" if not match_data["isTest"] else "num_matches_joined_test"
     for u in match_data["going"].keys():
-        db.collection("users_stats").document(u).update(
-            {"{}.{}".format(field_name, match_id): match_data["dateTime"]})
         db.collection("users").document(u).update(
             {summed_field_name: firestore.firestore.Increment(1)})
 
@@ -74,3 +71,4 @@ def schedule_run_post_match_tasks(data, context):
         function_payload={"match_id": match_id},
         date_time_to_execute=date_time + timedelta(minutes=duration) + timedelta(hours=1)
     )
+

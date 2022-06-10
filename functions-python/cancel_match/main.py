@@ -88,7 +88,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
 
         # remove match in user list (if present)
         transaction.update(users_stats_docs[u], {
-            u'joined_matches.' + match_id: firestore.DELETE_FIELD
+            u'joinedMatches.' + match_id: firestore.DELETE_FIELD
         })
 
         # refund
