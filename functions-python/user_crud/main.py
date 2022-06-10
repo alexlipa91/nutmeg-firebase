@@ -80,7 +80,7 @@ def get_last_user_scores(request):
 
     request_data = request_json["data"]
 
-    return {"data": _get_last_user_scores(request_data["id"], request_data.get("n", 5))}, 200
+    return {"data": {"scores": _get_last_user_scores(request_data["id"], request_data.get("n", 5))}}, 200
 
 
 def _store_user_token_firestore(user_id, token):
