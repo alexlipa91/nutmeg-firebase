@@ -74,6 +74,15 @@ def is_organizer_account_complete(request):
     return {"data": {"is_complete": is_complete}}, 200
 
 
+def get_last_user_scores(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    return {"data": _get_last_user_scores(request_data["id"], request_data.get("n", 5))}, 200
+
+
 def _store_user_token_firestore(user_id, token):
     db = firestore.client()
 
@@ -119,14 +128,22 @@ def _get_user_firestore(user_id):
     return data
 
 
+def _get_last_user_scores(user_id, n):
+    db = firestore.client()
+    data = db.collection('users_stats').document(user_id).get().to_dict()
+    scores = data.get("scoreMatches", {})
+
+    score_dates = []
+    for m in scores:
+        date = data["joinedMatches"][m]
+        score_dates.append((scores[m], date))
+
+    score_dates.sort(key=lambda x: x[1])
+
+    last_n = score_dates[-n:]
+
+    return [x[0] for x in last_n]
+
+
 def _serialize_date(date):
     return datetime.isoformat(date)
-
-
-if __name__ == '__main__':
-    db = firestore.client()
-    for u in db.collection("users").get():
-        db.collection("users").document(u.id).update({
-            u'joined_matches': firestore.DELETE_FIELD,
-            u'scoreMatches': firestore.DELETE_FIELD,
-        })
