@@ -68,7 +68,15 @@ async def _set_team_recommendations(match_id):
         scores[u] = avg_score
 
     teams = await _split_teams(scores)
-    await db.collection("teams").document(match_id).set({"a": teams[0], "b": teams[1]})
+
+    match_updates = {}
+
+    for u in teams[0]:
+        match_updates["going.{}.team".format(u)] = "a"
+    for u in teams[1]:
+        match_updates["going.{}.team".format(u)] = "b"
+
+    await db.collection("matches").document(match_id).update(match_updates)
 
 
 async def _split_teams(scores):
@@ -93,3 +101,7 @@ async def _split_teams(scores):
     print("computed teams with total scores of {:.3f} and {:.3f}".format(teams_total_score[0], teams_total_score[1]))
 
     return teams
+
+
+if __name__ == '__main__':
+    asyncio.run(_set_team_recommendations("b4f2bcQI2KAHmDeuTbP8"))
