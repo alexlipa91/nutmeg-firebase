@@ -61,3 +61,10 @@ jobs:
       name: "schedule_start_voting_notification"
       folder: "notifications"
       resource: matches/{matchId}
+
+  schedule_make_teams:
+    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
+    with:
+      name: "schedule_make_teams"
+      folder: "team_recommendations"
+      resource: matches/{matchId}
