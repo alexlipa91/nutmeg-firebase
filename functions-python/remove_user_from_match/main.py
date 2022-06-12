@@ -44,7 +44,7 @@ def _remove_user_from_match_firestore(match_id, user_id):
             task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
             function_name="make_teams",
             function_payload={"match_id": match_id},
-            date_time_to_execute=datetime.now() + timedelta(seconds=10)
+            date_time_to_execute=datetime.utcnow() + timedelta(seconds=10)
         )
 
 
@@ -71,16 +71,16 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     })
 
     # issue_refund
-    stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
-    refund_amount = match["pricePerPerson"] - match.get("fee", 50)
-    refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+    # stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
+    # refund_amount = match["pricePerPerson"] - match.get("fee", 50)
+    # refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
 
     # record transaction
-    transaction.set(transaction_doc_ref,
-                    {"type": "user_left", "userId": user_id, "createdAt": timestamp,
-                     "refund_id": refund.id,
-                     "moneyRefunded": refund_amount})
+    # transaction.set(transaction_doc_ref,
+    #                 {"type": "user_left", "userId": user_id, "createdAt": timestamp,
+    #                  "refund_id": refund.id,
+    #                  "moneyRefunded": refund_amount})
 
 
 if __name__ == '__main__':
-    _remove_user_from_match_firestore("Ngw5ShVJQ89kvOwVAthx", "IwrZWBFb4LZl3Kto1V3oUKPnCni1")
+    _remove_user_from_match_firestore("kiRs4EiqEkeF4vU27cB7", "bQHD0EM265V6GuSZuy1uQPHzb602")

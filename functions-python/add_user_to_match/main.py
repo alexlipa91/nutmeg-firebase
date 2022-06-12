@@ -44,7 +44,7 @@ def _add_user_to_match_firestore(match_id, user_id, payment_intent, credits_used
             task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
             function_name="make_teams",
             function_payload={"match_id": match_id},
-            date_time_to_execute=datetime.now() + timedelta(seconds=10)
+            date_time_to_execute=datetime.utcnow() + timedelta(seconds=10)
         )
 
 @firestore.transactional
