@@ -2,3 +2,4 @@ firebase-admin==5.2.0
 py-firebase-dynamic-links==1.0.1
 stripe
 -e git+https://github.com/alexlipa91/nutmeg-firebase.git@aa5e12e208b179c903ee132c8cac3e3a0b5cf81d#subdirectory=nutmeg_utils&egg=nutmeg_utils
+google-cloud-tasks==2.7.2
