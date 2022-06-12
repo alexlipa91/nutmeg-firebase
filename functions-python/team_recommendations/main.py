@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
+
 import firebase_admin
 from google.cloud.firestore import AsyncClient
 
+from nutmeg_utils.schedule_function import schedule_function
 
 firebase_admin.initialize_app()
 
@@ -14,6 +17,21 @@ def make_teams(request):
     _set_team_recommendations(request_data["id"])
 
     return {"data": {}}, 200
+
+
+def schedule_make_teams(data, context):
+    trigger_resource = context.resource
+    print('Function triggered by change to: %s' % trigger_resource)
+
+    match_id = data["value"]["name"].split("/")[-1]
+    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+
+    schedule_function(
+        task_name="make_teams_{}".format(match_id),
+        function_name="make_teams",
+        function_payload={"match_id": match_id},
+        date_time_to_execute=date_time - timedelta(hours=2)
+    )
 
 
 async def _set_team_recommendations(match_id):
