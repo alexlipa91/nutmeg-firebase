@@ -20,6 +20,9 @@ async def _set_team_recommendations(match_id):
     db = AsyncClient()
     match_going_doc = await db.collection('matches').document(match_id).get(field_paths=["going"])
 
+    if not match_going_doc or "cancelledAt" in match_going_doc:
+        print("Match not existing or cancelled...skipping")
+
     scores = {}
 
     for u in match_going_doc.to_dict()["going"]:
