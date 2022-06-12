@@ -80,7 +80,7 @@ def get_last_user_scores(request):
 
     request_data = request_json["data"]
 
-    return {"data": {"scores": _get_last_user_scores(request_data["id"], request_data.get("n", 5))}}, 200
+    return {"data": {"scores": _get_last_user_scores(request_data["id"])}}, 200
 
 
 def _store_user_token_firestore(user_id, token):
@@ -128,7 +128,7 @@ def _get_user_firestore(user_id):
     return data
 
 
-def _get_last_user_scores(user_id, n):
+def _get_last_user_scores(user_id):
     db = firestore.client()
     data = db.collection('users_stats').document(user_id).get().to_dict()
     scores = data.get("scoreMatches", {})
@@ -140,7 +140,7 @@ def _get_last_user_scores(user_id, n):
 
     score_dates.sort(key=lambda x: x[1])
 
-    last_n = score_dates[-n:]
+    last_n = score_dates[-10:]
 
     return [x[0] for x in last_n]
 
