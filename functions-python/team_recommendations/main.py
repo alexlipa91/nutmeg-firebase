@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 import firebase_admin
+from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
 
 from nutmeg_utils.schedule_function import schedule_function
@@ -17,6 +18,21 @@ def make_teams(request):
 
     asyncio.run(_set_team_recommendations(request_data["match_id"]))
 
+    return {"data": {}}, 200
+
+
+def get_teams(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+    match_id = request_data["match_id"]
+
+    db = firestore.client()
+    teams = db.collection("teams").document(match_id).get().to_dict()
+
+    if teams:
+        return {"data": {"teams": teams}}, 200
     return {"data": {}}, 200
 
 
@@ -77,7 +93,3 @@ async def _split_teams(scores):
     print("computed teams with total scores of {:.3f} and {:.3f}".format(teams_total_score[0], teams_total_score[1]))
 
     return teams
-
-
-if __name__ == '__main__':
-    asyncio.run(_set_team_recommendations("Ngw5ShVJQ89kvOwVAthx"))
