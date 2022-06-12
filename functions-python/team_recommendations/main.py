@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 
 import firebase_admin
@@ -36,14 +37,16 @@ def schedule_make_teams(data, context):
 
 async def _set_team_recommendations(match_id):
     db = AsyncClient()
-    match_going_doc = await db.collection('matches').document(match_id).get(field_paths=["going"])
+    match_doc = await db.collection('matches').document(match_id).get()
+    match_data = match_doc.to_dict()
 
-    if not match_going_doc or "cancelledAt" in match_going_doc:
+    if not match_data or match_data.get("cancelledAt", None):
         print("Match not existing or cancelled...skipping")
+        return
 
     scores = {}
 
-    for u in match_going_doc.to_dict()["going"]:
+    for u in match_data["going"]:
         user_doc = await db.collection('users').document(u).get(field_paths=["avg_score"])
         avg_score = user_doc.to_dict().get("avg_score", 2.5)
         scores[u] = avg_score
@@ -74,3 +77,7 @@ async def _split_teams(scores):
     print("computed teams with total scores of {:.3f} and {:.3f}".format(teams_total_score[0], teams_total_score[1]))
 
     return teams
+
+
+if __name__ == '__main__':
+    asyncio.run(_set_team_recommendations("Ngw5ShVJQ89kvOwVAthx"))

@@ -146,6 +146,8 @@ def _create_organizer_payout(match_id, attempt):
     balance = stripe.Balance.retrieve(stripe_account=organizer_account)
     available_amount = balance['available'][0]['amount']
 
+    print("trying to payout: {}, current balance {}".format(amount, available_amount))
+
     if available_amount >= amount:
         payout = stripe.Payout.create(
             amount=amount,
@@ -196,3 +198,7 @@ def _check_payments(match_id):
 
     print("wrong payments")
     [print(x) for x in old_pi]
+
+
+if __name__ == '__main__':
+    _create_organizer_payout("61MIUi1Anm1xzIBDpVzt", 4)
