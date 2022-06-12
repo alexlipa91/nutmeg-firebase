@@ -15,7 +15,7 @@ def make_teams(request):
 
     request_data = request_json["data"]
 
-    _set_team_recommendations(request_data["id"])
+    _set_team_recommendations(request_data["match_id"])
 
     return {"data": {}}, 200
 

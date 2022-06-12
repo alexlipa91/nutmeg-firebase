@@ -1,13 +1,14 @@
-import asyncio
 import os
+import time
+import calendar
 
 import firebase_admin
 from firebase_admin import firestore
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import stripe
 from nutmeg_utils import payments
-from nutmeg_utils.functions_client import call_function
+from nutmeg_utils.schedule_function import schedule_function
 
 tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
@@ -39,13 +40,12 @@ def _remove_user_from_match_firestore(match_id, user_id):
 
     teams_doc = db.collection("teams").document(match_id).get()
     if teams_doc.exists:
-        asyncio.create_task(_update_teams(match_id))
-
-
-async def _update_teams(match_id):
-    call_function(
-        "make_teams", {"match_id": match_id}
-    )
+        schedule_function(
+            task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
+            function_name="make_teams",
+            function_payload={"match_id": match_id},
+            date_time_to_execute=datetime.now() + timedelta(seconds=10)
+        )
 
 
 @firestore.transactional
@@ -80,3 +80,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
                     {"type": "user_left", "userId": user_id, "createdAt": timestamp,
                      "refund_id": refund.id,
                      "moneyRefunded": refund_amount})
+
+
+if __name__ == '__main__':
+    _remove_user_from_match_firestore("Ngw5ShVJQ89kvOwVAthx", "IwrZWBFb4LZl3Kto1V3oUKPnCni1")
