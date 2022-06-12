@@ -248,4 +248,10 @@ jobs:
       name: "make_teams"
       folder: "team_recommendations"
 
+  get_teams:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_teams"
+      folder: "team_recommendations"
+
 
