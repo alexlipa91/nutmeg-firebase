@@ -1,11 +1,14 @@
 import os
+import time
+from calendar import calendar
 
 import firebase_admin
 from firebase_admin import firestore
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import stripe
 from nutmeg_utils import payments
+from nutmeg_utils.schedule_function import schedule_function
 
 tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
@@ -34,6 +37,15 @@ def _remove_user_from_match_firestore(match_id, user_id):
 
     _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_stat_doc_ref,
                                                                 transactions_doc_ref, user_id, match_id)
+
+    teams_doc = db.collection("teams").document(match_id).get()
+    if teams_doc.exists:
+        schedule_function(
+            task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
+            function_name="make_teams",
+            function_payload={"match_id": match_id},
+            date_time_to_execute=datetime.now() + timedelta(minutes=1)
+        )
 
 
 @firestore.transactional

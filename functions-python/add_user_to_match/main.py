@@ -1,7 +1,12 @@
+from calendar import calendar
+
 import firebase_admin
 from firebase_admin import firestore
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
+import time
+
+from nutmeg_utils.schedule_function import schedule_function
 
 tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
@@ -33,6 +38,14 @@ def _add_user_to_match_firestore(match_id, user_id, payment_intent, credits_used
     _add_user_to_match_firestore_transaction(db.transaction(), transactions_doc_ref, user_stat_doc_ref,
                                              match_doc_ref, credits_used, payment_intent, user_id, match_id)
 
+    teams_doc = db.collection("teams").document(match_id).get()
+    if teams_doc.exists:
+        schedule_function(
+            task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
+            function_name="make_teams",
+            function_payload={"match_id": match_id},
+            date_time_to_execute=datetime.now() + timedelta(minutes=1)
+        )
 
 @firestore.transactional
 def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, user_stat_doc_ref,
