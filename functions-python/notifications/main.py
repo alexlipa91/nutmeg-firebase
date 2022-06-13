@@ -80,16 +80,11 @@ def _send_prematch_notification(match_id):
     db = firestore.client()
 
     match = db.collection("matches").document(match_id).get().to_dict()
-    if match.get("cancelledAt", None) is not None:
-        print("match cancelled...skipping")
+    if not match or match.get("cancelledAt", None) is not None:
+        print("match not existing or cancelled...skipping")
         return
 
     users = match["going"].keys()
-
-    match = db.collection("matches").document(match_id).get().to_dict()
-    if match["cancelledAt"] is not None:
-        print("Match is cancelled! Not sending any notification...")
-        return
 
     sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
     date_time = match["dateTime"]
@@ -110,16 +105,11 @@ def _send_start_voting_notification(match_id):
     db = firestore.client()
 
     match = db.collection("matches").document(match_id).get().to_dict()
-    if match.get("cancelledAt", None) is not None:
-        print("match cancelled...skipping")
+    if not match or match.get("cancelledAt", None) is not None:
+        print("Match is cancelled! Not sending any notification...")
         return
 
     users = match["going"].keys()
-
-    match = db.collection("matches").document(match_id).get().to_dict()
-    if match["cancelledAt"] is not None:
-        print("Match is cancelled! Not sending any notification...")
-        return
 
     notifications.send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
