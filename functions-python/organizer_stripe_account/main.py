@@ -153,7 +153,7 @@ def _create_organizer_payout(match_id, attempt):
             amount=amount,
             currency='eur',
             stripe_account=organizer_account,
-            metadata={"match_id": match_id},
+            metadata={"match_id": match_id, "attempt": attempt},
         )
         print("payout of {} created: {}".format(amount, payout.id))
         db.collection("matches").document(match_id).update({
