@@ -92,7 +92,7 @@ def _send_prematch_notification(match_id):
 
     notifications.send_notification_to_users(
         title="Ready for the match? " + u"\u26BD\uFE0F",
-        body="Your match today is at {} at {}".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
+        body="Your match today is at {} at {}. Tap here to check your team!".format(date_time_ams.strftime("%H:%M"), sport_center["name"]),
         users=users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
