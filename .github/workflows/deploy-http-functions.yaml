@@ -88,7 +88,7 @@ jobs:
     with:
       name: "stripe_checkout_webhook_test"
       folder: "stripe_checkout_webhook"
-      secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeCheckoutWebhookSecretTest
+      secrets: STRIPE_WEBHOOK_SECRET=projects/956073807168/secrets/stripeCheckoutWebhookTestSecret
 
   add_user:
     uses: './.github/workflows/deploy-python-http-template.yaml'
