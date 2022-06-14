@@ -25,8 +25,8 @@ def _run_post_match_tasks(match_id):
 
     match_data = db.collection("matches").document(match_id).get().to_dict()
 
-    if match_data.get("cancelledAt", None) is not None:
-        print("match cancelled...skipping")
+    if not match_data or match_data.get("cancelledAt", None) is not None:
+        print("match deleted or cancelled...skipping")
         return
 
     # update number of played stats
