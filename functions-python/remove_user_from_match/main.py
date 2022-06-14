@@ -1,6 +1,7 @@
 import os
 import time
 import calendar
+from functools import reduce
 
 import firebase_admin
 from firebase_admin import firestore
@@ -38,8 +39,11 @@ def _remove_user_from_match_firestore(match_id, user_id):
     _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_stat_doc_ref,
                                                                 transactions_doc_ref, user_id, match_id)
 
-    teams_doc = db.collection("teams").document(match_id).get()
-    if teams_doc.exists:
+    # if has teams assigned, recompute them
+    going_dict = db.collection("matches").document(match_id).get(field_paths=["going"]).to_dict()["going"]
+    has_teams = reduce(lambda a, b: a or b, ["team" in going_dict[u] for u in going_dict])
+
+    if has_teams:
         schedule_function(
             task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
             function_name="make_teams",
@@ -71,15 +75,15 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     })
 
     # issue_refund
-    # stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
-    # refund_amount = match["pricePerPerson"] - match.get("fee", 50)
-    # refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+    stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
+    refund_amount = match["pricePerPerson"] - match.get("fee", 50)
+    refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
 
     # record transaction
-    # transaction.set(transaction_doc_ref,
-    #                 {"type": "user_left", "userId": user_id, "createdAt": timestamp,
-    #                  "refund_id": refund.id,
-    #                  "moneyRefunded": refund_amount})
+    transaction.set(transaction_doc_ref,
+                    {"type": "user_left", "userId": user_id, "createdAt": timestamp,
+                     "refund_id": refund.id,
+                     "moneyRefunded": refund_amount})
 
 
 if __name__ == '__main__':

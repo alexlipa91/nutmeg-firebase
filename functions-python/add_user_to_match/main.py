@@ -1,5 +1,6 @@
 import time
 import calendar
+from functools import reduce
 
 import firebase_admin
 from firebase_admin import firestore
@@ -38,8 +39,11 @@ def _add_user_to_match_firestore(match_id, user_id, payment_intent, credits_used
     _add_user_to_match_firestore_transaction(db.transaction(), transactions_doc_ref, user_stat_doc_ref,
                                              match_doc_ref, credits_used, payment_intent, user_id, match_id)
 
-    teams_doc = db.collection("teams").document(match_id).get()
-    if teams_doc.exists:
+    # if has teams assigned, recompute them
+    going_dict = db.collection("matches").document(match_id).get(field_paths=["going"]).to_dict()["going"]
+    has_teams = reduce(lambda a, b: a or b, ["team" in going_dict[u] for u in going_dict])
+
+    if has_teams:
         schedule_function(
             task_name="update_teams_{}_{}".format(match_id, calendar.timegm(time.gmtime())),
             function_name="make_teams",
@@ -73,7 +77,3 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
     # record transaction
     transaction.set(transactions_doc_ref, {"type": "joined", "userId": user_id, "createdAt": timestamp,
                                            "paymentIntent": payment_intent, "creditsUsed": credits_used})
-
-
-if __name__ == '__main__':
-    _add_user_to_match_firestore("Ngw5ShVJQ89kvOwVAthx", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", "pi_test", 0)
