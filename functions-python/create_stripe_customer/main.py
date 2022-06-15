@@ -13,6 +13,9 @@ import firebase_admin
 from firebase_admin import firestore
 
 
+firebase_admin.initialize_app()
+
+
 def create_stripe_customer(data, context):
     print(data)
     trigger_resource = context.resource
@@ -22,7 +25,6 @@ def create_stripe_customer(data, context):
     user_id = data["value"]["name"].split("/")[-1]
     user_data = data["value"]["fields"]
 
-    firebase_admin.initialize_app()
     db = firestore.client()
 
     name = user_data["name"].get("stringValue", None)
