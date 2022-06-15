@@ -82,7 +82,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     # record transaction
     transaction.set(transaction_doc_ref,
                     {"type": "user_left", "userId": user_id, "createdAt": timestamp,
-                     "refund_id": refund.id,
+                     "paymentIntent": payment_intent, "refund_id": refund.id,
                      "moneyRefunded": refund_amount})
 
 
