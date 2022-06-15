@@ -5,7 +5,6 @@ import stripe
 from firebase_admin import firestore
 from google.cloud.firestore_v1 import DELETE_FIELD
 
-
 firebase_admin.initialize_app()
 
 
@@ -56,9 +55,7 @@ def _handle_event(event_data, is_test):
         print("{} is already set for user {}".format(field_name, user_id))
         return
 
-    db.collection("users").document(user_id).update({
-    field_name: True
-})
+    db.collection("users").document(user_id).update({field_name: True})
     print("user {} can now receive payments on stripe".format(user_id))
 
     for m in user_data["created_matches" if not is_test else "created_test_matches"].keys():
