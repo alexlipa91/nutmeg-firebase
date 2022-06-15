@@ -43,6 +43,8 @@ def _get_match_info(match_id):
 
 def _get_stripe_customer_id(user_id, test_mode):
     db = firestore.client()
+    stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
+
 
     doc = db.collection('users').document(user_id)
 
