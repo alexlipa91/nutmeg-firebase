@@ -1,3 +1,4 @@
+import logging
 import time
 import calendar
 from functools import reduce
@@ -22,7 +23,6 @@ def add_user_to_match(request):
     match_id = request_data["match_id"]
     user_id = request_data["user_id"]
     payment_intent = request_data.get("payment_intent", None)
-    credits_used = request_data.get("credits_used", None)
 
     _add_user_to_match_firestore(match_id, user_id, payment_intent)
 
@@ -59,7 +59,8 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
     match = match_doc_ref.get(transaction=transaction).to_dict()
 
     if match.get("going", {}).get(user_id, None):
-        raise Exception("User already going")
+        logging.warning("User already going")
+        return
 
     # add user to list of going
     transaction.set(match_doc_ref, {"going": {user_id: {"createdAt": timestamp}}}, merge=True)
