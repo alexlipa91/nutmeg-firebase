@@ -79,38 +79,6 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
     return data["stripeConnectedAccountId" if not test_mode else "stripeConnectedAccountTestId"]
 
 
-# old one
-def _create_checkout_session(customer_id, user_id, match_id, price_per_person, product_id, price_id,
-                             credits_used, test_mode):
-    stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
-
-    if credits_used == 0 and price_id is not None:
-        line_item = {
-            "price": price_id,
-        }
-    else:
-        line_item = {
-            'price_data': {
-                "unit_amount": price_per_person - credits_used,
-                "product": product_id,
-                "currency": "eur"
-            },
-        }
-    line_item["quantity"] = 1
-
-    session = stripe.checkout.Session.create(
-        success_url=_build_redirect_to_app_link(match_id, "success"),
-        cancel_url=_build_redirect_to_app_link(match_id, "cancel"),
-
-        payment_method_types=["card", "ideal"],
-        line_items=[line_item],
-        mode="payment",
-        customer=customer_id,
-        metadata={"user_id": user_id, "match_id": match_id, "credits_used": credits_used},
-    )
-    return session
-
-
 # application_fee_amount includes stripe fees
 def _create_checkout_session_with_destination_charges(customer_id, connected_account_id, user_id,
                                                       organizer_id, match_id, price_id, application_fee_amount,
@@ -130,6 +98,10 @@ def _create_checkout_session_with_destination_charges(customer_id, connected_acc
             'transfer_data': {
                 'destination': connected_account_id,
             },
+            'metadata': {
+                'user_id': user_id,
+                'match_id': match_id
+            }
         },
         mode="payment",
         customer=customer_id,
@@ -155,3 +127,22 @@ def _build_redirect_to_app_link(match_id, outcome):
     short_link = dl.generate_dynamic_link('http://nutmegapp.com/payment?outcome={}&match_id={}'.format(outcome, match_id),
                                           True, params)
     return short_link
+
+
+if __name__ == '__main__':
+    is_test = True
+    match_id = "Jr4RmTYV6UHsznIkQiwm"
+    user_id = "IwrZWBFb4LZl3Kto1V3oUKPnCni1"
+
+    match_info = _get_match_info(match_id)
+
+    session = _create_checkout_session_with_destination_charges(
+        _get_stripe_customer_id(user_id, is_test),
+        _get_stripe_connected_account_id(match_info["organizerId"], is_test),
+        user_id,
+        match_info["organizerId"],
+        match_id,
+        match_info["stripePriceId"],
+        50,
+        is_test)
+    print(session.url)
