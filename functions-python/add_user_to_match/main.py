@@ -24,7 +24,7 @@ def add_user_to_match(request):
     payment_intent = request_data.get("payment_intent", None)
     credits_used = request_data.get("credits_used", None)
 
-    _add_user_to_match_firestore(match_id, user_id, payment_intent, credits_used)
+    _add_user_to_match_firestore(match_id, user_id, payment_intent)
 
     return {"data": {}}, 200
 
