@@ -62,7 +62,7 @@ async def _set_team_recommendations(match_id):
 
     scores = {}
 
-    for u in match_data["going"]:
+    for u in match_data.get("going", {}):
         user_doc = await db.collection('users').document(u).get(field_paths=["avg_score"])
         avg_score = user_doc.to_dict().get("avg_score", 2.5)
         scores[u] = avg_score
