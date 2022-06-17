@@ -94,7 +94,10 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
         # refund
         payment_intent = get_payment_intent(match_id, u)
         refund_amount = match["pricePerPerson"]
-        refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+        refund = stripe.Refund.create(payment_intent=payment_intent,
+                                      amount=refund_amount,
+                                      reverse_transfer=True,
+                                      refund_application_fee=True)
 
         # record transaction
         transaction_doc_ref = db.collection("matches").document(match_id).collection("transactions").document()
