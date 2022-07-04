@@ -37,6 +37,17 @@ def get_all_matches_v2(request):
     return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200
 
 
+def get_all_matches_v2_cors(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    }
+
+
 async def _get_match_firestore_v2(match_id):
     db = AsyncClient()
     match_data = (await db.collection('matches').document(match_id).get()).to_dict()
