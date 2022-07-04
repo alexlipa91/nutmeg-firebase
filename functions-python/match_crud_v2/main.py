@@ -44,7 +44,7 @@ def get_all_matches_v2_cors(request):
     return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200, {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': '*',
     }
 
 
