@@ -4,6 +4,7 @@ import traceback
 from enum import Enum
 
 import firebase_admin
+from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
 from firebase_admin import firestore
 
@@ -37,15 +38,12 @@ def get_all_matches_v2(request):
     return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
 def get_all_matches_v2_cors(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200, {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': '*',
-    }
+    return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200
 
 
 async def _get_match_firestore_v2(match_id):
