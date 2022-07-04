@@ -11,7 +11,7 @@ def _get_db():
     return AsyncClient()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
 def add_rating(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))

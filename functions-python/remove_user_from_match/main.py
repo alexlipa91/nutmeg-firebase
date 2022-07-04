@@ -17,7 +17,7 @@ tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
 def remove_user_from_match(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
