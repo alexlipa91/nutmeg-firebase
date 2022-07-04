@@ -4,3 +4,4 @@ python-dateutil
 stripe
 google-cloud-tasks==2.7.2
 -e git+https://github.com/alexlipa91/nutmeg-firebase.git@fe5b013ce4d606dea9b2aff0a2cdd17c492f76b7#subdirectory=nutmeg_utils&egg=nutmeg_utils
+flask-cors

@@ -8,6 +8,8 @@ from firebase_admin import firestore
 from datetime import datetime, timedelta
 import pytz
 import stripe
+from flask_cors import cross_origin
+
 from nutmeg_utils import payments
 from nutmeg_utils.schedule_function import schedule_function
 
@@ -15,6 +17,7 @@ tz = pytz.timezone('Europe/Amsterdam')
 firebase_admin.initialize_app()
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
 def remove_user_from_match(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))

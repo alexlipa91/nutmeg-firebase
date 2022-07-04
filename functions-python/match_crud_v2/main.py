@@ -31,15 +31,8 @@ def get_match_v2(request):
     return {"data": asyncio.run(_get_match_firestore_v2(request_data["id"]))}, 200
 
 
-def get_all_matches_v2(request):
-    request_json = request.get_json(silent=True)
-    print("args {}, data {}".format(request.args, request_json))
-
-    return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200
-
-
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
-def get_all_matches_v2_cors(request):
+def get_all_matches_v2(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 

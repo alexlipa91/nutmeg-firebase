@@ -7,12 +7,15 @@ import stripe
 import firebase_admin
 from firebase_admin import firestore
 from firebase_dynamic_links import DynamicLinks
+from flask_cors import cross_origin
+
 from nutmeg_utils.schedule_function import schedule_function
 from nutmeg_utils.notifications import send_notification_to_users
 
 firebase_admin.initialize_app()
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
 def is_account_onboarded(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))
@@ -27,6 +30,7 @@ def is_account_onboarded(request):
     return {"data": {"is_complete": is_complete}}, 200
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
 def go_to_onboard_connected_account(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -38,6 +42,7 @@ def go_to_onboard_connected_account(request):
     return flask.redirect(_onboard_account_url(account_id, user_id, is_test=is_test))
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
 def go_to_account_login_link(request):
     print("args {}".format(request.args))
 

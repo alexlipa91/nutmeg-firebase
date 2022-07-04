@@ -1,12 +1,14 @@
 import asyncio
 
 import firebase_admin
+from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
 
 
 firebase_admin.initialize_app()
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token"])
 def get_sportcenter(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
