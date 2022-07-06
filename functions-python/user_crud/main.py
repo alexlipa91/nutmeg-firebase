@@ -121,6 +121,9 @@ def _add_user_firestore(user_id, user_data):
     db = firestore.client()
 
     doc_ref = db.collection('users').document(user_id)
+    print(user_data)
+    print(type(user_data))
+
     doc_ref.set(user_data)
     return doc_ref.id
 
