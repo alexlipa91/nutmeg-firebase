@@ -5,7 +5,7 @@ from flask_cors import cross_origin
 firebase_admin.initialize_app()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def send_feedback(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))

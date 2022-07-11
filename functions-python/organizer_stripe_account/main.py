@@ -15,7 +15,7 @@ from nutmeg_utils.notifications import send_notification_to_users
 firebase_admin.initialize_app()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def is_account_onboarded(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))
@@ -30,7 +30,7 @@ def is_account_onboarded(request):
     return {"data": {"is_complete": is_complete}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def go_to_onboard_connected_account(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -42,7 +42,7 @@ def go_to_onboard_connected_account(request):
     return flask.redirect(_onboard_account_url(account_id, user_id, is_test=is_test))
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def go_to_account_login_link(request):
     print("args {}".format(request.args))
 

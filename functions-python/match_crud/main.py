@@ -14,7 +14,7 @@ from nutmeg_utils.schedule_function import schedule_function
 firebase_admin.initialize_app()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def add_match(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -30,7 +30,7 @@ def add_match(request):
     return {"data": {"id": match_id}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def edit_match(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -41,7 +41,7 @@ def edit_match(request):
     return {"data": {}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_match(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))

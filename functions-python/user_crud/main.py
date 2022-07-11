@@ -10,7 +10,7 @@ from flask_cors import cross_origin
 firebase_admin.initialize_app()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def add_user(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -22,7 +22,7 @@ def add_user(request):
     return {"data": {}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def edit_user(request):
     request_json = request.get_json(silent=True)
 
@@ -41,7 +41,7 @@ def edit_user(request):
     return {"data": {}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_user(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -51,7 +51,7 @@ def get_user(request):
     return {"data": _get_user_firestore(request_data["id"])}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def store_user_token(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -61,7 +61,7 @@ def store_user_token(request):
     return {"data": _store_user_token_firestore(request_data["id"], request_data["token"])}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def is_organizer_account_complete(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
@@ -80,7 +80,7 @@ def is_organizer_account_complete(request):
     return {"data": {"is_complete": is_complete}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_last_user_scores(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))

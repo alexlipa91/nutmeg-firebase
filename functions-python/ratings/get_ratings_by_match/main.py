@@ -11,7 +11,7 @@ def _get_db():
     return AsyncClient()
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_ratings_by_match(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))
@@ -23,7 +23,7 @@ def get_ratings_by_match(request):
     return {"data": resp}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type"])
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_ratings_by_match_v2(request):
     request_json = request.get_json(silent=True)
     print("data {}".format(request_json))
