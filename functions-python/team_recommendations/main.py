@@ -62,6 +62,10 @@ async def _set_team_recommendations(match_id):
         print("Match not existing or cancelled...skipping")
         return
 
+    if len(match_data.get("going", {})) == 0:
+        print("No one going yet...skipping")
+        return
+
     scores = {}
 
     for u in match_data.get("going", {}):
@@ -106,4 +110,4 @@ async def _split_teams(scores):
 
 
 if __name__ == '__main__':
-    asyncio.run(_set_team_recommendations("b4f2bcQI2KAHmDeuTbP8"))
+    asyncio.run(_set_team_recommendations("S85J9YSskjrW7jvioTuG"))
