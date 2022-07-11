@@ -84,7 +84,7 @@ def _send_prematch_notification(match_id):
         print("match not existing or cancelled...skipping")
         return
 
-    users = match["going"].keys()
+    users = match.get("going", {}).keys()
 
     sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()
     date_time = match["dateTime"]
