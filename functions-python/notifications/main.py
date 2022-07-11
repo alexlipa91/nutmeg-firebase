@@ -109,7 +109,7 @@ def _send_start_voting_notification(match_id):
         print("Match is cancelled! Not sending any notification...")
         return
 
-    users = match["going"].keys()
+    users = match.get("going", {}).keys()
 
     notifications.send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
