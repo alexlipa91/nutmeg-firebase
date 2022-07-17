@@ -22,6 +22,7 @@ class MatchStatus(Enum):
     UNPUBLISHED = "unpublished"         # match created but not visible to others
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_match_v2(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
