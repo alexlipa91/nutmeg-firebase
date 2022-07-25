@@ -254,4 +254,9 @@ jobs:
       name: "get_teams"
       folder: "team_recommendations"
 
+  debug_env:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "debug_env"
+      folder: "run_post_match_tasks"
 
