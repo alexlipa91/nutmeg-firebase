@@ -1,3 +1,4 @@
 firebase-admin==5.2.0
+protobuf==3.20.1
 stripe
 py-firebase-dynamic-links==1.0.1

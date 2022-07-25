@@ -1,4 +1,5 @@
 firebase-admin==5.2.0
+protobuf==3.20.1
 py-firebase-dynamic-links==1.0.1
 python-dateutil
 google-cloud-tasks==2.7.2

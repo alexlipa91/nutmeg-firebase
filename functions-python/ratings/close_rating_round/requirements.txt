@@ -1,4 +1,5 @@
 firebase-admin==5.2.0
+protobuf==3.20.1
 py-firebase-dynamic-links==1.0.1
 python-dateutil
 -e git+https://github.com/alexlipa91/nutmeg-firebase.git@fe5b013ce4d606dea9b2aff0a2cdd17c492f76b7#subdirectory=nutmeg_utils&egg=nutmeg_utils
