@@ -72,3 +72,9 @@ def schedule_run_post_match_tasks(data, context):
         date_time_to_execute=date_time + timedelta(minutes=duration) + timedelta(hours=1)
     )
 
+
+def debug_env(request):
+    import pkg_resources
+    installed_packages = pkg_resources.working_set
+    for p in sorted(["%s==%s" % (i.key, i.version)for i in installed_packages]):
+        print(p)
