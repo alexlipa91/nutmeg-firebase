@@ -25,14 +25,14 @@ def clean_up_match(data, context):
 
 
 def _clean_up_match(match_id, stripe_product_id, is_test):
-    for t in ["close_rating_round_", "send_prematch_notification_for_", "run_post_match_tasks_"]:
-        try:
+    try:
+        for t in ["close_rating_round_", "send_prematch_notification_for_", "run_post_match_tasks_"]:
             _delete_task(t + match_id)
-        except Exception:
-            print(traceback.format_exc())
 
-    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
-    stripe.Product.delete(stripe_product_id)
+        stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
+        stripe.Product.delete(stripe_product_id)
+    except Exception:
+        print(traceback.format_exc())
 
 
 def _delete_task(task_name):
