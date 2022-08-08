@@ -43,7 +43,7 @@ def _add_user_to_match_firestore(match_id, user_id, payment_intent):
 
     # if has teams assigned, recompute them
     going_dict = db.collection("matches").document(match_id).get(field_paths=["going"]).to_dict()["going"]
-    has_teams = reduce(lambda a, b: a or b, ["team" in going_dict[u] for u in going_dict])
+    has_teams = len(going_dict) > 0 and reduce(lambda a, b: a or b, ["team" in going_dict[u] for u in going_dict])
 
     if has_teams:
         schedule_function(
