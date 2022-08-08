@@ -192,6 +192,12 @@ jobs:
       name: "go_to_stripe_checkout"
       folder: "create_stripe_checkout"
 
+  go_to_stripe_checkout_v2:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "go_to_stripe_checkout_v2"
+      folder: "create_stripe_checkout"
+
   is_organizer_account_complete:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
