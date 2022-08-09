@@ -44,6 +44,8 @@ def go_to_stripe_checkout_v2(request):
 
     match_info = _get_match_info(match_id)
 
+    if is_web:
+        print("http referrer is " + request.environ["HTTP_REFERER"])
     session = _create_checkout_session_with_destination_charges_v2(
         _get_stripe_customer_id(user_id, is_test),
         _get_stripe_connected_account_id(match_info["organizerId"], is_test),
