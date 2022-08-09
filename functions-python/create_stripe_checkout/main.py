@@ -199,6 +199,9 @@ def _build_redirect_to_app_link_v2(match_id, outcome, redirect_address):
         }
     }
 
+    if redirect_address[-1] == "/":
+        redirect_address = redirect_address[:-1]
+
     link = '{}/match/{}?payment_outcome={}'.format(
         redirect_address if redirect_address else "http://nutmegapp.com", match_id, outcome)
 
