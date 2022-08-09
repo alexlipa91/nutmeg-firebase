@@ -57,6 +57,7 @@ def send_pre_cancellation_organizer_notification(request):
             users=[organizer_id],
             data={
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "route": "/match/" + match_id,
                 "match_id": match_id
             }
         )
@@ -96,6 +97,7 @@ def _send_prematch_notification(match_id):
         users=users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
             "match_id": match_id
         }
     )
@@ -117,6 +119,7 @@ def _send_start_voting_notification(match_id):
         users=users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
             "match_id": match_id
         }
     )

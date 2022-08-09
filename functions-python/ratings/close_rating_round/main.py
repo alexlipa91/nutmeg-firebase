@@ -107,6 +107,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
         users=list(going_users),
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
             "match_id": match_id,
         }
     )
@@ -118,6 +119,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "match_id": match_id,
+            "route": "/match/" + match_id,
             "event": "potm",
         }
     )

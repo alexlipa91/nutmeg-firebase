@@ -170,6 +170,7 @@ def _create_organizer_payout(match_id, attempt):
                                    .format(amount / 100, datetime.datetime.strftime(match_data["dateTime"], "%B %-d, %Y")),
                                    data={
                                        "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                       "route": "/match/" + match_id,
                                        "match_id": match_id
                                    },
                                    users=[match_data["organizerId"]])

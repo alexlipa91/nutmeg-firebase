@@ -111,6 +111,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                .format(sport_center, "{:.2f}".format(price)),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                   "route": "/match/" + match_id,
                                    "match_id": match_id
                                },
                                users=list(users))
@@ -120,6 +121,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                .format(sport_center, "{:.2f}".format(price)),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                   "route": "/match/" + match_id,
                                    "match_id": match_id
                                },
                                users=[match["organizerId"]])

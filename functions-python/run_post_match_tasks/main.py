@@ -44,6 +44,7 @@ def _run_post_match_tasks(match_id):
         users=users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
             "match_id": match_id
         }
     )
