@@ -199,7 +199,7 @@ def _build_redirect_to_app_link_v2(match_id, outcome, redirect_address):
         }
     }
 
-    if redirect_address[-1] == "/":
+    if redirect_address and redirect_address[-1] == "/":
         redirect_address = redirect_address[:-1]
 
     link = '{}/match/{}?payment_outcome={}'.format(
