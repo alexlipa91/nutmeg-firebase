@@ -7,7 +7,7 @@ def send_notification_to_users(title, body, data, users):
     # normal send
     tokens = set()
     for user_id in users:
-        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
+        user_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict().get("tokens", [])
         for t in user_tokens:
             tokens.add(t)
     _send_notification_to_tokens(title, body, data, list(tokens))
