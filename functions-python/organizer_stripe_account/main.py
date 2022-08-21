@@ -140,6 +140,10 @@ def _create_organizer_payout(match_id, attempt):
         return
 
     amount = (match_data["pricePerPerson"] - match_data.get("fee", 50)) * len(match_data["going"].keys())
+    if amount == 0:
+        print("Noting to payout")
+        return
+
     is_test = match_data["isTest"]
     organizer_account = db.collection("users").document(match_data["organizerId"]).get().to_dict()[
         "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
