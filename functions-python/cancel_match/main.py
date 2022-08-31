@@ -117,8 +117,11 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                users=list(users))
 
     send_notification_to_users(title="Match cancelled!",
-                               body="Your match at {} has been automatically cancelled as you requested! All players have been refundend € {}"
-                               .format(sport_center, "{:.2f}".format(price)),
+                               body="Your match at {} has been {} as you requested! All players have been refundend € {}"
+                               .format(sport_center,
+                                       "cancelled" if trigger == CancellationTrigger.MANUAL
+                                       else "automatically cancelled",
+                                       "{:.2f}".format(price)),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                    "route": "/match/" + match_id,
