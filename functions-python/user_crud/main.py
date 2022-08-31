@@ -141,6 +141,9 @@ def _get_user_firestore(user_id):
 def _get_last_user_scores(user_id):
     db = firestore.client()
     data = db.collection('users_stats').document(user_id).get().to_dict()
+    if not data:
+        return []
+
     scores = data.get("scoreMatches", {})
 
     score_dates = []
