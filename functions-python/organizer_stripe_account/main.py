@@ -69,7 +69,8 @@ def _onboard_account_url(stripe_account_id, user_id, is_test=False):
     stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
 
     redirect_link = _build_redirect_to_app_link()
-    refresh_link = "https://europe-central2-nutmeg-9099c.cloudfunctions.net/refresh_onboard_url?is_test={}&id={}"\
+    refresh_link = "https://europe-central2-nutmeg-9099c.cloudfunctions.net/go_to_onboard_connected_account" \
+                   "?is_test={}&id={}"\
         .format(is_test, user_id)
 
     response = stripe.AccountLink.create(
@@ -212,4 +213,4 @@ def _check_payments(match_id):
 
 
 if __name__ == '__main__':
-    _create_organizer_payout("61MIUi1Anm1xzIBDpVzt", 4)
+    print(_onboard_account_url("acct_1Kw4au2chCnkNzuO", "IwrZWBFb4LZl3Kto1V3oUKPnCni1", True))
