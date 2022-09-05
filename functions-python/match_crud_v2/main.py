@@ -52,6 +52,9 @@ async def _format_match_data_v2(match_data):
 
     # serialize dates
     match_data["dateTime"] = _serialize_date(match_data["dateTime"])
+    if "paid_out_at" in match_data:
+        match_data["paid_out_at"] = _serialize_date(match_data["paid_out_at"])
+
     if match_data.get("cancelledAt", None):
         match_data["cancelledAt"] = _serialize_date(match_data["cancelledAt"])
     if match_data.get("scoresComputedAt", None):
