@@ -4,6 +4,7 @@ import os
 
 import dateutil.parser
 import firebase_admin
+import requests
 import stripe
 from firebase_admin import firestore
 from flask_cors import cross_origin
@@ -12,6 +13,8 @@ from nutmeg_utils.schedule_function import schedule_function
 
 
 firebase_admin.initialize_app()
+dbSync = firestore.client()
+dbAsync = AsyncClient()
 
 
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
@@ -59,9 +62,7 @@ def get_all_matches(request):
 
 
 def _edit_match_firestore(match_id, match_data):
-    db = firestore.client()
-
-    doc_ref = db.collection("matches").document(match_id)
+    doc_ref = dbSync.collection("matches").document(match_id)
     if not doc_ref.get().exists:
         raise Exception("Match {} does not exists".format(match_id))
 
@@ -85,8 +86,7 @@ def _add_match_firestore(match_data):
         match_data["sport"] = "BvwIYDpu0f3RIT4EaWBH"
 
     # check if organizer can receive payments and if not do not publish yet
-    db = firestore.client()
-    organizer_data = db.collection('users').document(match_data["organizerId"]).get().to_dict()
+    organizer_data = dbSync.collection('users').document(match_data["organizerId"]).get().to_dict()
     field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
 
     if not organizer_data.get(field_name, False):
@@ -122,8 +122,7 @@ def _add_match_firestore(match_data):
 
 
 async def _get_match_firestore(match_id):
-    db = AsyncClient()
-    match_data = (await db.collection('matches').document(match_id).get()).to_dict()
+    match_data = (await dbAsync.collection('matches').document(match_id).get()).to_dict()
     return await _format_match_data(match_data)
 
 
@@ -144,8 +143,7 @@ async def _format_match_data(match_data):
 
 
 async def _get_all_matches_firestore():
-    db = AsyncClient()
-    collection = await db.collection('matches').get()
+    collection = await dbAsync.collection('matches').get()
 
     res = {}
 
@@ -218,3 +216,8 @@ def _update_user_account(user_id, is_test, match_id):
 #     m["duration"] = 60
 #     m["going"] = {user: {"createdAt": d.now()}}
 #     return _add_match_firestore(m)
+
+
+if __name__ == '__main__':
+    for _ in range(0, 20):
+        print(requests.get("https://europe-central2-nutmeg-9099c.cloudfunctions.net/get_all_matches").json())
