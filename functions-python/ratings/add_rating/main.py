@@ -21,13 +21,16 @@ def add_rating(request):
     asyncio.run(_add_rating_firestore(request_data["user_id"],
                                       request_data["match_id"],
                                       request_data["user_rated_id"],
-                                      request_data["score"]))
+                                      request_data["score"],
+                                      request_data.get("skills", [])
+                                      ))
 
     return {"data": {}}, 200
 
+
 # `user_id` gives rating to `user_rated_id`
 # data is stored in this way:   `user_rated_id` : { `user_id` : score }
-async def _add_rating_firestore(user_id, match_id, user_rated_id, score):
+async def _add_rating_firestore(user_id, match_id, user_rated_id, score, skills):
     db = _get_db()
 
     ratings_doc_ref = db.collection("ratings").document(match_id)
@@ -42,7 +45,8 @@ async def _add_rating_firestore(user_id, match_id, user_rated_id, score):
         if user_id in user_scores:
             raise Exception("{} already reviewed {} for match {}".format(user_id, user_rated_id, match_id))
 
-    await ratings_doc_ref.set({"scores": {user_rated_id: {user_id: score}}}, merge=True)
+    await ratings_doc_ref.set({"scores": {user_rated_id: {user_id: score}},
+                               "skills": {user_rated_id: {user_id: skills}}}, merge=True)
 
 
 if __name__ == '__main__':
