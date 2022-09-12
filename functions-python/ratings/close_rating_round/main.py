@@ -46,6 +46,7 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         return
 
     scores = ratings_doc.to_dict()["scores"]
+    skills = ratings_doc.to_dict().get("skills", {})
 
     # do calculations
     # user_id -> (avg_score, num_votes)
@@ -69,20 +70,34 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
             potm_scores[e[0]] = e[1][0]
     print("final scores {}; man(s) of the match: {}".format(final_scores, potm_scores))
 
-    if "isTest" not in match_data or not match_data["isTest"]:
-        # store score for users
-        for user, score_and_count in final_scores.items():
-            await db.collection("users_stats").document(user).update({"scoreMatches." + match_id: score_and_count[0]})
+    should_store = "isTest" not in match_data or not match_data["isTest"]
 
-            # update average score
-            user_stat_doc = await db.collection("users_stats").document(user).get()
-            scores = user_stat_doc.to_dict()["scoreMatches"].values()
-            avg_score = sum(scores) / len(scores)
-            await db.collection("users").document(user).update({"avg_score": avg_score})
+    # store score for users
+    for user, score_and_count in final_scores.items():
+        await db.collection("users_stats").document(user).set({"scoreMatches": {match_id: score_and_count[0]}},
+                                                              merge=True)
+
+        # update average score
+        user_stat_doc = await db.collection("users_stats").document(user).get()
+        scores = user_stat_doc.to_dict().get("scoreMatches", {}).values()
+        avg_score = sum(scores) / len(scores)
+
+        # update skills count with increments
+        skills_count = {"total_rated": 1}
+        for single_skill_rates in skills.get(user, {}).values():
+            for s in single_skill_rates:
+                skills_count[s] = skills_count.get(s, 0) + 1
+
+        print("updates on user {}: avg_score {}, skills: {}".format(user, avg_score, skills_count))
+
+        if should_store:
+            await db.collection("users").document(user).update({"avg_score": avg_score, "skills": skills_count})
 
         # store man of the match info in user doc
         for user in potm_scores:
-            await db.collection("users").document(user).update({"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
+            if should_store:
+                await db.collection("users").document(user).update(
+                    {"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
 
     # mark match as rated and store man_of_the_match
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
