@@ -7,6 +7,7 @@ import firebase_admin
 from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
 from firebase_admin import firestore
+from nutmeg_utils import firestore_utils
 
 
 firebase_admin.initialize_app()
@@ -51,17 +52,8 @@ async def _format_match_data_v2(match_data):
     match_data["status"] = _get_status(match_data).value
 
     # serialize dates
-    match_data["dateTime"] = _serialize_date(match_data["dateTime"])
-    if "paid_out_at" in match_data:
-        match_data["paid_out_at"] = _serialize_date(match_data["paid_out_at"])
+    match_data = firestore_utils._serialize_dates(match_data)
 
-    if match_data.get("cancelledAt", None):
-        match_data["cancelledAt"] = _serialize_date(match_data["cancelledAt"])
-    if match_data.get("scoresComputedAt", None):
-        match_data["scoresComputedAt"] = _serialize_date(match_data["scoresComputedAt"])
-
-    for u in match_data.get("going", []):
-        match_data["going"][u]["createdAt"] = _serialize_date(match_data["going"][u]["createdAt"])
     return match_data
 
 
