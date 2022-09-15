@@ -140,7 +140,7 @@ def _compute_skill_scores(skill_scores: Dict[str, Dict[str, List[str]]]):
     return users_score
 
 
-def _compute_overall_skill_scores(match_skill_score: List[Dict[str, int]]):
+def _compute_overall_skill_scores(match_skill_score: List[Dict[str, int]]) -> Dict[str, int]:
     all_scores = {}
     for skill_scores in match_skill_score:
         for s in skill_scores:
@@ -152,7 +152,7 @@ def _compute_overall_skill_scores(match_skill_score: List[Dict[str, int]]):
     for s in all_scores:
         averages[s] = sum(all_scores[s]) / len(all_scores[s])
 
-    return all_scores
+    return averages
 
 
 def _send_close_voting_notification(match_id, going_users, potms, sport_center_id):
