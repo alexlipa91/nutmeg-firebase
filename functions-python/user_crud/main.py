@@ -160,3 +160,7 @@ def _get_last_user_scores(user_id):
 
 def _serialize_date(date):
     return datetime.isoformat(date)
+
+
+if __name__ == '__main__':
+    print(_get_last_user_scores("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))

@@ -81,7 +81,8 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         print("\nuser {}".format(user))
         print("storing user stats for this match:\t\t{}".format(user_stats_updates))
 
-        await db.collection("users_stats").document(user).set(user_stats_updates, merge=True)
+        if should_store:
+            await db.collection("users_stats").document(user).set(user_stats_updates, merge=True)
 
         # update average score
         user_stat_doc = await db.collection("users_stats").document(user).get()
