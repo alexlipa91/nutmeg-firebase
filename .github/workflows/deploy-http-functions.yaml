@@ -132,6 +132,12 @@ jobs:
       name: "get_ratings_by_match_v2"
       folder: "ratings/get_ratings_by_match"
 
+  get_ratings_by_match_v3:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_ratings_by_match_v3"
+      folder: "ratings/get_ratings_by_match"
+
   send_notification_to_users:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
