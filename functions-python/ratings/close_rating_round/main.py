@@ -82,10 +82,11 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         print("storing user stats for this match:\t\t{}".format(user_stats_updates))
 
         if should_store:
-            await db.collection("users_stats").document(user).set(user_stats_updates, merge=True)
+            await db.collection("users").document(user).collection("stats").document("match_votes")\
+                .set(user_stats_updates, merge=True)
 
         # update average score
-        user_stat_doc = await db.collection("users_stats").document(user).get()
+        user_stat_doc = await db.collection("users").document(user).collection("stats").document("match_votes").get()
         scores = user_stat_doc.to_dict().get("scoreMatches", {}).values()
         match_skills_scores = user_stat_doc.to_dict().get("skillScores", {}).values()
         avg_score = sum(scores) / len(scores)
@@ -184,7 +185,3 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
             "event": "potm",
         }
     )
-
-
-if __name__ == '__main__':
-    asyncio.run(_close_rating_round_firestore("BmzSHWQFCi4CH8yVxWjL", send_notification=False))
