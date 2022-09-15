@@ -6,6 +6,7 @@ from google.cloud.firestore import AsyncClient
 from decimal import Decimal
 import firebase_admin
 from nutmeg_utils.notifications import send_notification_to_users
+from typing import Dict, List
 
 firebase_admin.initialize_app()
 
@@ -15,9 +16,6 @@ def close_rating_round(request):
     print("data {}".format(request_json))
 
     request_data = request_json["data"]
-
-    # FIXME disable ratings
-    # return {"reason": "disabled"}, 500
 
     asyncio.run(_close_rating_round_firestore(request_data["match_id"]))
 
@@ -72,26 +70,33 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
 
     should_store = "isTest" not in match_data or not match_data["isTest"]
 
+    skill_scores = _compute_skill_scores(skills)
+    print("skill scores: {}".format(skill_scores))
+
     # store score for users
     for user, score_and_count in final_scores.items():
-        await db.collection("users_stats").document(user).set({"scoreMatches": {match_id: score_and_count[0]}},
-                                                              merge=True)
+        user_stats_updates = {"scoreMatches": {match_id: score_and_count[0]}}
+        if len(skill_scores.get(user, {})) > 0:
+            user_stats_updates["skillScores"] = {match_id: skill_scores[user]}
+        print("\nuser {}".format(user))
+        print("storing user stats for this match:\t\t{}".format(user_stats_updates))
+
+        await db.collection("users_stats").document(user).set(user_stats_updates, merge=True)
 
         # update average score
         user_stat_doc = await db.collection("users_stats").document(user).get()
         scores = user_stat_doc.to_dict().get("scoreMatches", {}).values()
+        match_skills_scores = user_stat_doc.to_dict().get("skillScores", {}).values()
         avg_score = sum(scores) / len(scores)
 
-        # update skills count with increments
-        skills_count = {"total_rated": 1}
-        for single_skill_rates in skills.get(user, {}).values():
-            for s in single_skill_rates:
-                skills_count[s] = skills_count.get(s, 0) + 1
+        # update skills percentages: we count how many users among the ones who voted rated a certain skill.
+        # If a user voted but didn't select a skill, it will have an empty list of votes
+        skills_scores = _compute_overall_skill_scores(match_skills_scores)
 
-        print("updates on user {}: avg_score {}, skills: {}".format(user, avg_score, skills_count))
+        print("updates on overall stats:\t\t\t avg_score {}, skills: {}".format(avg_score, skills_scores))
 
         if should_store:
-            await db.collection("users").document(user).update({"avg_score": avg_score, "skills": skills_count})
+            await db.collection("users").document(user).update({"avg_score": avg_score, "skills": skills_scores})
 
         # store man of the match info in user doc
         for user in potm_scores:
@@ -106,6 +111,46 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
     if send_notification:
         _send_close_voting_notification(match_id, set(match_data["going"].keys()),
                                         set(potm_scores.keys()), match_data["sportCenterId"])
+
+
+def _compute_skill_scores(skill_scores: Dict[str, Dict[str, List[str]]]):
+    users_score = {}
+    for user, rates in skill_scores.items():
+        totals = {
+            "Speed": 0,
+            "Shooting": 0,
+            "Passing": 0,
+            "Dribbling": 0,
+            "Defending": 0,
+            "Physicality": 0,
+            "Goalkeeping": 0
+        }
+        num_received = len(skill_scores[user])
+
+        for _, skill_list in skill_scores[user].items():
+            for s in skill_list:
+                totals[s] = totals.get(s, 0) + 1
+
+        for s in totals:
+            if user not in users_score:
+                users_score[user] = {}
+            users_score[user][s] = totals[s] / num_received
+    return users_score
+
+
+def _compute_overall_skill_scores(match_skill_score: List[Dict[str, int]]):
+    all_scores = {}
+    for skill_scores in match_skill_score:
+        for s in skill_scores:
+            if s not in all_scores:
+                all_scores[s] = []
+            all_scores[s].append(skill_scores[s])
+
+    averages = {}
+    for s in all_scores:
+        averages[s] = sum(all_scores[s]) / len(all_scores[s])
+
+    return all_scores
 
 
 def _send_close_voting_notification(match_id, going_users, potms, sport_center_id):
@@ -138,3 +183,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
             "event": "potm",
         }
     )
+
+
+if __name__ == '__main__':
+    asyncio.run(_close_rating_round_firestore("BmzSHWQFCi4CH8yVxWjL", send_notification=False))
