@@ -63,7 +63,7 @@ def _cancel_match_firestore(match_id, trigger):
 
     users_stats_docs = {}
     for u in match_data.get("going", {}).keys():
-        users_stats_docs[u] = db.collection('users_stats').document(u)
+        users_stats_docs[u] = db.collection("users").document(u).collection("stats").document("match_votes")
 
     _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_stats_docs,
                                           match_id, match_data["isTest"], trigger)

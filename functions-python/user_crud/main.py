@@ -140,7 +140,7 @@ def _get_user_firestore(user_id):
 
 def _get_last_user_scores(user_id):
     db = firestore.client()
-    data = db.collection('users_stats').document(user_id).get().to_dict()
+    data = db.collection("users").document(user_id).collection("stats").document("match_votes").get().to_dict()
     if not data:
         return []
 

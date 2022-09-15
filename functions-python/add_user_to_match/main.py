@@ -35,7 +35,7 @@ def _add_user_to_match_firestore(match_id, user_id, payment_intent):
     db = firestore.client()
 
     transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
-    user_stat_doc_ref = db.collection('users_stats').document(user_id)
+    user_stat_doc_ref = db.collection("users").document(user_id).collection("stats").document("match_votes")
     match_doc_ref = db.collection('matches').document(match_id)
 
     _add_user_to_match_firestore_transaction(db.transaction(), transactions_doc_ref, user_stat_doc_ref,
