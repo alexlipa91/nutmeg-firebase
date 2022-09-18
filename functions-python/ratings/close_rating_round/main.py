@@ -100,11 +100,11 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         if should_store:
             await db.collection("users").document(user).update({"avg_score": avg_score, "skills": skills_scores})
 
-        # store man of the match info in user doc
+        # udpate potm count for user
         for user in potm_scores:
             if should_store:
                 await db.collection("users").document(user).update(
-                    {"manOfTheMatch": firestore.firestore.ArrayUnion([match_id])})
+                    {"potm_count": firestore.firestore.Increment(1)})
 
     # mark match as rated and store man_of_the_match
     await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
