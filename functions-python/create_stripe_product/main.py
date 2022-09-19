@@ -24,17 +24,25 @@ def create_stripe_product(data, context):
     print('Function triggered by change to: %s' % trigger_resource)
 
     match_id = data["value"]["name"].split("/")[-1]
-    is_test = data["value"]["fields"]["isTest"]["booleanValue"]
+    fields = data["value"]["fields"]
+    is_test = fields["isTest"]["booleanValue"]
 
-    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
+    date_time = datetime.strptime(fields["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
 
-    sport_center = _get_sport_center_details(data["value"]["fields"]["sportCenterId"]["stringValue"])
+    if "sportCenterId" in fields:
+        sport_center = _get_sport_center_details(fields["sportCenterId"]["stringValue"])
+        sport_center_name = sport_center["name"]
+        sport_center_address = sport_center["address"]
+    else:
+        sport_center_address = fields["sportCenter"]["address"]
+        sport_center_name = sport_center_address.split(",")[0]
 
     product_id = _create_stripe_product("Nutmeg Match - "
-                                        + sport_center["name"]
-                                        + " - " + date_time.astimezone(pytz.timezone("Europe/Amsterdam")).strftime("%a %-d %b %H:%M"),
-                                        sport_center["address"], is_test)
-    price_id = _create_stripe_price(data["value"]["fields"]["pricePerPerson"]["integerValue"], product_id, is_test)
+                                        + sport_center_name
+                                        + " - " + date_time.astimezone(pytz.timezone("Europe/Amsterdam"))
+                                        .strftime("%a %-d %b %H:%M"),
+                                        sport_center_address, is_test)
+    price_id = _create_stripe_price(fields["pricePerPerson"]["integerValue"], product_id, is_test)
     _store_in_firebase(match_id, product_id, price_id)
 
 
