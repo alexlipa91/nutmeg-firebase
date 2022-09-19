@@ -153,6 +153,25 @@ def _compute_skill_scores(skill_scores: Dict[str, Dict[str, List[str]]]):
     return users_score
 
 
+def _compute_weighted_avg_score(user_id):
+    db = firestore.client()
+    user_stat_doc = db.collection("users").document(user_id).collection("stats").document("match_votes").get()
+
+    match_joined = user_stat_doc.to_dict().get("joinedMatches", {})
+    numerator = denominator = 0
+    for m in match_joined:
+        ratings_doc = db.collection("ratings").document(m).get().to_dict()
+        if ratings_doc and user_id in ratings_doc["scores"]:
+            received = ratings_doc["scores"][user_id]
+            match_score = sum(received.values()) / len(received)
+            score_weight = len(received)
+
+            numerator += match_score * score_weight
+            denominator += score_weight
+
+    return numerator / denominator
+
+
 def _compute_overall_skill_scores(match_skill_score: List[Dict[str, int]]) -> Dict[str, int]:
     all_scores = {}
     for skill_scores in match_skill_score:
