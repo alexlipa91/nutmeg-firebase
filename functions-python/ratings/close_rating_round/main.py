@@ -43,19 +43,31 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
         return
 
-    scores = ratings_doc.to_dict()["scores"]
-    skills = ratings_doc.to_dict().get("skills", {})
+    scores_raw = ratings_doc.to_dict()["scores"]
+    skills_raw = ratings_doc.to_dict().get("skills", {})
+
+    scores = {}
+    skills = {}
+
+    # Keep only users who received > 1 vote
+    for u in scores_raw:
+        if len(scores_raw[u]) > 1:
+            scores[u] = scores_raw[u]
+            skills[u] = skills_raw[u]
+
+    if len(scores) == 0:
+        print("No ratings for this match")
+        # mark match as rated
+        await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
+        return
 
     # do calculations
     # user_id -> (avg_score, num_votes)
     final_scores = {}
     for u in scores:
         only_positive = list(filter(lambda s: s > 0, scores[u].values()))
-        if len(only_positive) == 0:
-            final_scores[u] = (0, 0)
-        else:
-            s = Decimal(sum(only_positive) / len(only_positive))
-            final_scores[u] = (float(round(s, 2)), len(only_positive))
+        s = Decimal(sum(only_positive) / len(only_positive))
+        final_scores[u] = (float(round(s, 2)), len(only_positive))
 
     # who has the biggest dick(s) in the match?
     scores_sorted = sorted(final_scores.items(), key=lambda x: x[1])
@@ -196,3 +208,7 @@ def add_score_to_last_scores(db, user_id, score):
         scores = scores[-10:]
 
     db.collection("users").document(user_id).update({"last_scores": scores})
+
+
+if __name__ == '__main__':
+    asyncio.run(_close_rating_round_firestore("9k4TMLwo1B5ICQztKCM3"))
