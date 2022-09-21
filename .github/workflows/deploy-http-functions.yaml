@@ -278,3 +278,4 @@ jobs:
     with:
       name: "get_location_predictions_from_query"
       folder: "sportcenters_crud"
+      secrets: GOOGLE_PLACES_API_KEY=projects/956073807168/secrets/googleMapsApiKey
