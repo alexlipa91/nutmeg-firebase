@@ -80,10 +80,6 @@ def _add_match_firestore(match_data):
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
-    # fixme changed name of the field
-    if "sport" not in match_data:
-        match_data["sport"] = "BvwIYDpu0f3RIT4EaWBH"
-
     # check if organizer can receive payments and if not do not publish yet
     organizer_data = dbSync.collection('users').document(match_data["organizerId"]).get().to_dict()
     field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
@@ -116,6 +112,12 @@ def _add_match_firestore(match_data):
             {"match_id": doc_ref.id},
             cancellation_time - datetime.timedelta(hours=1)
         )
+
+    # store sportcenter if custom one defined by the organizer
+    if "sportCenter" in match_data:
+        sport_center_data = match_data["sportCenter"]
+        db.collection("users").document(match_data["organizerId"]).collection("sportCenters")\
+            .document(sport_center_data["placeId"]).set(sport_center_data)
 
     return doc_ref.id
 
