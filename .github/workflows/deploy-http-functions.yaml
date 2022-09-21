@@ -272,3 +272,9 @@ jobs:
       name: "debug_env"
       folder: "run_post_match_tasks"
 
+
+  get_location_predictions_from_query:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_location_predictions_from_query"
+      folder: "sportcenters_crud"
