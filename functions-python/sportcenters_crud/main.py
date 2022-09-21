@@ -1,6 +1,8 @@
 import asyncio
+import os
 
 import firebase_admin
+import requests
 from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
 
@@ -24,5 +26,24 @@ async def _get_sportcenter_firestore(sportcenter_id):
     return sport_center_data
 
 
-if __name__ == '__main__':
-    print(asyncio.run(_get_sportcenter_firestore("ChIJaaYbkP8JxkcR_lUNC3ssFuU")))
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
+def get_location_predictions_from_query(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    query = request_json["data"]["query"]
+    url = "https://maps.googleapis.com/maps/api/place/textsearch/json?"
+
+    req = requests.get(url + 'query=' + query + '&key=' + os.environ["GOOGLE_PLACES_API_KEY"])
+    resp = req.json()
+
+    results = resp['results']
+    results_formatted = []
+
+    for r in results:
+        r_formatted = {}
+        for k in ('formatted_address', 'geometry', 'place_id'):
+            r_formatted[k] = r[k]
+        results_formatted.append(r_formatted)
+
+    return {"data": results_formatted}, 200
