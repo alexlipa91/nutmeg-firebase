@@ -31,8 +31,11 @@ def get_location_predictions_from_query(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    query = request_json["data"]["query"]
-    url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?'
+    return {"data": {"predictions": _get_location_predictions_from_query(request_json["data"]["query"])}}, 200
+
+
+def _get_location_predictions_from_query(query):
+    url = "https://maps.googleapis.com/maps/api/place/textsearch/json?"
 
     req = requests.get(url + 'query=' + query + '&key=' + os.environ["GOOGLE_PLACES_API_KEY"])
     resp = req.json()
@@ -42,8 +45,8 @@ def get_location_predictions_from_query(request):
 
     for r in results:
         r_formatted = {}
-        for k in ('formatted_address', 'geometry', 'place_id'):
+        for k in ('name', 'formatted_address', 'geometry', 'place_id'):
             r_formatted[k] = r[k]
         results_formatted.append(r_formatted)
 
-    return {"data": {"predictions": results_formatted}}, 200
+    return results_formatted
