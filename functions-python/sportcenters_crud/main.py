@@ -46,4 +46,4 @@ def get_location_predictions_from_query(request):
             r_formatted[k] = r[k]
         results_formatted.append(r_formatted)
 
-    return {"data": results_formatted}, 200
+    return {"data": {"predictions": results_formatted}}, 200
