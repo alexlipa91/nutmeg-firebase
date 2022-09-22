@@ -39,7 +39,10 @@ async def _get_sportcenter_firestore(sportcenter_id):
 async def _get_user_sportcenters(user_id):
     db = AsyncClient()
     x = await db.collection('users').document(user_id).collection("sportCenters").get()
-    return [s.to_dict() for s in x]
+    result = {}
+    for s in x:
+        result[s.id] = s.to_dict()
+    return result
 
 
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
