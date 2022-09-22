@@ -20,10 +20,26 @@ def get_sportcenter(request):
     return {"data": asyncio.run(_get_sportcenter_firestore(request_data["id"]))}, 200
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
+def get__user_sportcenters(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    request_data = request_json["data"]
+
+    return {"data": asyncio.run(_get_user_sportcenters(request_data["user_id"]))}, 200
+
+
 async def _get_sportcenter_firestore(sportcenter_id):
     db = AsyncClient()
     sport_center_data = (await db.collection('sport_centers').document(sportcenter_id).get()).to_dict()
     return sport_center_data
+
+
+async def _get_user_sportcenters(user_id):
+    db = AsyncClient()
+    x = await db.collection('users').document(user_id).collection("sportCenters").get()
+    return [s.to_dict() for s in x]
 
 
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
