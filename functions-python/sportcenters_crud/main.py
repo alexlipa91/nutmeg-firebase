@@ -17,7 +17,7 @@ def get_sportcenter(request):
 
     request_data = request_json["data"]
 
-    return {"data": asyncio.run(_get_sportcenter_firestore(request_data["id"]))}, 200
+    return {"data": {"sportcenters": asyncio.run(_get_sportcenter_firestore(request_data["id"]))}}, 200
 
 
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
