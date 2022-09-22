@@ -37,7 +37,7 @@ def get_location_predictions_from_query(request):
 def _get_location_predictions_from_query(query):
     url = "https://maps.googleapis.com/maps/api/place/textsearch/json?"
 
-    req = requests.get(url + 'query=' + query + '&key=' + os.environ["GOOGLE_PLACES_API_KEY"])
+    req = requests.get(url + 'query=' + query + '&key=' + os.environ["GOOGLE_PLACES_API_KEY"] + '&region=nl')
     resp = req.json()
 
     results = resp['results']
