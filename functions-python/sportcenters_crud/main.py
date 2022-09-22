@@ -21,7 +21,7 @@ def get_sportcenter(request):
 
 
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
-def get__user_sportcenters(request):
+def get_user_sportcenters(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
