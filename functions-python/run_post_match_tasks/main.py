@@ -29,19 +29,18 @@ def _run_post_match_tasks(match_id):
         print("match deleted or cancelled...skipping")
         return
 
+    going_users = match_data.get("going", {}).keys()
+
     # update number of played stats
     summed_field_name = "num_matches_joined" if not match_data["isTest"] else "num_matches_joined_test"
-    for u in match_data.get("going", {}).keys():
+    for u in going_users:
         db.collection("users").document(u).update(
             {summed_field_name: firestore.firestore.Increment(1)})
-
-    # send start voting notification
-    users = match_data["going"].keys()
 
     send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
         body="You have 24h to rate the players of today's match.",
-        users=users,
+        users=going_users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "route": "/match/" + match_id,
