@@ -76,7 +76,7 @@ def get_placeid_info(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    return {"data": {_get_placeid_info(request_json["data"]["place_id"])}}, 200
+    return {"data": _get_placeid_info(request_json["data"]["place_id"])}, 200
 
 
 def _get_placeid_info(place_id):
