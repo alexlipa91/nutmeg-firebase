@@ -71,6 +71,11 @@ def _get_location_predictions_from_query(query):
     return results_formatted
 
 
-if __name__ == '__main__':
-    for p in _get_location_predictions_from_query("madu"):
-        print(p)
+def _get_placeid_info(place_id):
+    url = 'https://maps.googleapis.com/maps/api/place/details/json?'
+
+    req = requests.get(url + 'place_id=' + place_id + '&key=' + os.environ["GOOGLE_PLACES_API_KEY"]
+                       + "&fields=name%2Cformatted_address%2Cgeometry")
+    resp = req.json()
+
+    return resp['result']
