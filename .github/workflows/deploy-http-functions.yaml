@@ -280,6 +280,13 @@ jobs:
       folder: "sportcenters_crud"
       secrets: GOOGLE_PLACES_API_KEY=projects/956073807168/secrets/googleMapsApiKey
 
+  get_placeid_info:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "get_placeid_info"
+      folder: "sportcenters_crud"
+      secrets: GOOGLE_PLACES_API_KEY=projects/956073807168/secrets/googleMapsApiKey
+
   get_user_sportcenters:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
