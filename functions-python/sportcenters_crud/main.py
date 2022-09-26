@@ -71,6 +71,14 @@ def _get_location_predictions_from_query(query):
     return results_formatted
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
+def get_placeid_info(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    return {"data": {_get_placeid_info(request_json["data"]["place_id"])}}, 200
+
+
 def _get_placeid_info(place_id):
     url = 'https://maps.googleapis.com/maps/api/place/details/json?'
 
