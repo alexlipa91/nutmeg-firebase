@@ -140,7 +140,7 @@ def _create_organizer_payout(match_id, attempt):
         print("Cannot find match...stopping")
         return
 
-    amount = (match_data["pricePerPerson"] - match_data.get("fee", 50)) * len(match_data["going"].keys())
+    amount = (match_data["pricePerPerson"] - match_data.get("fee", 50)) * len(match_data.get("going", {}))
     if amount == 0:
         print("Noting to payout")
         return
