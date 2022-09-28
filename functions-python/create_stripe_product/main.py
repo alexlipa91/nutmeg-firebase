@@ -34,7 +34,7 @@ def create_stripe_product(data, context):
         sport_center_name = sport_center["name"]
         sport_center_address = sport_center["address"]
     else:
-        sport_center_fields = fields["sportCenter"]["mapValues"]["fields"]
+        sport_center_fields = fields["sportCenter"]["mapValue"]["fields"]
         sport_center_address = sport_center_fields["address"]
         sport_center_name = sport_center_fields["name"]
 
