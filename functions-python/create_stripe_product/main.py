@@ -34,8 +34,9 @@ def create_stripe_product(data, context):
         sport_center_name = sport_center["name"]
         sport_center_address = sport_center["address"]
     else:
-        sport_center_address = fields["sportCenter"]["address"]
-        sport_center_name = sport_center_address.split(",")[0]
+        sport_center_fields = fields["sportCenter"]["mapValues"]["fields"]
+        sport_center_address = sport_center_fields["address"]
+        sport_center_name = sport_center_fields["name"]
 
     product_id = _create_stripe_product("Nutmeg Match - "
                                         + sport_center_name
