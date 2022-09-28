@@ -5,6 +5,7 @@ import firebase_admin
 import requests
 from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
+from firebase_admin import firestore
 
 
 firebase_admin.initialize_app()
@@ -87,7 +88,7 @@ def add_user_sportcenter(request):
     user_id = request_json["data"]["user_id"]
     sport_center = request_json["data"]["sport_center"]
 
-    db = AsyncClient()
+    db = firestore.client()
 
     db.collection("users").document(user_id).collection("sportCenters")\
         .document(sport_center["placeId"]).set(sport_center)
