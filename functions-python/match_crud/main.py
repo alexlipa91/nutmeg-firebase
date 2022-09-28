@@ -113,12 +113,6 @@ def _add_match_firestore(match_data):
             cancellation_time - datetime.timedelta(hours=1)
         )
 
-    # store sportcenter if custom one defined by the organizer
-    if "sportCenter" in match_data:
-        sport_center_data = match_data["sportCenter"]
-        db.collection("users").document(match_data["organizerId"]).collection("sportCenters")\
-            .document(sport_center_data["placeId"]).set(sport_center_data)
-
     return doc_ref.id
 
 
