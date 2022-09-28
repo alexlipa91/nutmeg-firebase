@@ -79,6 +79,22 @@ def get_placeid_info(request):
     return {"data": _get_placeid_info(request_json["data"]["place_id"])}, 200
 
 
+@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
+def add_user_sportcenter(request):
+    request_json = request.get_json(silent=True)
+    print("args {}, data {}".format(request.args, request_json))
+
+    user_id = request_json["data"]["user_id"]
+    sport_center = request_json["data"]["sport_center"]
+
+    db = AsyncClient()
+
+    db.collection("users").document(user_id).collection("sportCenters")\
+        .document(sport_center["placeId"]).set(sport_center)
+
+    return {"data": {}}, 200
+
+
 def _get_placeid_info(place_id):
     url = 'https://maps.googleapis.com/maps/api/place/details/json?'
 
