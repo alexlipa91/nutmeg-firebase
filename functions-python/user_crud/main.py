@@ -163,4 +163,10 @@ def _serialize_date(date):
 
 
 if __name__ == '__main__':
-    print(_get_last_user_scores("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
+    db = firestore.client()
+
+    for u in db.collection("users").get():
+        d = u.to_dict()
+        ls = d.get("last_scores", [])
+        if len(ls) > 10:
+            db.collection("users").document(u.id).update({"last_scores": ls[-10:]})
