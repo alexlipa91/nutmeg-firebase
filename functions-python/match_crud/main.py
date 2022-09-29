@@ -94,7 +94,11 @@ def _add_match_firestore(match_data):
 
     db = firestore.client()
 
-    doc_ref = db.collection('matches').document()
+    if "id" in match_data:
+        doc_ref = db.collection('matches').document(match_data["id"])
+    else:
+        doc_ref = db.collection('matches').document()
+
     doc_ref.set(match_data)
 
     # schedule cancellation check if required
