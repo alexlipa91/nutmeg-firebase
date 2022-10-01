@@ -29,6 +29,10 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
 
     match_doc = await db.collection("matches").document(match_id).get()
     match_data = match_doc.to_dict()
+    if not match_data:
+        print("Match does not exist")
+        return
+
     if match_data.get("cancelledAt", None):
         print("Match is canceled")
         return
