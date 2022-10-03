@@ -304,3 +304,5 @@ jobs:
     with:
       name: "add_user_sportcenter_from_place_id"
       folder: "sportcenters_crud"
+      secrets: GOOGLE_PLACES_API_KEY=projects/956073807168/secrets/googleMapsApiKey
+
