@@ -298,3 +298,9 @@ jobs:
     with:
       name: "add_user_sportcenter"
       folder: "sportcenters_crud"
+
+  add_user_sportcenter_from_place_id:
+    uses: './.github/workflows/deploy-python-http-template.yaml'
+    with:
+      name: "add_user_sportcenter_from_place_id"
+      folder: "sportcenters_crud"
