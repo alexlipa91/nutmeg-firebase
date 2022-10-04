@@ -105,7 +105,7 @@ def add_user_sportcenter_from_place_id(request):
     _add_user_sportcenter_from_place_id(
         request_json["data"]["place_id"],
         request_json["data"]["additional_info"],
-        request_json["data"]["user_id"],
+        request_json["data"]["user_id"]
     )
 
     return {"data": {}}, 200
