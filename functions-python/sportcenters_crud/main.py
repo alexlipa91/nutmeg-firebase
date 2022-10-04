@@ -129,7 +129,7 @@ def _add_user_sportcenter_from_place_id(place_id, additional_info, user_id):
         "name": result["name"],
         "lat": lat,
         "lng": lng,
-        "timeZonId": _get_timezone_id(lat, lng)
+        "timeZoneId": _get_timezone_id(lat, lng)
     }
     for k in additional_info:
         sport_center[k] = additional_info[k]
