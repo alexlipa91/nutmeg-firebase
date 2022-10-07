@@ -100,7 +100,7 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         if should_store:
             await db.collection("users").document(user).collection("stats").document("match_votes")\
                 .set(user_stats_updates, merge=True)
-            await add_score_to_last_scores(db, user, score_and_count[0])
+            await add_score_to_last_scores(db, user, score_and_count[0], match_data["dateTime"])
 
         # update average score
         user_stat_doc = await db.collection("users").document(user).collection("stats").document("match_votes").get()
@@ -223,15 +223,15 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
     )
 
 
-async def add_score_to_last_scores(db, user_id, score):
+async def add_score_to_last_scores(db, user_id, score, date_time):
     user_doc = await db.collection("users").document(user_id).get(field_paths=["last_scores"])
-    scores = user_doc.to_dict().get("last_scores", [])
-    scores.append(score)
+    scores = user_doc.to_dict().get("last_date_scores", {})
+    scores[date_time.strftime("%Y%m%d%H%M%S")] = score
+
     if len(scores) > 10:
-        scores = scores[-10:]
+        top_ten_with_score = {}
+        for d in sorted(scores, reverse=True)[:10]:
+            top_ten_with_score[d] = scores[d]
+        scores = top_ten_with_score
 
-    await db.collection("users").document(user_id).update({"last_scores": scores})
-
-
-if __name__ == '__main__':
-    asyncio.run(_close_rating_round_firestore("5tq7H5D5PZ13xEXY9lJe"))
+    await db.collection("users").document(user_id).update({"last_date_scores": scores})
