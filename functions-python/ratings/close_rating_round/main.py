@@ -225,7 +225,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
 
 async def add_score_to_last_scores(db, user_id, score):
     user_doc = await db.collection("users").document(user_id).get(field_paths=["last_scores"])
-    scores = user_doc.to_dict().get("last_scores", {})
+    scores = user_doc.to_dict().get("last_scores", [])
     scores.append(score)
     if len(scores) > 10:
         scores = scores[-10:]
@@ -234,4 +234,4 @@ async def add_score_to_last_scores(db, user_id, score):
 
 
 if __name__ == '__main__':
-    asyncio.run(_close_rating_round_firestore("00G11Q7kSaDrEC4TEzk8"))
+    asyncio.run(_close_rating_round_firestore("5tq7H5D5PZ13xEXY9lJe"))
