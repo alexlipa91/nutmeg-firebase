@@ -3,5 +3,5 @@ protobuf==3.20.1
 stripe
 py-firebase-dynamic-links==1.0.1
 google-cloud-tasks==2.7.2
--e git+https://github.com/alexlipa91/nutmeg-firebase.git@73c75670f439f353b9679a6ba7bc45aa543dac16#subdirectory=nutmeg_utils&egg=nutmeg_utils
+-e git+https://github.com/alexlipa91/nutmeg-firebase.git@60d3ce6fc95d511eb70e2039d82fa9e7d7e70e5c#subdirectory=nutmeg_utils&egg=nutmeg_utils
 flask-cors
