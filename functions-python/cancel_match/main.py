@@ -7,6 +7,7 @@ from firebase_admin import firestore
 from datetime import datetime
 from nutmeg_utils.notifications import send_notification_to_users
 from nutmeg_utils.payments import get_payment_intent
+from nutmeg_utils.model import get_sport_center
 
 
 class CancellationTrigger(Enum):
@@ -75,7 +76,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
     db = firestore.client()
 
     match = match_doc_ref.get(transaction=transaction).to_dict()
-    sport_center = db.collection('sport_centers').document(match["sportCenterId"]).get().to_dict()["name"]
+    sport_center = get_sport_center(match)["name"]
     price = match["pricePerPerson"] / 100
 
     transaction.update(match_doc_ref, {
