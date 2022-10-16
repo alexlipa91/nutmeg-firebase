@@ -90,7 +90,9 @@ def _add_match_firestore(match_data):
         match_data["unpublished_reason"] = "organizer_not_onboarded"
 
     # add nutmeg fee to price
-    match_data["pricePerPerson"] = match_data["pricePerPerson"] + 50
+    # todo generalise this
+    if not match_data.get("feeOnOrganiser", False):
+        match_data["pricePerPerson"] = match_data["pricePerPerson"] + 50
 
     db = firestore.client()
 
