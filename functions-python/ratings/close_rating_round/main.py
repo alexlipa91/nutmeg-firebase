@@ -224,7 +224,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
 
 
 async def add_score_to_last_scores(db, user_id, score, date_time):
-    user_doc = await db.collection("users").document(user_id).get(field_paths=["last_scores"])
+    user_doc = await db.collection("users").document(user_id).get(field_paths=["last_date_scores"])
     scores = user_doc.to_dict().get("last_date_scores", {})
     scores[date_time.strftime("%Y%m%d%H%M%S")] = score
 
