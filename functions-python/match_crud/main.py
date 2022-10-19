@@ -10,7 +10,7 @@ from firebase_admin import firestore
 from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
 from nutmeg_utils.schedule_function import schedule_function
-
+from nutmeg_utils.firestore_utils import _serialize_dates
 
 firebase_admin.initialize_app()
 dbSync = firestore.client()
@@ -66,8 +66,7 @@ def _edit_match_firestore(match_id, match_data):
     if not doc_ref.get().exists:
         raise Exception("Match {} does not exists".format(match_id))
 
-    if "dateTime" in match_data:
-        match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
+    match_data = _serialize_dates(match_data)
 
     doc_ref.update(match_data)
 
@@ -98,11 +97,7 @@ def _add_match_firestore(match_data):
 
     db = firestore.client()
 
-    if "id" in match_data:
-        doc_ref = db.collection('matches').document(match_data["id"])
-    else:
-        doc_ref = db.collection('matches').document()
-
+    doc_ref = db.collection('matches').document()
     doc_ref.set(match_data)
 
     # schedule cancellation check if required
@@ -206,19 +201,6 @@ def _update_user_account(user_id, is_test, match_id):
     user_doc_ref.update(user_updates)
 
     return organizer_id
-
-
-# def _add_match_with_user_firestore(user):
-#     d = datetime.datetime.now() + datetime.timedelta(hours=2)
-#     m = {}
-#     m["sportCenterId"] = "ChIJ3zv5cYsJxkcRAr4WnAOlCT4"
-#     m["sport"] = "BvwIYDpu0f3RIT4EaWBH"
-#     m["pricePerPerson"] = 1000
-#     m["maxPlayers"] = 10
-#     m["dateTime"] = d.isoformat()
-#     m["duration"] = 60
-#     m["going"] = {user: {"createdAt": d.now()}}
-#     return _add_match_firestore(m)
 
 
 if __name__ == '__main__':
