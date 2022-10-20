@@ -235,3 +235,18 @@ async def add_score_to_last_scores(db, user_id, score, date_time):
         scores = top_ten_with_score
 
     await db.collection("users").document(user_id).update({"last_date_scores": scores})
+
+
+def _compute_skill_count():
+    db = firestore.client()
+
+    for r in db.collection("ratings").get():
+        r_data = r.to_dict()
+        if "skills" in r_data:
+            for receiver in r_data["skills"]:
+                print(receiver)
+                for giver in r_data["skills"][receiver]:
+                    for skill in r_data["skills"][receiver][giver]:
+                        print(skill)
+                        db.collection("users").document(receiver).update({"skills_count.{}".format(skill):
+                                                                              firestore.firestore.Increment(1)})
