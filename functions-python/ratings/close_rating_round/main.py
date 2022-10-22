@@ -105,17 +105,17 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         # update average score
         user_stat_doc = await db.collection("users").document(user).collection("stats").document("match_votes").get()
         scores = user_stat_doc.to_dict().get("scoreMatches", {}).values()
-        match_skills_scores = user_stat_doc.to_dict().get("skillScores", {}).values()
         avg_score = sum(scores) / len(scores)
 
-        # update skills percentages: we count how many users among the ones who voted rated a certain skill.
-        # If a user voted but didn't select a skill, it will have an empty list of votes
-        skills_scores = _compute_overall_skill_scores(match_skills_scores)
-
-        print("updates on overall stats:\t\t\t avg_score {}, skills: {}".format(avg_score, skills_scores))
+        # update skills counts
+        skill_scores_totals = {}
+        for skill in skill_scores[user]:
+            skill_scores_totals[skill] = firestore.firestore.Increment(skill_scores[user][skill])
+        print("updates on overall stats:\t\t\t avg_score {}, skills_count: {}".format(avg_score, skill_scores_totals))
 
         if should_store:
-            await db.collection("users").document(user).update({"avg_score": avg_score, "skills": skills_scores})
+            await db.collection("users").document(user).update({"avg_score": avg_score,
+                                                                "skills_count": skill_scores_totals})
 
         # udpate potm count for user
         for user in potm_scores:
@@ -133,7 +133,7 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
 
 
 def _compute_skill_scores(skill_scores: Dict[str, Dict[str, List[str]]]):
-    users_score = {}
+    user_totals = {}
     for user, rates in skill_scores.items():
         totals = {
             "Speed": 0,
@@ -144,17 +144,14 @@ def _compute_skill_scores(skill_scores: Dict[str, Dict[str, List[str]]]):
             "Physicality": 0,
             "Goalkeeping": 0
         }
-        num_received = len(skill_scores[user])
 
         for _, skill_list in skill_scores[user].items():
             for s in skill_list:
                 totals[s] = totals.get(s, 0) + 1
 
-        for s in totals:
-            if user not in users_score:
-                users_score[user] = {}
-            users_score[user][s] = totals[s] / num_received
-    return users_score
+        user_totals[user] = totals
+
+    return user_totals
 
 
 def _compute_weighted_avg_score(user_id):
@@ -241,12 +238,30 @@ def _compute_skill_count():
     db = firestore.client()
 
     for r in db.collection("ratings").get():
+        print(r.id)
         r_data = r.to_dict()
         if "skills" in r_data:
-            for receiver in r_data["skills"]:
-                print(receiver)
-                for giver in r_data["skills"][receiver]:
-                    for skill in r_data["skills"][receiver][giver]:
-                        print(skill)
-                        db.collection("users").document(receiver).update({"skills_count.{}".format(skill):
-                                                                              firestore.firestore.Increment(1)})
+            skill_scores = _compute_skill_scores(r_data["skills"])
+            print(skill_scores)
+
+            for user in skill_scores:
+                print(user)
+                db.collection("users").document(user).collection("stats").document("match_votes").update({
+                    "skillScores.{}".format(r.id): skill_scores[user]
+                })
+
+                updates = {}
+                for skill in skill_scores[user]:
+                    updates["skills_count.{}".format(skill)] = firestore.firestore.Increment(skill_scores[user][skill])
+
+                db.collection("users").document(user).update(updates)
+
+
+if __name__ == '__main__':
+    db = firestore.client()
+
+    for u in db.collection("users").get():
+        print(u.id)
+        db.collection("users").document(u.id).update({"skills_count": firestore.firestore.DELETE_FIELD})
+
+    _compute_skill_count()
