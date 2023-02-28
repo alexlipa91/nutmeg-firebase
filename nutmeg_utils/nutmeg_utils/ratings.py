@@ -16,7 +16,7 @@ class MatchStats:
         user_scores = {}
         for u in self.raw_scores:
             if len(self.raw_scores[u]) > 1:
-                scores = self.raw_scores[u].values()
+                scores = [v for v in self.raw_scores[u].values() if v > 0]
                 user_scores[u] = sum(scores) / len(scores)
         return user_scores
 
