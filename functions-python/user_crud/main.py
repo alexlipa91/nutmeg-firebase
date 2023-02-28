@@ -8,7 +8,7 @@ from firebase_admin import firestore
 from firebase_admin import auth
 from flask_cors import cross_origin
 
-from nutmeg_utils.nutmeg_utils.ratings import MatchStats
+from nutmeg_utils.ratings import MatchStats
 
 firebase_admin.initialize_app()
 

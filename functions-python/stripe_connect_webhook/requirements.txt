@@ -1,4 +1,4 @@
 stripe
 firebase-admin==5.2.0
 protobuf==3.20.1
--e git+https://github.com/alexlipa91/nutmeg-firebase.git@59e3641058d5f8672ca27262c5cc2fbb2df75828#subdirectory=nutmeg_utils&egg=nutmeg_utils
+-e git+https://github.com/alexlipa91/nutmeg-firebase.git@a079ff9ce322f9752c78433021405d286e80fd20#subdirectory=nutmeg_utils&egg=nutmeg_utils
