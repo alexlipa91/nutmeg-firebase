@@ -139,7 +139,7 @@ def _get_user_firestore(user_id):
         return None
 
     if "scores" in data:
-        data["avg_score"] = data["scores.total_sum"] / data["scores.number_of_scored_games"]
+        data["avg_score"] = data["scores"]["total_sum"] / data["scores"]["number_of_scored_games"]
 
     return data
 
@@ -266,4 +266,10 @@ def recompute_users_stats():
 
 
 if __name__ == '__main__':
-    recompute_users_stats()
+    # recompute_users_stats()
+    db = firestore.client()
+
+    for u in db.collection("users").get():
+        db.collection("users").document(u.id).update({
+            "avg_score": firestore.firestore.DELETE_FIELD
+        })
