@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+import dateutil.tz
 import firebase_admin
 import stripe
 from firebase_admin import firestore
@@ -162,11 +163,84 @@ def _serialize_date(date):
     return datetime.isoformat(date)
 
 
-if __name__ == '__main__':
+def recompute_users_stats():
     db = firestore.client()
 
-    for u in db.collection("users").get():
-        d = u.to_dict()
-        ls = d.get("last_scores", [])
-        if len(ls) > 10:
-            db.collection("users").document(u.id).update({"last_scores": ls[-10:]})
+    # get match stats
+    class MatchStats:
+        def __init__(self, going, potms, ratings):
+            self.going = going
+            self.potms = potms
+            self.ratings = ratings
+
+        def __repr__(self):
+            return "{}\n{}\n{}".format(str(self.going), str(self.potms), str(self.ratings))
+
+    match_stats = {}
+    for m in db.collection("matches").get():
+        data = m.to_dict()
+
+        if datetime.now(dateutil.tz.UTC) < data["dateTime"]:
+            print("skipping match in the future {}".format(m.id))
+            continue
+
+        going = list(data.get("going", {}).keys())
+        potms = list(data.get("manOfTheMatch", {}).keys())
+
+        ratings_doc = db.collection("ratings").document(m.id).get()
+
+        scores = {}
+        if ratings_doc.exists:
+            raw_scores = ratings_doc.to_dict().get("scores", {})
+            for u in raw_scores:
+                r = raw_scores[u].values()
+                scores[u] = sum(r) / len(r)
+
+        match_stats[m.id] = MatchStats(going, potms, scores)
+
+    # generate user stats
+    class UserStats:
+        def __init__(self):
+            self.num_played = 0
+            self.scores = []
+            self.num_potm = 0
+
+        def __repr__(self):
+            return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm))
+
+    user_stats = {}
+
+    def get_stat_object(user):
+        if user not in user_stats:
+            user_stats[user] = UserStats()
+        return user_stats[user]
+
+    for m in match_stats.values():
+        for u in m.going:
+            get_stat_object(u).num_played += 1
+        for u in m.potms:
+            get_stat_object(u).num_potm += 1
+        for u in m.ratings:
+            get_stat_object(u).scores.append(m.ratings[u])
+
+    for u in user_stats:
+        print(u)
+        print(user_stats[u])
+
+        updates = {
+            "num_matches_joined": user_stats[u].num_played,
+            "potm_count": user_stats[u].num_potm
+        }
+        sum_scores = sum(user_stats[u].scores)
+        if sum_scores > 0:
+            updates["avg_score"] = sum_scores / len(user_stats[u].scores)
+
+        try:
+            db.collection("users").document(u).update(updates)
+        except Exception as e:
+            print("Error writing to user {}".format(u))
+            print(e)
+
+
+if __name__ == '__main__':
+    recompute_users_stats()
