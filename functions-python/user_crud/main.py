@@ -138,6 +138,9 @@ def _get_user_firestore(user_id):
     if not data:
         return None
 
+    if "scores" in data:
+        data["avg_score"] = data["scores.total_sum"] / data["scores.number_of_scored_games"]
+
     return data
 
 
@@ -196,8 +199,15 @@ def recompute_users_stats():
         def __init__(self):
             self.num_played = 0
             self.scores = []
+            self.sum_of_all_scores = 0
+            self.number_of_scored_games = 0
             self.num_potm = 0
             self.skills = {}
+
+        def add_score(self, score):
+            self.scores.append(score)
+            self.sum_of_all_scores += score
+            self.number_of_scored_games += 1
 
         def add_skills(self, s, count):
             self.skills[s] = self.skills.get(s, 0) + count
@@ -228,7 +238,7 @@ def recompute_users_stats():
 
         user_scores = m.get_user_scores()
         for u in user_scores:
-            get_stat_object(u).scores.append(user_scores[u])
+            get_stat_object(u).add_score(user_scores[u])
 
         user_skills = m.get_user_skills()
         for u in user_skills:
@@ -242,7 +252,9 @@ def recompute_users_stats():
             "num_matches_joined": user_stats[u].num_played,
             "potm_count": user_stats[u].num_potm,
             "avg_score": user_stats[u].get_avg_score(),
-            "skills_count": user_stats[u].skills
+            "skills_count": user_stats[u].skills,
+            "scores.total_sum": user_stats[u].sum_of_all_scores,
+            "scores.number_of_scored_games": user_stats[u].number_of_scored_games
         }
         print(updates)
 

@@ -83,20 +83,20 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
                 .update(user_stats_updates)
             await add_score_to_last_scores(db, user, score, match_data["dateTime"])
 
-        # update average score
-        user_stat_doc = await db.collection("users").document(user).collection("stats").document("match_votes").get()
-        scores = user_stat_doc.to_dict().get("scoreMatches", {}).values()
-        avg_score = sum(scores) / len(scores)
-
-        # update skills counts
+        # update user collective stats
         skill_scores_totals = {}
         for skill in skill_scores[user]:
             skill_scores_totals[skill] = firestore.firestore.Increment(skill_scores[user][skill])
-        print("updates on overall stats:\t\t\t avg_score {}, skills_count: {}".format(avg_score, skill_scores_totals))
+
+        updates = {
+            "skills_count": skill_scores_totals,
+            "scores.number_of_scored_games": firestore.firestore.Increment(1),
+            "scores.total_sum": firestore.firestore.Increment(score)
+        }
+        print("updates on overall stats:\t\t\t {}".format(updates))
 
         if should_store:
-            await db.collection("users").document(user).update({"avg_score": avg_score,
-                                                                "skills_count": skill_scores_totals})
+            await db.collection("users").document(user).update(updates)
 
         # udpate potm count for user
         for user in potms[0]:
