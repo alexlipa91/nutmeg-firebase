@@ -3,10 +3,9 @@ import datetime
 
 from firebase_admin import firestore
 from google.cloud.firestore import AsyncClient
-from decimal import Decimal
 import firebase_admin
 from nutmeg_utils.notifications import send_notification_to_users
-from typing import Dict, List
+from nutmeg_utils.ratings import MatchStats
 
 firebase_admin.initialize_app()
 
@@ -47,60 +46,42 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
         await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
         return
 
-    scores_raw = ratings_doc.to_dict()["scores"]
-    skills_raw = ratings_doc.to_dict().get("skills", {})
-
-    scores = {}
-    skills = {}
-
-    # Keep only users who received > 1 vote
-    for u in scores_raw:
-        if len(scores_raw[u]) > 1:
-            scores[u] = scores_raw[u]
-            skills[u] = skills_raw[u]
-
-    if len(scores) == 0:
+    raw_scores = ratings_doc.to_dict()["scores"]
+    if len(raw_scores) == 0:
         print("No ratings for this match")
         # mark match as rated
         await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
         return
 
-    # do calculations
-    # user_id -> (avg_score, num_votes)
-    final_scores = {}
-    for u in scores:
-        only_positive = list(filter(lambda s: s > 0, scores[u].values()))
-        s = Decimal(sum(only_positive) / len(only_positive))
-        final_scores[u] = (float(round(s, 2)), len(only_positive))
+    match_stats = MatchStats(
+        match_id,
+        match_data.get("going", {}),
+        raw_scores,
+        ratings_doc.to_dict().get("skills", {})
+    )
 
-    # who has the biggest dick(s) in the match?
-    scores_sorted = sorted(final_scores.items(), key=lambda x: x[1])
-    scores_sorted.reverse()
-    top_score_and_count = scores_sorted[0][1]
-
-    potm_scores = {}
-    for e in scores_sorted:
-        if e[1] == top_score_and_count:
-            potm_scores[e[0]] = e[1][0]
-    print("final scores {}; man(s) of the match: {}".format(final_scores, potm_scores))
+    final_scores = match_stats.get_user_scores()
+    potms = match_stats.get_potms()
+    print("final scores {}; man(s) of the match: {}".format(final_scores, potms))
 
     should_store = "isTest" not in match_data or not match_data["isTest"]
 
-    skill_scores = _compute_skill_scores(skills)
+    skill_scores = match_stats.get_user_skills()
     print("skill scores: {}".format(skill_scores))
 
     # store score for users
-    for user, score_and_count in final_scores.items():
-        user_stats_updates = {"scoreMatches": {match_id: score_and_count[0]}}
-        if len(skill_scores.get(user, {})) > 0:
-            user_stats_updates["skillScores"] = {match_id: skill_scores[user]}
-        print("\nuser {}".format(user))
+    for user, score in final_scores.items():
+        user_stats_updates = {
+            "scoreMatches": {match_id: score},
+            "skillScores": {match_id: skill_scores[user]}
+        }
+
         print("storing user stats for this match:\t\t{}".format(user_stats_updates))
 
         if should_store:
             await db.collection("users").document(user).collection("stats").document("match_votes")\
-                .set(user_stats_updates, merge=True)
-            await add_score_to_last_scores(db, user, score_and_count[0], match_data["dateTime"])
+                .update(user_stats_updates)
+            await add_score_to_last_scores(db, user, score, match_data["dateTime"])
 
         # update average score
         user_stat_doc = await db.collection("users").document(user).collection("stats").document("match_votes").get()
@@ -118,40 +99,17 @@ async def _close_rating_round_firestore(match_id, send_notification=True):
                                                                 "skills_count": skill_scores_totals})
 
         # udpate potm count for user
-        for user in potm_scores:
+        for user in potms[0]:
             if should_store:
                 await db.collection("users").document(user).update(
                     {"potm_count": firestore.firestore.Increment(1)})
 
     # mark match as rated and store man_of_the_match
-    await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp,
-                                                           "manOfTheMatch": potm_scores},
-                                                          merge=True)
+    await db.collection("matches").document(match_id).update({"scoresComputedAt": timestamp, "manOfTheMatch": potms[0]})
+
     if send_notification:
         _send_close_voting_notification(match_id, set(match_data["going"].keys()),
-                                        set(potm_scores.keys()), match_data["sportCenterId"])
-
-
-def _compute_skill_scores(skill_scores: Dict[str, Dict[str, List[str]]]):
-    user_totals = {}
-    for user, rates in skill_scores.items():
-        totals = {
-            "Speed": 0,
-            "Shooting": 0,
-            "Passing": 0,
-            "Dribbling": 0,
-            "Defending": 0,
-            "Physicality": 0,
-            "Goalkeeping": 0
-        }
-
-        for _, skill_list in skill_scores[user].items():
-            for s in skill_list:
-                totals[s] = totals.get(s, 0) + 1
-
-        user_totals[user] = totals
-
-    return user_totals
+                                        set(potms[0]), match_data["sportCenterId"])
 
 
 def _compute_weighted_avg_score(user_id):
@@ -171,21 +129,6 @@ def _compute_weighted_avg_score(user_id):
             denominator += score_weight
 
     return numerator / denominator
-
-
-def _compute_overall_skill_scores(match_skill_score: List[Dict[str, int]]) -> Dict[str, int]:
-    all_scores = {}
-    for skill_scores in match_skill_score:
-        for s in skill_scores:
-            if s not in all_scores:
-                all_scores[s] = []
-            all_scores[s].append(skill_scores[s])
-
-    averages = {}
-    for s in all_scores:
-        averages[s] = sum(all_scores[s]) / len(all_scores[s])
-
-    return averages
 
 
 def _send_close_voting_notification(match_id, going_users, potms, sport_center_id):
@@ -232,36 +175,3 @@ async def add_score_to_last_scores(db, user_id, score, date_time):
         scores = top_ten_with_score
 
     await db.collection("users").document(user_id).update({"last_date_scores": scores})
-
-
-def _compute_skill_count():
-    db = firestore.client()
-
-    for r in db.collection("ratings").get():
-        print(r.id)
-        r_data = r.to_dict()
-        if "skills" in r_data:
-            skill_scores = _compute_skill_scores(r_data["skills"])
-            print(skill_scores)
-
-            for user in skill_scores:
-                print(user)
-                db.collection("users").document(user).collection("stats").document("match_votes").update({
-                    "skillScores.{}".format(r.id): skill_scores[user]
-                })
-
-                updates = {}
-                for skill in skill_scores[user]:
-                    updates["skills_count.{}".format(skill)] = firestore.firestore.Increment(skill_scores[user][skill])
-
-                db.collection("users").document(user).update(updates)
-
-
-if __name__ == '__main__':
-    db = firestore.client()
-
-    for u in db.collection("users").get():
-        print(u.id)
-        db.collection("users").document(u.id).update({"skills_count": firestore.firestore.DELETE_FIELD})
-
-    _compute_skill_count()
