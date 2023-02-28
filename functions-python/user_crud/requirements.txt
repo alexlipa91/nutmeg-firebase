@@ -4,3 +4,5 @@ py-firebase-dynamic-links==1.0.1
 python-dateutil
 stripe
 flask-cors
+-e git+https://github.com/alexlipa91/nutmeg-firebase.git@59e3641058d5f8672ca27262c5cc2fbb2df75828#subdirectory=nutmeg_utils&egg=nutmeg_utils
+
