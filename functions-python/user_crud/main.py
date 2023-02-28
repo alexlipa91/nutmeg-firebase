@@ -8,6 +8,8 @@ from firebase_admin import firestore
 from firebase_admin import auth
 from flask_cors import cross_origin
 
+from nutmeg_utils.nutmeg_utils.ratings import MatchStats
+
 firebase_admin.initialize_app()
 
 
@@ -166,37 +168,28 @@ def _serialize_date(date):
 def recompute_users_stats():
     db = firestore.client()
 
-    # get match stats
-    class MatchStats:
-        def __init__(self, going, potms, ratings):
-            self.going = going
-            self.potms = potms
-            self.ratings = ratings
-
-        def __repr__(self):
-            return "{}\n{}\n{}".format(str(self.going), str(self.potms), str(self.ratings))
-
     match_stats = {}
     for m in db.collection("matches").get():
         data = m.to_dict()
 
-        if datetime.now(dateutil.tz.UTC) < data["dateTime"]:
-            print("skipping match in the future {}".format(m.id))
+        if datetime.now(dateutil.tz.UTC) < data["dateTime"] or data.get("cancelledAt", None):
+            print("skipping match {}".format(m.id))
             continue
 
-        going = list(data.get("going", {}).keys())
-        potms = list(data.get("manOfTheMatch", {}).keys())
-
         ratings_doc = db.collection("ratings").document(m.id).get()
-
-        scores = {}
+        raw_scores = {}
+        skill_scores = {}
         if ratings_doc.exists:
-            raw_scores = ratings_doc.to_dict().get("scores", {})
-            for u in raw_scores:
-                r = raw_scores[u].values()
-                scores[u] = sum(r) / len(r)
+            ratings_doc_data = ratings_doc.to_dict()
+            raw_scores = ratings_doc_data.get("scores", {})
+            skill_scores = ratings_doc_data.get("skills", {})
 
-        match_stats[m.id] = MatchStats(going, potms, scores)
+        match_stats[m.id] = MatchStats(
+            m.id,
+            list(data.get("going", {}).keys()),
+            raw_scores,
+            skill_scores,
+        )
 
     # generate user stats
     class UserStats:
@@ -204,9 +197,18 @@ def recompute_users_stats():
             self.num_played = 0
             self.scores = []
             self.num_potm = 0
+            self.skills = {}
+
+        def add_skills(self, s, count):
+            self.skills[s] = self.skills.get(s, 0) + count
+
+        def get_avg_score(self):
+            if len(self.scores) == 0:
+                return None
+            return sum(self.scores) / len(self.scores)
 
         def __repr__(self):
-            return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm))
+            return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm), str(self.skills))
 
     user_stats = {}
 
@@ -216,24 +218,33 @@ def recompute_users_stats():
         return user_stats[user]
 
     for m in match_stats.values():
+        print(m.id)
         for u in m.going:
             get_stat_object(u).num_played += 1
-        for u in m.potms:
-            get_stat_object(u).num_potm += 1
-        for u in m.ratings:
-            get_stat_object(u).scores.append(m.ratings[u])
+
+        if m.get_potms():
+            for u in m.get_potms()[0]:
+                get_stat_object(u).num_potm += 1
+
+        user_scores = m.get_user_scores()
+        for u in user_scores:
+            get_stat_object(u).scores.append(user_scores[u])
+
+        user_skills = m.get_user_skills()
+        for u in user_skills:
+            for s in user_skills[u]:
+                get_stat_object(u).add_skills(s, user_skills[u][s])
 
     for u in user_stats:
         print(u)
-        print(user_stats[u])
 
         updates = {
             "num_matches_joined": user_stats[u].num_played,
-            "potm_count": user_stats[u].num_potm
+            "potm_count": user_stats[u].num_potm,
+            "avg_score": user_stats[u].get_avg_score(),
+            "skills_count": user_stats[u].skills
         }
-        sum_scores = sum(user_stats[u].scores)
-        if sum_scores > 0:
-            updates["avg_score"] = sum_scores / len(user_stats[u].scores)
+        print(updates)
 
         try:
             db.collection("users").document(u).update(updates)
