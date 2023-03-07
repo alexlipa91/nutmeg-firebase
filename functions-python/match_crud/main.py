@@ -10,7 +10,6 @@ from firebase_admin import firestore
 from flask_cors import cross_origin
 from google.cloud.firestore import AsyncClient
 from nutmeg_utils.schedule_function import schedule_function
-from nutmeg_utils.firestore_utils import _serialize_dates
 
 firebase_admin.initialize_app()
 dbSync = firestore.client()
@@ -79,14 +78,15 @@ def _add_match_firestore(match_data):
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
-    # check if organizer can receive payments and if not do not publish yet
-    organizer_data = dbSync.collection('users').document(match_data["organizerId"]).get().to_dict()
-    field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
+    if match_data.get("managePayments", True):
+        # check if organizer can receive payments and if not do not publish yet
+        organizer_data = dbSync.collection('users').document(match_data["organizerId"]).get().to_dict()
+        field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
 
-    if not organizer_data.get(field_name, False):
-        print("{} is False on organizer account: set match as unpublished".format(field_name))
-        # add it as draft
-        match_data["unpublished_reason"] = "organizer_not_onboarded"
+        if not organizer_data.get(field_name, False):
+            print("{} is False on organizer account: set match as unpublished".format(field_name))
+            # add it as draft
+            match_data["unpublished_reason"] = "organizer_not_onboarded"
 
     # add nutmeg fee to price
     # if not match_data.get("feeOnOrganiser", False):
