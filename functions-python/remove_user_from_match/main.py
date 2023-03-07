@@ -65,8 +65,6 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     if not match.get("going", {}).get(user_id, None):
         raise Exception("User is not part of the match")
 
-    payment_intent = payments.get_payment_intent(match_id, user_id)
-
     # remove if user is in going
     transaction.update(match_doc_ref, {
         u'going.' + user_id: firestore.DELETE_FIELD
@@ -77,16 +75,22 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
         u'joinedMatches.' + match_id: firestore.DELETE_FIELD
     })
 
-    # issue_refund
-    stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
-    refund_amount = match["pricePerPerson"] - match.get("fee", 50)
-    refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+    transaction_log = {"type": "user_left", "userId": user_id, "createdAt": timestamp}
+
+    if match.get("managePayments", True):
+
+        payment_intent = payments.get_payment_intent(match_id, user_id)
+
+        # issue_refund
+        stripe.api_key = os.environ["STRIPE_TEST_KEY" if match["isTest"] else "STRIPE_PROD_KEY"]
+        refund_amount = match["pricePerPerson"] - match.get("fee", 50)
+        refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+        transaction_log["paymentIntent"] = payment_intent
+        transaction_log["refund_id"] = refund.id
+        transaction_log["moneyRefunded"] = refund_amount
 
     # record transaction
-    transaction.set(transaction_doc_ref,
-                    {"type": "user_left", "userId": user_id, "createdAt": timestamp,
-                     "paymentIntent": payment_intent, "refund_id": refund.id,
-                     "moneyRefunded": refund_amount})
+    transaction.set(transaction_doc_ref, transaction_log)
 
 
 if __name__ == '__main__':
