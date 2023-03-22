@@ -52,13 +52,16 @@ def get_location_predictions_from_query(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    return {"data": {"predictions": _get_location_predictions_from_query(request_json["data"]["query"])}}, 200
+    return {"data": {"predictions": _get_location_predictions_from_query(
+        request_json["data"]["query"],
+        user_country=request.headers.get('X-Appengine-Country', 'NL'))}}, 200
 
 
-def _get_location_predictions_from_query(query):
+def _get_location_predictions_from_query(query, user_country="NL"):
     url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
     req = requests.get(url + 'input=' + query + '&key=' + os.environ["GOOGLE_PLACES_API_KEY"]
-                       + '&components=country:NL' + '&fields=formatted_address')
+                       + '&components=country:{}'.format(user_country)
+                       + '&fields=formatted_address')
     resp = req.json()
 
     results = resp['predictions']
@@ -163,4 +166,6 @@ def _get_placeid_info(place_id):
 
 
 if __name__ == '__main__':
-    _get_timezone_id(52.3695049302915,  4.926487980291501)
+    os.environ["GOOGLE_PLACES_API_KEY"] = "AIzaSyDlU4z5DbXqoafB-T-t2mJ8rGv3Y4rAcWY"
+    for p in _get_location_predictions_from_query("madura"):
+        print(p["description"])
