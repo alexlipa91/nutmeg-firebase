@@ -138,7 +138,7 @@ def _get_user_firestore(user_id):
     if not data:
         return None
 
-    if "scores" in data:
+    if "scores" in data and data["scores"].get("number_of_scored_games", 0) != 0:
         data["avg_score"] = data["scores"]["total_sum"] / data["scores"]["number_of_scored_games"]
 
     return data
