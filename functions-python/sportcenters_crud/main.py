@@ -50,12 +50,15 @@ async def _get_user_sportcenters(user_id):
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def get_location_predictions_from_query(request):
     request_json = request.get_json(silent=True)
-    print(request.headers)
     print("args {}, data {}".format(request.args, request_json))
+
+    request_country = request.headers.get('X-Appengine-Country', 'NL')
+    if request_country == "ZZ":
+        request_country = "NL"
 
     return {"data": {"predictions": _get_location_predictions_from_query(
         request_json["data"]["query"],
-        user_country=request.headers.get('X-Appengine-Country', 'NL'))}}, 200
+        user_country=request_country)}}, 200
 
 
 def _get_location_predictions_from_query(query, user_country="NL"):
