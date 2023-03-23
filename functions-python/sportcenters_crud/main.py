@@ -121,7 +121,7 @@ def add_user_sportcenter_from_place_id(request):
 def _add_user_sportcenter_from_place_id(place_id, additional_info, user_id):
     url = "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields={}&key={}".format(
         place_id,
-        "%2C".join(["name", "formatted_address", "geometry", "utc_offset"]),
+        "%2C".join(["name", "formatted_address", "geometry", "utc_offset", "address_components"]),
         os.environ["GOOGLE_PLACES_API_KEY"]
     )
 
@@ -131,9 +131,15 @@ def _add_user_sportcenter_from_place_id(place_id, additional_info, user_id):
     lat = result["geometry"]["location"]["lat"]
     lng = result["geometry"]["location"]["lng"]
 
+    country = None
+    for a in result["address_components"][0]:
+        if "country" in a["types"]:
+            country = a["types"]["short_name"]
+
     sport_center = {
         "address": result["formatted_address"],
         "name": result["name"],
+        "country": country,
         "lat": lat,
         "lng": lng,
         "timeZoneId": _get_timezone_id(lat, lng)
