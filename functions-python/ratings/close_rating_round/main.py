@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 
 from firebase_admin import firestore
 import firebase_admin
@@ -39,7 +40,6 @@ def _close_rating_round(match_id):
         except:
             return obj.__dict__
     print(json.dumps(calculations, default=dumper, indent=2))
-
     _close_rating_round_transaction(db.transaction(), calculations, match_doc_ref, users_docs_ref, users_stats_docs_ref)
 
 
@@ -50,7 +50,7 @@ def _close_rating_round_transaction(transaction, calculations, match_doc_ref, us
 
     last_date_scores = {}
     for u in calculations.user_match_stats:
-        last_date_scores[u] = users_docs_ref[u].get(transaction=transaction, field_paths=["last_date_scores"]).to_dict() \
+        last_date_scores[u] = users_docs_ref[u].get(transaction=transaction, field_paths=["last_date_scores"]).to_dict()\
             .get("last_date_scores", {})
 
     for u in calculations.user_match_stats:
@@ -58,7 +58,7 @@ def _close_rating_round_transaction(transaction, calculations, match_doc_ref, us
         transaction.set(users_docs_ref[u], calculations.user_stats_updates[u], merge=True)
 
         # add last score
-        score = calculations.user_match_stats[u]["scoreMatches"][match_doc_ref.id],
+        score = calculations.user_match_stats[u]["scoreMatches"][match_doc_ref.id]
         last_date_scores[u][match_datetime.strftime("%Y%m%d%H%M%S")] = score
 
         if len(last_date_scores[u]) > 10:
@@ -67,7 +67,7 @@ def _close_rating_round_transaction(transaction, calculations, match_doc_ref, us
                 top_ten_with_score[d] = last_date_scores[u][d]
             last_date_scores[u] = top_ten_with_score
 
-        transaction.set(users_docs_ref[u], {"last_date_scores": last_date_scores}, merge=True)
+        transaction.set(users_docs_ref[u], {"last_date_scores": last_date_scores[u]}, merge=True)
 
     transaction.set(match_doc_ref, calculations.match_udpates, merge=True)
 
@@ -115,7 +115,10 @@ def _close_rating_round_calculations(match_id):
 
     final_scores = match_stats.get_user_scores()
     potms = match_stats.get_potms()
-    match_updates["manOfTheMatch"] = {potms[0]: potms[1]}
+    potms_map = {}
+    for p in potms[0]:
+        potms_map[p] = p[1]
+    match_updates["manOfTheMatch"] = potms_map
 
     skill_scores = match_stats.get_user_skills()
 
@@ -213,4 +216,5 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
 
 
 if __name__ == '__main__':
-    _close_rating_round_calculations("s")
+    _close_rating_round("Z3bQJPbr33so9kiDOoqw")
+
