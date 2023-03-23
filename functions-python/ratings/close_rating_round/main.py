@@ -117,7 +117,7 @@ def _close_rating_round_calculations(match_id):
     potms = match_stats.get_potms()
     potms_map = {}
     for p in potms[0]:
-        potms_map[p] = p[1]
+        potms_map[p] = potms[1]
     match_updates["manOfTheMatch"] = potms_map
 
     skill_scores = match_stats.get_user_skills()
@@ -216,5 +216,6 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
 
 
 if __name__ == '__main__':
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
     _close_rating_round("Z3bQJPbr33so9kiDOoqw")
 
