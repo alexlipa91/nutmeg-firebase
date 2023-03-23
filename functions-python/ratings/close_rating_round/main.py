@@ -1,8 +1,7 @@
-import asyncio
 import datetime
+import os
 
 from firebase_admin import firestore
-from google.cloud.firestore import AsyncClient
 import firebase_admin
 from nutmeg_utils.notifications import send_notification_to_users
 from nutmeg_utils.ratings import MatchStats
@@ -15,101 +14,131 @@ def close_rating_round(request):
     print("data {}".format(request_json))
 
     request_data = request_json["data"]
-
-    asyncio.run(_close_rating_round_firestore(request_data["match_id"]))
+    _close_rating_round(request_data["match_id"])
 
     return {"data": {}}, 200
 
 
-async def _close_rating_round_firestore(match_id, send_notification=True):
-    db = AsyncClient()
+def _close_rating_round(match_id):
+    calculations = _close_rating_round_calculations(match_id)
 
-    timestamp = datetime.datetime.utcnow()
+    db = firestore.client()
 
-    match_doc = await db.collection("matches").document(match_id).get()
-    match_data = match_doc.to_dict()
-    if not match_data:
-        print("Match does not exist")
-        return
+    match_doc_ref = db.collection('matches').document(match_id)
+    users_docs_ref = {}
+    users_stats_docs_ref = {}
+    for u in calculations.user_stats_updates.keys():
+        users_docs_ref[u] = db.collection("users").document(u)
+        users_stats_docs_ref[u] = db.collection("users").document(u).collection("stats").document("match_votes")
 
-    if match_data.get("cancelledAt", None):
-        print("Match is canceled")
-        return
+    print(calculations)
 
-    if match_data.get("scoresComputedAt", None):
-        raise Exception("Scores already computed")
+    _close_rating_round_transaction(db.transaction(), calculations, match_doc_ref, users_docs_ref, users_stats_docs_ref)
 
-    ratings_doc = await db.collection("ratings").document(match_id).get()
-    if not ratings_doc.exists:
+
+@firestore.transactional
+def _close_rating_round_transaction(transaction, calculations, match_doc_ref, users_docs_ref, users_stats_docs_ref):
+    match_data = match_doc_ref.get(transaction=transaction).to_dict()
+    match_datetime = match_data["dateTime"]
+
+    last_date_scores = {}
+    for u in calculations.user_match_stats:
+        last_date_scores[u] = users_docs_ref[u].get(transaction=transaction, field_paths=["last_date_scores"]).to_dict() \
+            .get("last_date_scores", {})
+
+    for u in calculations.user_match_stats:
+        transaction.set(users_stats_docs_ref[u], calculations.user_match_stats[u], merge=True)
+        transaction.set(users_docs_ref[u], calculations.user_stats_updates[u], merge=True)
+
+        # add last score
+        score = calculations.user_match_stats[u]["scoreMatches"][match_doc_ref.id],
+        last_date_scores[u][match_datetime.strftime("%Y%m%d%H%M%S")] = score
+
+        if len(last_date_scores[u]) > 10:
+            top_ten_with_score = {}
+            for d in sorted(last_date_scores[u], reverse=True)[:10]:
+                top_ten_with_score[d] = last_date_scores[u][d]
+            last_date_scores[u] = top_ten_with_score
+
+        transaction.set(users_docs_ref[u], {"last_date_scores": last_date_scores}, merge=True)
+
+    transaction.set(match_doc_ref, calculations.match_udpates, merge=True)
+
+    _send_close_voting_notification(match_doc_ref.id, calculations.get_going_users(), calculations.get_potms(),
+                                    match_data["sportCenterId"])
+
+
+class RatingsRoundResult:
+
+    def __init__(self, match_updates, user_match_stats=None, user_stats_updates=None):
+        self.user_match_stats = user_match_stats
+        self.user_stats_updates = user_stats_updates
+        self.match_udpates = match_updates
+
+    def get_potms(self):
+        return [u for u in self.user_stats_updates if "potm_count" in self.user_stats_updates[u]]
+
+    def get_going_users(self):
+        return [u for u in self.user_stats_updates]
+
+    def __repr__(self):
+        return "user_match_stats: {}\nuser_stats_updates: {}\nmatch_updates: {}".format(self.user_match_stats,
+                                                                                        self.user_stats_updates,
+                                                                                        self.match_udpates)
+
+
+def _close_rating_round_calculations(match_id):
+    db = firestore.client()
+
+    match_data = db.collection("matches").document(match_id).get().to_dict()
+    match_updates = {"scoresComputedAt": datetime.datetime.utcnow()}
+
+    ratings_doc = db.collection("ratings").document(match_id).get()
+    if not ratings_doc.exists or len(ratings_doc.to_dict()["scores"]) == 0:
         print("No ratings for this match")
         # mark match as rated
-        await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
-        return
-
-    raw_scores = ratings_doc.to_dict()["scores"]
-    if len(raw_scores) == 0:
-        print("No ratings for this match")
-        # mark match as rated
-        await db.collection("matches").document(match_id).set({"scoresComputedAt": timestamp}, merge=True)
-        return
+        return RatingsRoundResult(match_updates=match_updates)
 
     match_stats = MatchStats(
         match_id,
         match_data.get("going", {}),
-        raw_scores,
+        ratings_doc.to_dict()["scores"],
         ratings_doc.to_dict().get("skills", {})
     )
 
     final_scores = match_stats.get_user_scores()
     potms = match_stats.get_potms()
-    print("final scores {}; man(s) of the match: {}".format(final_scores, potms))
-
-    should_store = "isTest" not in match_data or not match_data["isTest"]
+    match_updates["manOfTheMatch"] = potms[0]
 
     skill_scores = match_stats.get_user_skills()
-    print("skill scores: {}".format(skill_scores))
+
+    all_users_match_stats = {}
+    all_users_stats_updates = {}
 
     # store score for users
     for user, score in final_scores.items():
-        user_stats_updates = {
+        user_match_stats = {
             "scoreMatches": {match_id: score},
-            "skillScores": {match_id: skill_scores[user]}
         }
+        if user in skill_scores:
+            user_match_stats["skillScores"] = {match_id: skill_scores[user]}
 
-        print("storing user stats for this match:\t\t{}".format(user_stats_updates))
+        skill_scores_increment = {}
+        for skill in skill_scores.get(user, {}):
+            skill_scores_increment[skill] = firestore.firestore.Increment(skill_scores[user][skill])
 
-        if should_store:
-            await db.collection("users").document(user).collection("stats").document("match_votes")\
-                .update(user_stats_updates)
-            await add_score_to_last_scores(db, user, score, match_data["dateTime"])
-
-        # update user collective stats
-        skill_scores_totals = {}
-        for skill in skill_scores[user]:
-            skill_scores_totals[skill] = firestore.firestore.Increment(skill_scores[user][skill])
-
-        updates = {
-            "skills_count": skill_scores_totals,
+        user_stats_increments = {
+            "skills_count": skill_scores_increment,
             "scores.number_of_scored_games": firestore.firestore.Increment(1),
             "scores.total_sum": firestore.firestore.Increment(score)
         }
-        print("updates on overall stats:\t\t\t {}".format(updates))
+        if user in potms[0]:
+            user_stats_increments["potm_count"] = firestore.firestore.Increment(1)
+        all_users_match_stats[user] = user_match_stats
+        all_users_stats_updates[user] = user_stats_increments
 
-        if should_store:
-            await db.collection("users").document(user).update(updates)
-
-        # udpate potm count for user
-        for user in potms[0]:
-            if should_store:
-                await db.collection("users").document(user).update(
-                    {"potm_count": firestore.firestore.Increment(1)})
-
-    # mark match as rated and store man_of_the_match
-    await db.collection("matches").document(match_id).update({"scoresComputedAt": timestamp, "manOfTheMatch": potms[0]})
-
-    if send_notification:
-        _send_close_voting_notification(match_id, set(match_data["going"].keys()),
-                                        set(potms[0]), match_data["sportCenterId"])
+    return RatingsRoundResult(match_updates=match_updates, user_match_stats=all_users_match_stats,
+                              user_stats_updates=all_users_stats_updates)
 
 
 def _compute_weighted_avg_score(user_id):
@@ -163,15 +192,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
     )
 
 
-async def add_score_to_last_scores(db, user_id, score, date_time):
-    user_doc = await db.collection("users").document(user_id).get(field_paths=["last_date_scores"])
-    scores = user_doc.to_dict().get("last_date_scores", {})
-    scores[date_time.strftime("%Y%m%d%H%M%S")] = score
-
-    if len(scores) > 10:
-        top_ten_with_score = {}
-        for d in sorted(scores, reverse=True)[:10]:
-            top_ten_with_score[d] = scores[d]
-        scores = top_ten_with_score
-
-    await db.collection("users").document(user_id).update({"last_date_scores": scores})
+if __name__ == '__main__':
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
+    _close_rating_round("Z3bQJPbr33so9kiDOoqw")
+    # print(_close_rating_round_calculations("Z3bQJPbr33so9kiDOoqw"))
