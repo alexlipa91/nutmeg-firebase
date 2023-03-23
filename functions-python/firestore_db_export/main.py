@@ -7,7 +7,7 @@ def firestore_db_export(request):
 
     body = {
         'collectionIds': [],
-        'outputUriPrefix': "gs://nutmeg-firestore-backup-us",
+        'outputUriPrefix': "gs://nutmeg-firestore-backup",
     }
     # Build REST API request for
     # https://cloud.google.com/firestore/docs/reference/rest/v1/projects.databases/exportDocuments
