@@ -115,7 +115,7 @@ def _close_rating_round_calculations(match_id):
 
     final_scores = match_stats.get_user_scores()
     potms = match_stats.get_potms()
-    match_updates["manOfTheMatch"] = potms[0]
+    match_updates["manOfTheMatch"] = {potms[0]: potms[1]}
 
     skill_scores = match_stats.get_user_skills()
 
@@ -210,3 +210,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
             "event": "potm",
         }
     )
+
+
+if __name__ == '__main__':
+    _close_rating_round_calculations("s")
