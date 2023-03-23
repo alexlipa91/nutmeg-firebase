@@ -52,13 +52,16 @@ def get_location_predictions_from_query(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    request_country = request.headers.get('X-Appengine-Country', 'NL')
-    if request_country == "ZZ":
-        request_country = "NL"
+    if "country" in request_json["data"]:
+        country = request_json["data"]["country"]
+    else:
+        country = request.headers.get('X-Appengine-Country')
+        if country is None or country == "ZZ":
+            country = "NL"
 
     return {"data": {"predictions": _get_location_predictions_from_query(
         request_json["data"]["query"],
-        user_country=request_country)}}, 200
+        user_country=country)}}, 200
 
 
 def _get_location_predictions_from_query(query, user_country="NL"):
