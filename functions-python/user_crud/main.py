@@ -83,16 +83,6 @@ def is_organizer_account_complete(request):
     return {"data": {"is_complete": is_complete}}, 200
 
 
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
-def get_last_user_scores(request):
-    request_json = request.get_json(silent=True)
-    print("args {}, data {}".format(request.args, request_json))
-
-    request_data = request_json["data"]
-
-    return {"data": {"scores": _get_last_user_scores(request_data["id"])}}, 200
-
-
 def _store_user_token_firestore(user_id, token):
     db = firestore.client()
 
@@ -142,26 +132,6 @@ def _get_user_firestore(user_id):
         data["avg_score"] = data["scores"]["total_sum"] / data["scores"]["number_of_scored_games"]
 
     return data
-
-
-def _get_last_user_scores(user_id):
-    db = firestore.client()
-    data = db.collection("users").document(user_id).collection("stats").document("match_votes").get().to_dict()
-    if not data:
-        return []
-
-    scores = data.get("scoreMatches", {})
-
-    score_dates = []
-    for m in scores:
-        date = data["joinedMatches"][m]
-        score_dates.append((scores[m], date))
-
-    score_dates.sort(key=lambda x: x[1])
-
-    last_n = score_dates[-10:]
-
-    return [x[0] for x in last_n]
 
 
 def _serialize_date(date):
