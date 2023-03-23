@@ -135,9 +135,9 @@ def _add_user_sportcenter_from_place_id(place_id, additional_info, user_id):
     lng = result["geometry"]["location"]["lng"]
 
     country = None
-    for a in result["address_components"][0]:
+    for a in result["address_components"]:
         if "country" in a["types"]:
-            country = a["types"]["short_name"]
+            country = a["short_name"]
 
     sport_center = {
         "address": result["formatted_address"],
@@ -180,5 +180,4 @@ def _get_placeid_info(place_id):
 
 if __name__ == '__main__':
     os.environ["GOOGLE_PLACES_API_KEY"] = "AIzaSyDlU4z5DbXqoafB-T-t2mJ8rGv3Y4rAcWY"
-    for p in _get_location_predictions_from_query("madura"):
-        print(p["description"])
+    _add_user_sportcenter_from_place_id("ChIJwUQGaSiQhEcRog63-0x1O5I", {}, "s")
