@@ -38,7 +38,15 @@ def get_all_matches_v2(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
 
-    return {"data": asyncio.run(_get_all_matches_firestore_v2())}, 200
+    # when can have values: 'future', 'all'
+    when = request_json.get("data", {}).get("when", None)
+    with_user = request_json.get("data", {}).get("with_user", None)
+    organized_by = request_json.get("data", {}).get("organized_by", None)
+
+    result = asyncio.run(_get_matches_firestore_v2(when=when, with_user=with_user,
+                                                   organized_by=organized_by))
+
+    return {"data": result}, 200
 
 
 async def _get_match_firestore_v2(match_id):
@@ -57,17 +65,24 @@ async def _format_match_data_v2(match_data):
     return match_data
 
 
-async def _get_all_matches_firestore_v2():
+async def _get_matches_firestore_v2(when="all", with_user=None, organized_by=None):
     db = AsyncClient()
-    collection = await db.collection('matches').get()
+    query = db.collection('matches')
+
+    if when == "future":
+        query = query.where('dateTime', '>', datetime.datetime.utcnow())
+    if with_user:
+        query = query.where('going.{}'.format(with_user), "!=", "undefined")
+    if organized_by:
+        query = query.where('organizerId', "==", organized_by)
 
     res = {}
 
-    for m in collection:
+    async for m in query.stream():
         try:
             data = await _format_match_data_v2(m.to_dict())
             res[m.id] = data
-        except Exception:
+        except Exception as e:
             print("Failed to read match data with id '{}".format(m.id))
             traceback.print_exc()
 
@@ -110,4 +125,10 @@ def _serialize_date(date):
 
 
 if __name__ == '__main__':
-    print(asyncio.run(_get_match_firestore_v2("61MIUi1Anm1xzIBDpVzt")))
+    res = asyncio.run(_get_matches_firestore_v2(
+        # organized_by="bQHD0EM265V6GuSZuy1uQPHzb602"
+        # when="future",
+        # exclude_unpublished=True
+    ))
+    print(res)
+    print(len(res))
