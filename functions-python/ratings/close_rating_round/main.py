@@ -1,5 +1,5 @@
 import datetime
-import os
+import json
 
 from firebase_admin import firestore
 import firebase_admin
@@ -31,7 +31,14 @@ def _close_rating_round(match_id):
         users_docs_ref[u] = db.collection("users").document(u)
         users_stats_docs_ref[u] = db.collection("users").document(u).collection("stats").document("match_votes")
 
-    print(calculations)
+    def dumper(obj):
+        if isinstance(obj, datetime.datetime):
+            return "date"
+        try:
+            return obj.toJSON()
+        except:
+            return obj.__dict__
+    print(json.dumps(calculations, default=dumper, indent=2))
 
     _close_rating_round_transaction(db.transaction(), calculations, match_doc_ref, users_docs_ref, users_stats_docs_ref)
 
@@ -134,6 +141,19 @@ def _close_rating_round_calculations(match_id):
         }
         if user in potms[0]:
             user_stats_increments["potm_count"] = firestore.firestore.Increment(1)
+
+        # last 10 scores
+        last_date_scores = db.collection("users").document(user).get(field_paths=["last_date_scores"]).to_dict()["last_date_scores"]
+        last_date_scores[match_data["dateTime"].strftime("%Y%m%d%H%M%S")] = score
+
+        if len(last_date_scores) > 10:
+            top_ten_with_score = {}
+            for d in sorted(last_date_scores, reverse=True)[:10]:
+                top_ten_with_score[d] = last_date_scores[d]
+            last_date_scores = top_ten_with_score
+        # todo add
+        user_stats_increments["last_date_scores"] = last_date_scores
+
         all_users_match_stats[user] = user_match_stats
         all_users_stats_updates[user] = user_stats_increments
 
@@ -190,9 +210,3 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
             "event": "potm",
         }
     )
-
-
-if __name__ == '__main__':
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
-    _close_rating_round("Z3bQJPbr33so9kiDOoqw")
-    # print(_close_rating_round_calculations("Z3bQJPbr33so9kiDOoqw"))
