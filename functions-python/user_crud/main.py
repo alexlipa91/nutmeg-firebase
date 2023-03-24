@@ -142,8 +142,10 @@ def recompute_users_stats():
     db = firestore.client()
 
     match_stats = {}
+    match_data_cache = {}
     for m in db.collection("matches").get():
         data = m.to_dict()
+        match_data_cache[m.id] = data
 
         if datetime.now(dateutil.tz.UTC) < data["dateTime"] or data.get("cancelledAt", None):
             print("skipping match {}".format(m.id))
@@ -174,6 +176,10 @@ def recompute_users_stats():
             self.num_potm = 0
             self.skills = {}
 
+            self.joined_matches = {}
+            self.score_matches = {}
+            self.skill_scores = {}
+
         def add_score(self, score):
             self.scores.append(score)
             self.sum_of_all_scores += score
@@ -201,6 +207,7 @@ def recompute_users_stats():
         print(m.id)
         for u in m.going:
             get_stat_object(u).num_played += 1
+            get_stat_object(u).joined_matches[m.id] = match_data_cache[m.id]['dateTime']
 
         if m.get_potms():
             for u in m.get_potms()[0]:
@@ -209,6 +216,7 @@ def recompute_users_stats():
         user_scores = m.get_user_scores()
         for u in user_scores:
             get_stat_object(u).add_score(user_scores[u])
+            get_stat_object(u).score_matches[m.id] = user_scores[u]
 
         user_skills = m.get_user_skills()
         for u in user_skills:
@@ -221,25 +229,25 @@ def recompute_users_stats():
         updates = {
             "num_matches_joined": user_stats[u].num_played,
             "potm_count": user_stats[u].num_potm,
-            "avg_score": user_stats[u].get_avg_score(),
             "skills_count": user_stats[u].skills,
             "scores.total_sum": user_stats[u].sum_of_all_scores,
             "scores.number_of_scored_games": user_stats[u].number_of_scored_games
         }
+        secondary_stats_updates = {
+            "joinedMatches": user_stats[u].joined_matches,
+            "scoreMatches": user_stats[u].score_matches,
+        }
         print(updates)
+        print(secondary_stats_updates)
 
         try:
             db.collection("users").document(u).update(updates)
+            db.collection("users").document(u).collection("stats").document("match_votes").update(secondary_stats_updates)
         except Exception as e:
             print("Error writing to user {}".format(u))
             print(e)
 
 
 if __name__ == '__main__':
-    # recompute_users_stats()
-    db = firestore.client()
-
-    for u in db.collection("users").get():
-        db.collection("users").document(u.id).update({
-            "avg_score": firestore.firestore.DELETE_FIELD
-        })
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
+    recompute_users_stats()
