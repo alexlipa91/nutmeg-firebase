@@ -72,7 +72,8 @@ async def _get_matches_firestore_v2(when="all", with_user=None, organized_by=Non
     if when == "future":
         query = query.where('dateTime', '>', datetime.datetime.utcnow())
     if with_user:
-        query = query.where('going.{}'.format(with_user), "!=", "undefined")
+        field_path = u"going.`{}`".format(with_user)
+        query = query.where(field_path, "!=", "undefined")
     if organized_by:
         query = query.where('organizerId', "==", organized_by)
 
