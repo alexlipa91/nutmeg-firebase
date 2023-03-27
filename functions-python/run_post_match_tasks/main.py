@@ -30,6 +30,7 @@ def _run_post_match_tasks(match_id):
         return
 
     going_users = match_data.get("going", {}).keys()
+    organiser_id = match_data.get("organizerId", None)
 
     # update number of played stats
     summed_field_name = "num_matches_joined" if not match_data["isTest"] else "num_matches_joined_test"
@@ -47,6 +48,18 @@ def _run_post_match_tasks(match_id):
             "match_id": match_id
         }
     )
+
+    if organiser_id:
+        send_notification_to_users(
+            title="Add match result! " + u"\u2B50\uFE0F",
+            body="Add the final score for your match.",
+            users=organiser_id,
+            data={
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "route": "/match/" + match_id,
+                "match_id": match_id
+            }
+        )
 
     # payout
     schedule_function(

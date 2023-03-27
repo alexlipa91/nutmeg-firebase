@@ -23,6 +23,10 @@ def close_rating_round(request):
 def _close_rating_round(match_id):
     calculations = _close_rating_round_calculations(match_id)
 
+    if not calculations.user_stats_updates:
+        print("Calculations not computed for match {}...skipping".format(match_id))
+        return
+
     db = firestore.client()
 
     match_doc_ref = db.collection('matches').document(match_id)
