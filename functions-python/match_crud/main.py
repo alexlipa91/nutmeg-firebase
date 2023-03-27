@@ -65,7 +65,8 @@ def _edit_match_firestore(match_id, match_data):
     if not doc_ref.get().exists:
         raise Exception("Match {} does not exists".format(match_id))
 
-    match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
+    if "dateTime" in match_data:
+        match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
 
     doc_ref.update(match_data)
 
