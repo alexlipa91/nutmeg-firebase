@@ -4,12 +4,13 @@ on:
       - main
 
 jobs:
-  job_id:
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
+  deploy:
+    name: Deploying to App Engine
+    runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'
         with:
