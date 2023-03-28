@@ -3,6 +3,10 @@ on:
     branches:
       - main
 
+defaults:
+  run:
+    working-directory: app-engine
+
 jobs:
   deploy:
     name: Deploying to App Engine
@@ -16,8 +20,6 @@ jobs:
         with:
           workload_identity_provider: 'projects/956073807168/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
           service_account: 'deploy-cloud-functions@nutmeg-9099c.iam.gserviceaccount.com'
-          working_directory: "app-engine"
 
       - id: 'deploy'
         uses: 'google-github-actions/deploy-appengine@v1'
-        working_directory: "app-engine"
