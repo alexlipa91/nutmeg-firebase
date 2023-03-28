@@ -20,3 +20,4 @@ jobs:
 
       - id: 'deploy'
         uses: 'google-github-actions/deploy-appengine@v1'
+        working_directory: "app-engine"
