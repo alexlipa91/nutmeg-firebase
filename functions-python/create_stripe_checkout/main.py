@@ -196,6 +196,9 @@ def _build_redirect_to_app_link_v2(match_id, outcome, redirect_address):
         "iosInfo": {
             "iosBundleId": 'com.nutmeg.app',
             "iosAppStoreId": '1592985083',
+        },
+        "navigationInfo": {
+            "enableForcedRedirect": True,
         }
     }
 
@@ -204,6 +207,11 @@ def _build_redirect_to_app_link_v2(match_id, outcome, redirect_address):
 
     link = '{}/match/{}?payment_outcome={}'.format(
         redirect_address if redirect_address else "http://nutmegapp.com", match_id, outcome)
+    print(link)
 
     short_link = dl.generate_dynamic_link(link, True, params)
     return short_link
+
+
+if __name__ == '__main__':
+    print(_build_redirect_to_app_link_v2("ql2zgK5dUPGJDDDJLBIN", "success", None))
