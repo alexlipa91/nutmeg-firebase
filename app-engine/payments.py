@@ -1,5 +1,3 @@
-import os
-
 import firebase_admin
 import flask
 import stripe
@@ -7,7 +5,7 @@ from firebase_admin import firestore
 from firebase_dynamic_links import DynamicLinks
 from flask import Blueprint
 from flask_cors import cross_origin
-
+from utils import get_secret
 
 bp = Blueprint('payments', __name__, url_prefix='/payments')
 
@@ -49,7 +47,7 @@ def _get_match_info(match_id):
 
 def _get_stripe_customer_id(user_id, test_mode):
     db = firestore.client()
-    stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
+    stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
     doc = db.collection('users').document(user_id)
 
@@ -88,7 +86,7 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
 def _create_checkout_session_with_destination_charges_v2(customer_id, connected_account_id, user_id,
                                                          organizer_id, match_id, price_id, application_fee_amount,
                                                          test_mode):
-    stripe.api_key = os.environ["STRIPE_TEST_KEY" if test_mode else "STRIPE_PROD_KEY"]
+    stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
     session = stripe.checkout.Session.create(
         success_url="https://web.nutmegapp.com/match/{}?payment_outcome={}".format(match_id, "success"),
@@ -115,7 +113,7 @@ def _create_checkout_session_with_destination_charges_v2(customer_id, connected_
 
 
 def _build_redirect_to_app_link_v2(match_id, outcome, redirect_address):
-    api_key = os.environ["DL_API_KEY"]
+    api_key = get_secret("dynamicLinkApiKey")
     domain = 'nutmegapp.page.link'
     dl = DynamicLinks(api_key, domain)
     params = {

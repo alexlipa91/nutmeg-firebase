@@ -4,3 +4,4 @@ py-firebase-dynamic-links==1.0.1
 python-dateutil
 flask-cors
 stripe
+google-cloud-secret-manager
