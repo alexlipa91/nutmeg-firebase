@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 
 import flask
+from firebase_admin import firestore
 from flask import Blueprint
 from flask_cors import cross_origin
 from google.cloud.firestore_v1 import AsyncClient
@@ -12,9 +13,12 @@ from utils import _serialize_dates
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
 
+syncDb = firestore.client()
 
+
+# todo deprecate
 @bp.route("/", methods=["POST"])
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
+# @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def matches():
     request_json = flask.request.get_json(silent=True)
     print("args {}, data {}".format(flask.request.args, request_json))
@@ -24,10 +28,36 @@ def matches():
     with_user = request_json.get("with_user", None)
     organized_by = request_json.get("organized_by", None)
 
-    result = asyncio.run(_get_matches_firestore_v2(when=when, with_user=with_user,
-                                                   organized_by=organized_by))
+    result = _get_matches_firestore_v2(when=when, with_user=with_user, organized_by=organized_by)
 
     return {"data": result}, 200
+
+
+@bp.route("/", methods=["GET"])
+def get_matches():
+    request_json = flask.request.get_json(silent=True)
+    print("args {}, data {}".format(flask.request.args, request_json))
+
+    # when can have values: 'future', 'all'
+    when = flask.request.args.get("when", None)
+    with_user = flask.request.args.get("with_user", None)
+    organized_by = flask.request.args.get("organized_by", None)
+
+    result = _get_matches_firestore_v2(when=when, with_user=with_user, organized_by=organized_by)
+
+    return {"data": result}, 200
+
+
+@bp.route("/<match_id>", methods=["GET"])
+def get_match(match_id):
+    request_json = flask.request.get_json(silent=True)
+    print("args {}, data {}".format(flask.request.args, request_json))
+
+    match_data = syncDb.collection('matches').document(match_id).get().to_dict()
+
+    if not match_data:
+        return {}, 404
+    return _format_match_data_v2(match_data), 200
 
 
 class MatchStatus(Enum):
@@ -40,9 +70,8 @@ class MatchStatus(Enum):
     UNPUBLISHED = "unpublished"  # match created but not visible to others
 
 
-async def _get_matches_firestore_v2(when="all", with_user=None, organized_by=None):
-    db = AsyncClient()
-    query = db.collection('matches')
+def _get_matches_firestore_v2(when="all", with_user=None, organized_by=None):
+    query = syncDb.collection('matches')
 
     if when == "future":
         query = query.where('dateTime', '>', datetime.utcnow())
@@ -54,9 +83,9 @@ async def _get_matches_firestore_v2(when="all", with_user=None, organized_by=Non
 
     res = {}
 
-    async for m in query.stream():
+    for m in query.stream():
         try:
-            data = await _format_match_data_v2(m.to_dict())
+            data = _format_match_data_v2(m.to_dict())
             res[m.id] = data
         except Exception as e:
             print("Failed to read match data with id '{}".format(m.id))
@@ -65,7 +94,7 @@ async def _get_matches_firestore_v2(when="all", with_user=None, organized_by=Non
     return res
 
 
-async def _format_match_data_v2(match_data):
+def _format_match_data_v2(match_data):
     # add status
     match_data["status"] = _get_status(match_data).value
 

@@ -9,6 +9,10 @@ defaults:
 
 jobs:
   deploy:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     name: Deploying to App Engine
     runs-on: ubuntu-latest
     steps:

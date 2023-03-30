@@ -1,4 +1,3 @@
-import firebase_admin
 import flask
 import stripe
 from firebase_admin import firestore
@@ -9,7 +8,7 @@ from utils import get_secret
 
 bp = Blueprint('payments', __name__, url_prefix='/payments')
 
-firebase_admin.initialize_app()
+syncDb = firestore.client()
 
 
 @bp.route("/checkout", methods=["GET"])
@@ -40,16 +39,14 @@ def success():
 
 
 def _get_match_info(match_id):
-    db = firestore.client()
-    data = db.collection('matches').document(match_id).get().to_dict()
+    data = syncDb.collection('matches').document(match_id).get().to_dict()
     return data
 
 
 def _get_stripe_customer_id(user_id, test_mode):
-    db = firestore.client()
     stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
-    doc = db.collection('users').document(user_id)
+    doc = syncDb.collection('users').document(user_id)
 
     data = doc.get(
         field_paths={"name", "email", "stripeId", "stripeTestId"}) \
@@ -71,9 +68,7 @@ def _get_stripe_customer_id(user_id, test_mode):
 
 
 def _get_stripe_connected_account_id(organizer_id, test_mode):
-    db = firestore.client()
-
-    doc = db.collection('users').document(organizer_id)
+    doc = syncDb.collection('users').document(organizer_id)
 
     data = doc.get(
         field_paths={"stripeConnectedAccountId", "stripeConnectedAccountTestId"}) \
