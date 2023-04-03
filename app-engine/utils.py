@@ -19,4 +19,4 @@ secretManagerClient = secretmanager.SecretManagerServiceClient()
 def get_secret(name):
     return secretManagerClient.access_secret_version(
         request={"name": "projects/956073807168/secrets/{}/versions/latest".format(name)}
-    ).payload.data
+    ).payload.data.decode('utf-8')

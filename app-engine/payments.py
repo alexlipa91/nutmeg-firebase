@@ -81,6 +81,8 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
 def _create_checkout_session_with_destination_charges_v2(customer_id, connected_account_id, user_id,
                                                          organizer_id, match_id, price_id, application_fee_amount,
                                                          test_mode):
+    print(get_secret("stripeTestKey" if test_mode else "stripeProdKey"))
+    print(test_mode)
     stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
     session = stripe.checkout.Session.create(

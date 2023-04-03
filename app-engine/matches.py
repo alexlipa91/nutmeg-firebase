@@ -1,4 +1,3 @@
-import asyncio
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
@@ -6,8 +5,6 @@ from enum import Enum
 import flask
 from firebase_admin import firestore
 from flask import Blueprint
-from flask_cors import cross_origin
-from google.cloud.firestore_v1 import AsyncClient
 from utils import _serialize_dates
 
 
@@ -33,7 +30,7 @@ def matches():
     return {"data": result}, 200
 
 
-@bp.route("/", methods=["GET"])
+@bp.route("", methods=["GET"])
 def get_matches():
     request_json = flask.request.get_json(silent=True)
     print("args {}, data {}".format(flask.request.args, request_json))
@@ -57,7 +54,7 @@ def get_match(match_id):
 
     if not match_data:
         return {}, 404
-    return _format_match_data_v2(match_data), 200
+    return {"data": _format_match_data_v2(match_data)}, 200
 
 
 class MatchStatus(Enum):
