@@ -1,7 +1,10 @@
+import json
 from datetime import datetime
 
 import google.api_core.datetime_helpers
-from google.cloud import secretmanager
+from firebase_dynamic_links import DynamicLinks
+from google.cloud import secretmanager, tasks_v2
+from google.protobuf import timestamp_pb2
 
 
 def _serialize_dates(data):
@@ -20,3 +23,58 @@ def get_secret(name):
     return secretManagerClient.access_secret_version(
         request={"name": "projects/956073807168/secrets/{}/versions/latest".format(name)}
     ).payload.data.decode('utf-8')
+
+
+def schedule_function(task_name, function_name, function_payload, date_time_to_execute):
+    # schedule task
+    client = tasks_v2.CloudTasksClient()
+
+    project = 'nutmeg-9099c'
+    queue = 'match-notifications'
+    location = 'europe-west1'
+    url = 'https://europe-central2-nutmeg-9099c.cloudfunctions.net/{}'.format(function_name)
+
+    parent = client.queue_path(project, location, queue)
+
+    # Create Timestamp protobuf.
+    timestamp = timestamp_pb2.Timestamp()
+    timestamp.FromDatetime(date_time_to_execute)
+
+    # Construct the request body.
+    task = {
+        "http_request": {  # Specify the type of request.
+            "http_method": tasks_v2.HttpMethod.POST,
+            "url": url,  # The full url path that the task will be sent to.
+            "headers": {"Content-type": "application/json"},
+            "body": json.dumps({"data": function_payload}).encode()
+        },
+        "schedule_time": timestamp,
+        "name": client.task_path(project, location, queue, task_name)
+    }
+
+    # Use the client to build and send the task.
+    response = client.create_task(request={"parent": parent, "task": task})
+    print("Created task {} to run {} with params {} at {}".format(response.name, function_name, function_payload,
+                                                                  date_time_to_execute))
+
+
+def build_dynamic_link(link):
+    api_key = get_secret("dynamicLinkApiKey")
+    domain = 'nutmegapp.page.link'
+    dl = DynamicLinks(api_key, domain)
+    params = {
+        "androidInfo": {
+            "androidPackageName": 'com.nutmeg.nutmeg',
+            "androidMinPackageVersionCode": '1'
+        },
+        "iosInfo": {
+            "iosBundleId": 'com.nutmeg.app',
+            "iosAppStoreId": '1592985083',
+        },
+        "navigationInfo": {
+            "enableForcedRedirect": True,
+        }
+    }
+
+    short_link = dl.generate_dynamic_link(link, True, params)
+    return short_link

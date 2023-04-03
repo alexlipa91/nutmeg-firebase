@@ -1,10 +1,8 @@
 import firebase_admin
 import flask
+from firebase_admin import firestore
 from flask import request
 from flask_cors import CORS
-
-# this needs to happen before blueprint imports
-firebase_admin.initialize_app()
 
 import matches
 import payments
@@ -14,6 +12,10 @@ import users
 # If `entrypoint` is not defined in app.yaml, App Engine will look for an app
 # called `app` in `main.py`.
 app = flask.Flask(__name__)
+
+firebase_admin.initialize_app()
+app.db_client = firestore.client()
+
 app.register_blueprint(matches.bp)
 app.register_blueprint(payments.bp)
 app.register_blueprint(users.bp)

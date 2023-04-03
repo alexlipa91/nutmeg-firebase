@@ -1,11 +1,9 @@
 import flask
 from firebase_admin import firestore
 from flask import Blueprint
-
+from flask import current_app as app
 
 bp = Blueprint('users', __name__, url_prefix='/users')
-
-syncDb = firestore.client()
 
 
 @bp.route("/<user_id>", methods=["GET", "POST"])
@@ -14,20 +12,20 @@ def get_user(user_id):
         return {"data": _get_user_firestore(user_id)}, 200
     elif flask.request.method == "POST":
         data = flask.request.get_json()
-        syncDb.collection("users").document(user_id).update(data)
+        app.db_client.collection("users").document(user_id).update(data)
         return {}, 200
 
 
 @bp.route("/<user_id>/tokens", methods=["POST"])
 def add_token(user_id):
     data = flask.request.get_json()
-    syncDb.collection("users").document(user_id)\
+    app.db_client.collection("users").document(user_id)\
         .update({"tokens": firestore.firestore.ArrayUnion([data["token"]])})
     return {}, 200
 
 
 def _get_user_firestore(user_id):
-    data = syncDb.collection('users').document(user_id).get().to_dict()
+    data = app.db_client.collection('users').document(user_id).get().to_dict()
 
     if not data:
         return None

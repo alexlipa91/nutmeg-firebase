@@ -1,13 +1,11 @@
 import flask
 import stripe
-from firebase_admin import firestore
 from firebase_dynamic_links import DynamicLinks
 from flask import Blueprint
-from utils import get_secret
+from utils import get_secret, build_dynamic_link
+from flask import current_app as app
 
 bp = Blueprint('payments', __name__, url_prefix='/payments')
-
-syncDb = firestore.client()
 
 
 @bp.route("/checkout", methods=["GET"])
@@ -45,14 +43,14 @@ def checkout():
 
 
 def _get_match_info(match_id):
-    data = syncDb.collection('matches').document(match_id).get().to_dict()
+    data = app.db_client.collection('matches').document(match_id).get().to_dict()
     return data
 
 
 def _get_stripe_customer_id(user_id, test_mode):
     stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
-    doc = syncDb.collection('users').document(user_id)
+    doc = app.db_client.collection('users').document(user_id)
 
     data = doc.get(
         field_paths={"name", "email", "stripeId", "stripeTestId"}) \
@@ -74,7 +72,7 @@ def _get_stripe_customer_id(user_id, test_mode):
 
 
 def _get_stripe_connected_account_id(organizer_id, test_mode):
-    doc = syncDb.collection('users').document(organizer_id)
+    doc = app.db_client.collection('users').document(organizer_id)
 
     data = doc.get(
         field_paths={"stripeConnectedAccountId", "stripeConnectedAccountTestId"}) \
@@ -119,9 +117,10 @@ def _create_checkout_session_with_deep_links(customer_id, connected_account_id, 
     stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
     session = stripe.checkout.Session.create(
-        success_url=_build_redirect_to_app_link(match_id, "success"),
-        cancel_url=_build_redirect_to_app_link(match_id, "cancel"),
-
+        success_url=build_dynamic_link('http://web.nutmegapp.com/match/{}?payment_outcome={}'
+                                       .format(match_id, "success")),
+        cancel_url=build_dynamic_link('http://web.nutmegapp.com/match/{}?payment_outcome={}'
+                                      .format(match_id, "cancel")),
         payment_method_types=["card", "ideal"],
         line_items=[
             {"price": price_id, "quantity": 1}

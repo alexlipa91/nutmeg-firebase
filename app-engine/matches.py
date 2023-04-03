@@ -1,21 +1,21 @@
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
+import dateutil.parser
 
 import flask
+import stripe
 from firebase_admin import firestore
 from flask import Blueprint
-from utils import _serialize_dates
+from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
+from flask import current_app as app
 
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
 
-syncDb = firestore.client()
-
 
 # todo deprecate
 @bp.route("/", methods=["POST"])
-# @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def matches():
     request_json = flask.request.get_json(silent=True)
 
@@ -43,11 +43,24 @@ def get_matches():
 
 @bp.route("/<match_id>", methods=["GET"])
 def get_match(match_id):
-    match_data = syncDb.collection('matches').document(match_id).get().to_dict()
+    match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
 
     if not match_data:
         return {}, 404
     return {"data": _format_match_data_v2(match_data)}, 200
+
+
+@bp.route("", methods=["POST"])
+def create_match():
+    request_json = flask.request.get_json(silent=True)
+
+    is_test = request_json.get("isTest", False)
+    organizer_id = request_json["organizerId"]
+
+    match_id = _add_match_firestore(request_json)
+    _update_user_account(organizer_id, is_test, match_id)
+
+    return {"data": {"id": match_id}}, 200
 
 
 class MatchStatus(Enum):
@@ -61,7 +74,7 @@ class MatchStatus(Enum):
 
 
 def _get_matches_firestore_v2(when="all", with_user=None, organized_by=None):
-    query = syncDb.collection('matches')
+    query = app.db_client.collection('matches')
 
     if when == "future":
         query = query.where('dateTime', '>', datetime.utcnow())
@@ -118,3 +131,99 @@ def _get_status(match_data):
         return MatchStatus.PRE_PLAYING
     return MatchStatus.OPEN
 
+
+def _add_match_firestore(match_data):
+    assert match_data.get("pricePerPerson", None) is not None, "Required field missing"
+    assert match_data.get("maxPlayers", None) is not None, "Required field missing"
+    assert match_data.get("dateTime", None) is not None, "Required field missing"
+    assert match_data.get("duration", None) is not None, "Required field missing"
+
+    match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
+
+    if match_data.get("managePayments", True):
+        # check if organizer can receive payments and if not do not publish yet
+        organizer_data = app.db_client.collection('users').document(match_data["organizerId"]).get().to_dict()
+        field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
+
+        if not organizer_data.get(field_name, False):
+            print("{} is False on organizer account: set match as unpublished".format(field_name))
+            # add it as draft
+            match_data["unpublished_reason"] = "organizer_not_onboarded"
+
+    # add nutmeg fee to price
+    match_data["pricePerPerson"] = match_data["pricePerPerson"] + 50
+    match_data["userFee"] = 50
+
+    doc_ref = app.db_client.collection('matches').document()
+    doc_ref.set(match_data)
+
+    # POST CREATION
+    # add dynamic link
+    app.db_client.collection("matches").document(doc_ref.id).update({
+        'dynamicLink': build_dynamic_link('http://web.nutmegapp.com/match/{}'.format(doc_ref.id))
+    })
+
+    # schedule cancellation check if required
+    if "cancelHoursBefore" in match_data:
+        cancellation_time = match_data["dateTime"] - datetime.timedelta(hours=match_data["cancelHoursBefore"])
+        schedule_function(
+            "cancel_or_confirm_match_{}".format(doc_ref.id),
+            "cancel_or_confirm_match",
+            {"match_id": doc_ref.id},
+            cancellation_time
+        )
+        schedule_function(
+            "send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
+            "send_pre_cancellation_organizer_notification",
+            {"match_id": doc_ref.id},
+            cancellation_time - datetime.timedelta(hours=1)
+        )
+
+    return doc_ref.id
+
+
+def _update_user_account(user_id, is_test, match_id):
+    stripe.api_key = get_secret("stripeTestKey" if is_test else "stripeProdKey")
+    organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+
+    # add to created matches
+    user_doc_ref = app.db_client.collection('users').document(user_id)
+    organised_list_field_name = "created_matches" if not is_test else "created_test_matches"
+    user_updates = {
+        "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
+    }
+
+    # check if we need to create a stripe connected account
+    user_data = user_doc_ref.get().to_dict()
+    if organizer_id_field_name in user_data:
+        print("{} already created".format(organizer_id_field_name))
+        organizer_id = user_data[organizer_id_field_name]
+    else:
+        response = stripe.Account.create(
+            type="express",
+            country="NL",
+            capabilities={
+                "transfers": {"requested": True},
+            },
+            business_type="individual",
+            business_profile={
+                "product_description": "Nutmeg football matches"
+            },
+            metadata={
+                "userId": user_id
+            },
+            settings={
+                "payouts": {
+                    "debit_negative_balances": True,
+                    "schedule": {
+                        "interval": "manual"
+                    }
+                }
+            }
+        )
+        organizer_id = response.id
+        user_updates[organizer_id_field_name] = response.id
+
+    user_doc_ref.update(user_updates)
+
+    return organizer_id
