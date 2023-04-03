@@ -7,6 +7,7 @@ firebase_admin.initialize_app()
 
 import matches
 import payments
+import users
 
 
 # If `entrypoint` is not defined in app.yaml, App Engine will look for an app
@@ -14,6 +15,7 @@ import payments
 app = flask.Flask(__name__)
 app.register_blueprint(matches.bp)
 app.register_blueprint(payments.bp)
+app.register_blueprint(users.bp)
 
 CORS(app)
 
