@@ -120,8 +120,8 @@ def _create_checkout_session_with_deep_links(customer_id, connected_account_id, 
     stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
 
     session = stripe.checkout.Session.create(
-        success_url=_build_redirect_to_app_link(match_id, "success", ""),
-        cancel_url=_build_redirect_to_app_link(match_id, "cancel", ""),
+        success_url=_build_redirect_to_app_link(match_id, "success"),
+        cancel_url=_build_redirect_to_app_link(match_id, "cancel"),
 
         payment_method_types=["card", "ideal"],
         line_items=[
@@ -144,7 +144,7 @@ def _create_checkout_session_with_deep_links(customer_id, connected_account_id, 
     return session
 
 
-def _build_redirect_to_app_link(match_id, outcome, redirect_address):
+def _build_redirect_to_app_link(match_id, outcome):
     api_key = get_secret("dynamicLinkApiKey")
     domain = 'nutmegapp.page.link'
     dl = DynamicLinks(api_key, domain)
@@ -161,9 +161,6 @@ def _build_redirect_to_app_link(match_id, outcome, redirect_address):
             "enableForcedRedirect": True,
         }
     }
-
-    if redirect_address and redirect_address[-1] == "/":
-        redirect_address = redirect_address[:-1]
 
     link = 'http://web.nutmegapp.com/match/{}?payment_outcome={}'.format(match_id, outcome)
 
