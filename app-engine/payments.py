@@ -41,7 +41,6 @@ def checkout():
             50,
             is_test)
 
-
     return flask.redirect(session.url)
 
 

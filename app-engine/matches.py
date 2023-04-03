@@ -18,7 +18,6 @@ syncDb = firestore.client()
 # @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def matches():
     request_json = flask.request.get_json(silent=True)
-    print("args {}, data {}".format(flask.request.args, request_json))
 
     # when can have values: 'future', 'all'
     when = request_json.get("when", None)
@@ -32,9 +31,6 @@ def matches():
 
 @bp.route("", methods=["GET"])
 def get_matches():
-    request_json = flask.request.get_json(silent=True)
-    print("args {}, data {}".format(flask.request.args, request_json))
-
     # when can have values: 'future', 'all'
     when = flask.request.args.get("when", None)
     with_user = flask.request.args.get("with_user", None)
@@ -47,9 +43,6 @@ def get_matches():
 
 @bp.route("/<match_id>", methods=["GET"])
 def get_match(match_id):
-    request_json = flask.request.get_json(silent=True)
-    print("args {}, data {}".format(flask.request.args, request_json))
-
     match_data = syncDb.collection('matches').document(match_id).get().to_dict()
 
     if not match_data:

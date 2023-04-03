@@ -1,5 +1,6 @@
 import firebase_admin
 import flask
+from flask import request
 from flask_cors import CORS
 
 # this needs to happen before blueprint imports
@@ -18,6 +19,20 @@ app.register_blueprint(payments.bp)
 app.register_blueprint(users.bp)
 
 CORS(app)
+
+
+@app.before_request
+def after_request_callback():
+    path = request.path
+    method = request.method
+    args = request.args
+
+    log = "{} [{}] - args: {}".format(path, method, args)
+
+    if method == "POST":
+        log = log + " body: {}".format(request.get_json())
+
+    print(log)
 
 
 if __name__ == "__main__":
