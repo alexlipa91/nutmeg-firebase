@@ -1,4 +1,3 @@
-import json
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
@@ -126,7 +125,13 @@ def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, or
 
             # status filter
             skip_status = organized_by is None and data["status"] == "unpublished"
-            if not (skip_status or outside_radius or is_outside_time_range):
+
+            # test filter
+            is_admin = data["organizerId"] in ["IwrZWBFb4LZl3Kto1V3oUKPnCni1", "bQHD0EM265V6GuSZuy1uQPHzb602"]
+            is_test = data.get("isTest", False)
+            hide_test_match = is_test and not is_admin
+
+            if not (skip_status or outside_radius or is_outside_time_range or hide_test_match):
                 res[m.id] = data
 
         except Exception as e:
@@ -143,8 +148,8 @@ def _format_match_data_v2(match_data):
     # serialize dates
     match_data = _serialize_dates(match_data)
 
-    if "sportCenterId" in match_data:
-        match_data["sportCenter"] = json.dumps(sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"])
+    # if "sportCenterId" in match_data:
+    #     match_data["sportCenter"] = json.dumps(sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"])
 
     return match_data
 
