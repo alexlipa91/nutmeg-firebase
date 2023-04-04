@@ -2,11 +2,16 @@ import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 import dateutil.parser
+import firebase_admin
+import pytz
+
+import sportcenters
 
 import flask
+import geopy.distance
 import stripe
 from firebase_admin import firestore
-from flask import Blueprint
+from flask import Blueprint, Flask
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
 from flask import current_app as app
 
@@ -31,12 +36,16 @@ def matches():
 
 @bp.route("", methods=["GET"])
 def get_matches():
-    # when can have values: 'future', 'all'
+    # when can have values: 'future', 'past'
     when = flask.request.args.get("when", None)
     with_user = flask.request.args.get("with_user", None)
     organized_by = flask.request.args.get("organized_by", None)
+    lat = flask.request.args.get("lat", None)
+    lng = flask.request.args.get("lng", None)
+    radius_km = flask.request.args.get("radius_km", None)
 
-    result = _get_matches_firestore_v2(when=when, with_user=with_user, organized_by=organized_by)
+    result = _get_matches_firestore_v2(user_location=(lat, lng), when=when, with_user=with_user,
+                                       organized_by=organized_by, radius_km=radius_km)
 
     return {"data": result}, 200
 
@@ -73,11 +82,12 @@ class MatchStatus(Enum):
     UNPUBLISHED = "unpublished"  # match created but not visible to others
 
 
-def _get_matches_firestore_v2(when="all", with_user=None, organized_by=None):
+def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, organized_by=None,
+                              radius_km=None):
+    sport_centers_cache = {}
+
     query = app.db_client.collection('matches')
 
-    if when == "future":
-        query = query.where('dateTime', '>', datetime.utcnow())
     if with_user:
         field_path = u"going.`{}`".format(with_user)
         query = query.where(field_path, "!=", "undefined")
@@ -88,8 +98,36 @@ def _get_matches_firestore_v2(when="all", with_user=None, organized_by=None):
 
     for m in query.stream():
         try:
-            data = _format_match_data_v2(m.to_dict())
-            res[m.id] = data
+            raw_data = m.to_dict()
+
+            # time filter
+            now = datetime.now(tz=pytz.UTC)
+            is_outside_time_range = (
+                when == "future" and raw_data["dateTime"] < now or
+                when == "past" and raw_data["dateTime"] > now
+            )
+
+            data = _format_match_data_v2(raw_data)
+
+            # location filter
+            outside_radius = False
+            if radius_km:
+                if "sportCenter" in data:
+                    match_location = (data["sportCenter"]["lat"], data["sportCenter"]["lng"])
+                else:
+                    sp = sport_centers_cache.get(data["sportCenterId"],
+                                                 sportcenters.get_sportcenter(data["sportCenterId"])[0]["data"])
+                    sport_centers_cache[data["sportCenterId"]] = sp
+                    match_location = (sp["lat"], sp["lng"])
+
+                distance = geopy.distance.geodesic(user_location, match_location).km
+                outside_radius = distance > radius_km
+
+            # status filter
+            skip_status = organized_by is None and data["status"] == "unpublished"
+            if not (skip_status or outside_radius or is_outside_time_range):
+                res[m.id] = data
+
         except Exception as e:
             print("Failed to read match data with id '{}".format(m.id))
             traceback.print_exc()
