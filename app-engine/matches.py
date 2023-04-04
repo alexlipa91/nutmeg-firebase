@@ -1,3 +1,4 @@
+import json
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
@@ -142,6 +143,9 @@ def _format_match_data_v2(match_data):
     # serialize dates
     match_data = _serialize_dates(match_data)
 
+    if "sportCenterId" in match_data:
+        match_data["sportCenter"] = json.dumps(sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"])
+
     return match_data
 
 
@@ -265,3 +269,15 @@ def _update_user_account(user_id, is_test, match_id):
     user_doc_ref.update(user_updates)
 
     return organizer_id
+
+
+if __name__ == '__main__':
+    app = Flask("test")
+    firebase_admin.initialize_app()
+    app.db_client = firestore.client()
+
+    with app.app_context():
+        matches = get_match("nsT21cA3sksdVb6Xg41Z")
+        print(matches)
+        # for m in matches:
+        #     print(m)
