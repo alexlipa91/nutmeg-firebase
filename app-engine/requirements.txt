@@ -7,3 +7,4 @@ stripe
 google-cloud-secret-manager
 google-cloud-tasks==2.7.2
 geopy==2.3.0
+pytz
