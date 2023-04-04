@@ -65,11 +65,13 @@ def build_dynamic_link(link):
     params = {
         "androidInfo": {
             "androidPackageName": 'com.nutmeg.nutmeg',
-            "androidMinPackageVersionCode": '1'
+            "androidMinPackageVersionCode": '1',
+            "androidFallbackLink": link
         },
         "iosInfo": {
             "iosBundleId": 'com.nutmeg.app',
             "iosAppStoreId": '1592985083',
+            "iosFallbackLink": link
         },
         "navigationInfo": {
             "enableForcedRedirect": True,
