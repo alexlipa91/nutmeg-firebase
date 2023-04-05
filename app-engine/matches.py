@@ -43,9 +43,10 @@ def get_matches():
     lat = flask.request.args.get("lat", None)
     lng = flask.request.args.get("lng", None)
     radius_km = flask.request.args.get("radius_km", None)
+    user_id = flask.request.args.get("user_id", None)
 
     result = _get_matches_firestore_v2(user_location=(lat, lng), when=when, with_user=with_user,
-                                       organized_by=organized_by, radius_km=radius_km)
+                                       organized_by=organized_by, radius_km=radius_km, user_id=user_id)
 
     return {"data": result}, 200
 
@@ -83,7 +84,7 @@ class MatchStatus(Enum):
 
 
 def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, organized_by=None,
-                              radius_km=None):
+                              radius_km=None, user_id=None):
     sport_centers_cache = {}
 
     query = app.db_client.collection('matches')
@@ -127,7 +128,7 @@ def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, or
             skip_status = organized_by is None and data["status"] == "unpublished"
 
             # test filter
-            is_admin = data["organizerId"] in ["IwrZWBFb4LZl3Kto1V3oUKPnCni1", "bQHD0EM265V6GuSZuy1uQPHzb602"]
+            is_admin = user_id is not None and user_id in ["IwrZWBFb4LZl3Kto1V3oUKPnCni1", "bQHD0EM265V6GuSZuy1uQPHzb602"]
             is_test = data.get("isTest", False)
             hide_test_match = is_test and not is_admin
 
