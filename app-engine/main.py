@@ -1,6 +1,6 @@
 import firebase_admin
 import flask
-from firebase_admin import firestore
+from firebase_admin import firestore, auth
 from flask import request
 from flask_cors import CORS
 
@@ -24,17 +24,12 @@ CORS(app)
 
 
 @app.before_request
-def after_request_callback():
-    path = request.path
-    method = request.method
-    args = request.args
-
-    log = "{} [{}] - args: {}".format(path, method, args)
-
-    if method == "POST":
-        log = log + " body: {}".format(request.get_json())
-
-    print(log)
+def before_request_callback():
+    if "Authorization" in request.headers:
+        decoded_token = auth.verify_id_token(request.headers["Authorization"].split(" ")[1])
+        flask.g.uid = decoded_token['uid']
+    else:
+        flask.g.uid = None
 
 
 if __name__ == "__main__":

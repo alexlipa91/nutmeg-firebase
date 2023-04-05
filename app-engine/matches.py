@@ -43,7 +43,7 @@ def get_matches():
     lat = flask.request.args.get("lat", None)
     lng = flask.request.args.get("lng", None)
     radius_km = flask.request.args.get("radius_km", None)
-    user_id = flask.request.args.get("user_id", None)
+    user_id = flask.g.uid
 
     result = _get_matches_firestore_v2(user_location=(lat, lng), when=when, with_user=with_user,
                                        organized_by=organized_by, radius_km=radius_km, user_id=user_id)
