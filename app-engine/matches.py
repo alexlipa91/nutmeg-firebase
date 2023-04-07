@@ -68,6 +68,8 @@ def get_match(match_id):
 @bp.route("/<match_id>/ratings", methods=["GET"])
 def get_ratings(match_id):
     match_stats = MatchStats.from_ratings_doc(match_id)
+    if not match_stats:
+        return {}, 404
     resp = {
         "scores": match_stats.get_user_scores()
     }
@@ -77,15 +79,18 @@ def get_ratings(match_id):
 @bp.route("/<match_id>/ratings/to_vote", methods=["GET"])
 def get_still_to_vote(match_id):
     all_going = app.db_client.collection("matches").document(match_id).get().to_dict().get("going", {}).keys()
-    received = app.db_client.collection("ratings").document(match_id).get().to_dict().get("scores", {})
+    received_dict = app.db_client.collection("ratings").document(match_id).get().to_dict()
+    received = received_dict.get("scores", {}) if received_dict else {}
+
     user_id = flask.g.uid
     to_vote = set()
 
     for u in all_going:
-        if u != user_id and user_id not in received[u].keys():
+        received_by_u = received.get(u, {}).keys()
+        if u != user_id and user_id not in received_by_u:
             to_vote.add(u)
 
-    return {"data": {"users": to_vote}}, 200
+    return {"data": {"users": list(to_vote)}}, 200
 
 
 @bp.route("", methods=["POST"])
@@ -192,16 +197,16 @@ def _get_status(match_data):
 
     if match_data.get("cancelledAt", None):
         return MatchStatus.CANCELLED
-    if match_data.get("scoresComputedAt", None):
-        return MatchStatus.RATED
 
     now = datetime.now(timezone.utc)
     start = match_data["dateTime"]
     cannot_leave_at = start - timedelta(hours=match_data.get("cancelHoursBefore", 0))
-    end = start + timedelta(minutes=match_data["duration"])
+    end = start + timedelta(minutes=match_data.get("duration", 60))
+    rating_window_over = end + timedelta(days=1)
 
-    # cannot_leave_at   |   start   |   end
-
+    # cannot_leave_at  |  start  |  end  |  rating_window_over
+    if now > rating_window_over:
+        return MatchStatus.RATED
     if now > end:
         return MatchStatus.TO_RATE
     if now > start:
