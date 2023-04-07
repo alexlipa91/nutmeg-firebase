@@ -85,7 +85,7 @@ def get_still_to_vote(match_id):
         if u != user_id and user_id not in received[u].keys():
             to_vote.add(u)
 
-    return {"data": to_vote}, 200
+    return {"data": {"users": to_vote}}, 200
 
 
 @bp.route("", methods=["POST"])
