@@ -74,6 +74,20 @@ def get_ratings(match_id):
     return {"data": resp}, 200
 
 
+@bp.route("/<match_id>/ratings/to_vote", methods=["GET"])
+def get_still_to_vote(match_id):
+    all_going = app.db_client.collection("matches").document(match_id).get().to_dict().get("going", {}).keys()
+    received = app.db_client.collection("ratings").document(match_id).get().to_dict().get("scores", {})
+    user_id = flask.g.uid
+    to_vote = set()
+
+    for u in all_going:
+        if u != user_id and user_id not in received[u].keys():
+            to_vote.add(u)
+
+    return {"data": to_vote}, 200
+
+
 @bp.route("", methods=["POST"])
 def create_match():
     request_json = flask.request.get_json(silent=True)
@@ -300,7 +314,7 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        matches = get_match("nsT21cA3sksdVb6Xg41Z")
-        print(matches)
+        to_vote = get_still_to_vote("zeY8v1qsJsXCZJ5e21Dm")
+        print(to_vote)
         # for m in matches:
         #     print(m)
