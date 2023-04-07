@@ -5,7 +5,7 @@ import os
 from firebase_admin import firestore
 import firebase_admin
 from nutmeg_utils.notifications import send_notification_to_users
-from ratings_utils import MatchStats
+from nutmeg_utils.ratings import MatchStats
 
 firebase_admin.initialize_app()
 
