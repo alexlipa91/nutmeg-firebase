@@ -14,6 +14,7 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
 from flask import current_app as app
+from nutmeg_utils.ratings import MatchStats
 
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
@@ -62,6 +63,15 @@ def get_match(match_id):
     if not match_data:
         return {}, 404
     return {"data": _format_match_data_v2(match_data, version)}, 200
+
+
+@bp.route("/<match_id>/ratings", methods=["GET"])
+def get_ratings(match_id):
+    match_stats = MatchStats.from_ratings_doc(match_id)
+    resp = {
+        "scores": match_stats.get_user_scores()
+    }
+    return {"data": resp}, 200
 
 
 @bp.route("", methods=["POST"])
