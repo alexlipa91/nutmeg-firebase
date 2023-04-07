@@ -15,9 +15,9 @@ class MatchStats:
     def get_user_scores(self) -> Dict[str, float]:
         user_scores = {}
         for u in self.raw_scores:
-            if len(self.raw_scores[u]) > 1:
-                scores = [v for v in self.raw_scores[u].values() if v > 0]
-                user_scores[u] = sum(scores) / len(scores)
+            positive_scores = [v for v in self.raw_scores[u].values() if v > 0]
+            if len(positive_scores) > 1:
+                user_scores[u] = sum(positive_scores) / len(positive_scores)
         return user_scores
 
     def get_user_skills(self) -> Dict[str, Dict[str, int]]:

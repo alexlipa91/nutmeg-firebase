@@ -5,7 +5,7 @@ import os
 from firebase_admin import firestore
 import firebase_admin
 from nutmeg_utils.notifications import send_notification_to_users
-from nutmeg_utils.ratings import MatchStats
+from ratings_utils import MatchStats
 
 firebase_admin.initialize_app()
 
@@ -23,15 +23,12 @@ def close_rating_round(request):
 def _close_rating_round(match_id):
     calculations = _close_rating_round_calculations(match_id)
 
-    if not calculations.user_stats_updates:
-        print("Calculations not computed for match {}...skipping".format(match_id))
-        return
-
     db = firestore.client()
 
     match_doc_ref = db.collection('matches').document(match_id)
     users_docs_ref = {}
     users_stats_docs_ref = {}
+
     for u in calculations.user_stats_updates.keys():
         users_docs_ref[u] = db.collection("users").document(u)
         users_stats_docs_ref[u] = db.collection("users").document(u).collection("stats").document("match_votes")
@@ -82,8 +79,8 @@ def _close_rating_round_transaction(transaction, calculations, match_doc_ref, us
 class RatingsRoundResult:
 
     def __init__(self, match_updates, user_match_stats=None, user_stats_updates=None):
-        self.user_match_stats = user_match_stats
-        self.user_stats_updates = user_stats_updates
+        self.user_match_stats = user_match_stats if user_match_stats else {}
+        self.user_stats_updates = user_stats_updates if user_stats_updates else {}
         self.match_udpates = match_updates
 
     def get_potms(self):
@@ -119,10 +116,11 @@ def _close_rating_round_calculations(match_id):
 
     final_scores = match_stats.get_user_scores()
     potms = match_stats.get_potms()
-    potms_map = {}
-    for p in potms[0]:
-        potms_map[p] = potms[1]
-    match_updates["manOfTheMatch"] = potms_map
+    if potms:
+        potms_map = {}
+        for p in potms[0]:
+            potms_map[p] = potms[1]
+        match_updates["manOfTheMatch"] = potms_map
 
     skill_scores = match_stats.get_user_skills()
 
@@ -150,7 +148,8 @@ def _close_rating_round_calculations(match_id):
             user_stats_increments["potm_count"] = firestore.firestore.Increment(1)
 
         # last 10 scores
-        last_date_scores = db.collection("users").document(user).get(field_paths=["last_date_scores"]).to_dict()["last_date_scores"]
+        last_date_scores = db.collection("users").document(user).get(field_paths=["last_date_scores"])\
+            .to_dict().get("last_date_scores", [])
         last_date_scores[match_data["dateTime"].strftime("%Y%m%d%H%M%S")] = score
 
         if len(last_date_scores) > 10:
@@ -221,5 +220,5 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
 
 if __name__ == '__main__':
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
-    _close_rating_round("Z3bQJPbr33so9kiDOoqw")
+    _close_rating_round("zeY8v1qsJsXCZJ5e21Dm")
 

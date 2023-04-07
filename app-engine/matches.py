@@ -29,7 +29,7 @@ def matches():
     with_user = request_json.get("with_user", None)
     organized_by = request_json.get("organized_by", None)
 
-    result = _get_matches_firestore_v2(when=when, with_user=with_user, organized_by=organized_by)
+    result = _get_matches_firestore(when=when, with_user=with_user, organized_by=organized_by, version=1)
 
     return {"data": result}, 200
 
@@ -43,10 +43,12 @@ def get_matches():
     lat = flask.request.args.get("lat", None)
     lng = flask.request.args.get("lng", None)
     radius_km = flask.request.args.get("radius_km", None)
+    version = int(flask.request.args.get("version", 1))
     user_id = flask.g.uid
 
-    result = _get_matches_firestore_v2(user_location=(lat, lng), when=when, with_user=with_user,
-                                       organized_by=organized_by, radius_km=radius_km, user_id=user_id)
+    result = _get_matches_firestore(user_location=(lat, lng), when=when, with_user=with_user,
+                                    organized_by=organized_by, radius_km=radius_km, user_id=user_id,
+                                    version=version)
 
     return {"data": result}, 200
 
@@ -55,9 +57,11 @@ def get_matches():
 def get_match(match_id):
     match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
 
+    version = int(flask.request.args.get("version", 1))
+
     if not match_data:
         return {}, 404
-    return {"data": _format_match_data_v2(match_data)}, 200
+    return {"data": _format_match_data_v2(match_data, version)}, 200
 
 
 @bp.route("", methods=["POST"])
@@ -83,8 +87,8 @@ class MatchStatus(Enum):
     UNPUBLISHED = "unpublished"  # match created but not visible to others
 
 
-def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, organized_by=None,
-                              radius_km=None, user_id=None):
+def _get_matches_firestore(user_location=None, when=None, with_user=None, organized_by=None,
+                           radius_km=None, user_id=None, version=1):
     sport_centers_cache = {}
 
     query = app.db_client.collection('matches')
@@ -108,7 +112,7 @@ def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, or
                 when == "past" and raw_data["dateTime"] > now
             )
 
-            data = _format_match_data_v2(raw_data)
+            data = _format_match_data_v2(raw_data, version)
 
             # location filter
             outside_radius = False
@@ -142,15 +146,17 @@ def _get_matches_firestore_v2(user_location=None, when="all", with_user=None, or
     return res
 
 
-def _format_match_data_v2(match_data):
+def _format_match_data_v2(match_data, version):
     # add status
     match_data["status"] = _get_status(match_data).value
 
     # serialize dates
     match_data = _serialize_dates(match_data)
 
-    # if "sportCenterId" in match_data:
-    #     match_data["sportCenter"] = json.dumps(sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"])
+    if version > 1:
+        if "sportCenterId" in match_data:
+            sportcenter = sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"]
+            match_data["sportCenter"] = sportcenter
 
     return match_data
 
