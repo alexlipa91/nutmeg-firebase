@@ -11,7 +11,9 @@ class MatchStats:
     def from_ratings_doc(match_id):
         db = firestore.client()
         raw_scores_doc = db.collection("ratings").document(match_id).get().to_dict()
-        return MatchStats(match_id, [], raw_scores_doc["scores"], raw_scores_doc["skills"])
+        if not raw_scores_doc:
+            return None
+        return MatchStats(match_id, [], raw_scores_doc.get("scores", {}), raw_scores_doc.get("skills", {}))
 
     def __init__(self,
                  id,
