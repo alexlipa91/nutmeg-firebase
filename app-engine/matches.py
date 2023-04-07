@@ -156,6 +156,7 @@ def _format_match_data_v2(match_data, version):
     if version > 1:
         if "sportCenterId" in match_data:
             sportcenter = sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"]
+            sportcenter["placeId"] = match_data["sportCenterId"]
             match_data["sportCenter"] = sportcenter
 
     return match_data
