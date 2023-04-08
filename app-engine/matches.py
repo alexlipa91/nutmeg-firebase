@@ -2,7 +2,6 @@ import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 import dateutil.parser
-import firebase_admin
 import pytz
 
 import sportcenters
@@ -11,7 +10,7 @@ import flask
 import geopy.distance
 import stripe
 from firebase_admin import firestore
-from flask import Blueprint, Flask
+from flask import Blueprint
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
 from flask import current_app as app
 from nutmeg_utils.ratings import MatchStats
@@ -223,6 +222,7 @@ def _add_match_firestore(match_data):
     assert match_data.get("duration", None) is not None, "Required field missing"
 
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
+    match_data["createdAt"] = firestore.firestore.SERVER_TIMESTAMP
 
     if match_data.get("managePayments", True):
         # check if organizer can receive payments and if not do not publish yet
@@ -235,8 +235,12 @@ def _add_match_firestore(match_data):
             match_data["unpublished_reason"] = "organizer_not_onboarded"
 
     # add nutmeg fee to price
-    match_data["pricePerPerson"] = match_data["pricePerPerson"] + 50
-    match_data["userFee"] = 50
+    if match_data.get("organizerId") == "bQHD0EM265V6GuSZuy1uQPHzb602":
+        fee = 50
+    else:
+        fee = 0
+    match_data["pricePerPerson"] = match_data["pricePerPerson"] + fee
+    match_data["userFee"] = fee
 
     doc_ref = app.db_client.collection('matches').document()
     doc_ref.set(match_data)
@@ -249,7 +253,7 @@ def _add_match_firestore(match_data):
 
     # schedule cancellation check if required
     if "cancelHoursBefore" in match_data:
-        cancellation_time = match_data["dateTime"] - datetime.timedelta(hours=match_data["cancelHoursBefore"])
+        cancellation_time = match_data["dateTime"] - timedelta(hours=match_data["cancelHoursBefore"])
         schedule_function(
             "cancel_or_confirm_match_{}".format(doc_ref.id),
             "cancel_or_confirm_match",
@@ -260,7 +264,7 @@ def _add_match_firestore(match_data):
             "send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
             "send_pre_cancellation_organizer_notification",
             {"match_id": doc_ref.id},
-            cancellation_time - datetime.timedelta(hours=1)
+            cancellation_time - timedelta(hours=1)
         )
 
     return doc_ref.id
@@ -311,15 +315,3 @@ def _update_user_account(user_id, is_test, match_id):
     user_doc_ref.update(user_updates)
 
     return organizer_id
-
-
-if __name__ == '__main__':
-    app = Flask("test")
-    firebase_admin.initialize_app()
-    app.db_client = firestore.client()
-
-    with app.app_context():
-        to_vote = get_still_to_vote("zeY8v1qsJsXCZJ5e21Dm")
-        print(to_vote)
-        # for m in matches:
-        #     print(m)

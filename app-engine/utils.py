@@ -6,6 +6,7 @@ from google.cloud import secretmanager, tasks_v2
 from google.protobuf import timestamp_pb2
 import requests
 
+
 def _serialize_dates(data):
     for k in data:
         if type(data[k]) == dict:
