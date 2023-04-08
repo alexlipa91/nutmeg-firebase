@@ -1,7 +1,11 @@
+import os
+
 import flask
 from firebase_admin import firestore
 from flask import Blueprint
 from flask import current_app as app
+
+from utils import get_remote_config
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 
@@ -14,6 +18,14 @@ def get_user(user_id):
         data = flask.request.get_json()
         app.db_client.collection("users").document(user_id).update(data)
         return {}, 200
+
+
+@bp.route("/test", methods=["GET"])
+def test():
+    t = get_remote_config()
+    print(t)
+    print(os.environ)
+    return {}, 200
 
 
 @bp.route("/<user_id>/tokens", methods=["POST"])

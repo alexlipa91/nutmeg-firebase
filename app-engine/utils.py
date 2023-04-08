@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 import google.api_core.datetime_helpers
+from google.auth import compute_engine
 from google.cloud import secretmanager, tasks_v2
 from google.protobuf import timestamp_pb2
 import requests
@@ -79,5 +80,17 @@ def build_dynamic_link(link):
     return json.loads(resp.text)["shortLink"]
 
 
+def get_remote_config():
+    credentials = compute_engine.Credentials()
+
+    # credentials = ServiceAccountCredentials.from_json_keyfile_name(
+    #     "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
+    #     , scopes=['https://www.googleapis.com/auth/cloud-platform']
+    # )
+    return credentials.token
+
+
 if __name__ == '__main__':
-    print(build_dynamic_link("https://web.nutmegapp.com/user"))
+    import os
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
+    get_remote_config()
