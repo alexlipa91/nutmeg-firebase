@@ -2,10 +2,9 @@ import json
 from datetime import datetime
 
 import google.api_core.datetime_helpers
-from firebase_dynamic_links import DynamicLinks
 from google.cloud import secretmanager, tasks_v2
 from google.protobuf import timestamp_pb2
-
+import requests
 
 def _serialize_dates(data):
     for k in data:
@@ -59,24 +58,25 @@ def schedule_function(task_name, function_name, function_payload, date_time_to_e
 
 
 def build_dynamic_link(link):
-    api_key = get_secret("dynamicLinkApiKey")
-    domain = 'nutmegapp.page.link'
-    dl = DynamicLinks(api_key, domain)
-    params = {
-        "androidInfo": {
-            "androidPackageName": 'com.nutmeg.nutmeg',
-            "androidMinPackageVersionCode": '1',
-            "androidFallbackLink": link
-        },
-        "iosInfo": {
-            "iosBundleId": 'com.nutmeg.app',
-            "iosAppStoreId": '1592985083',
-            "iosFallbackLink": link
-        },
-        "navigationInfo": {
-            "enableForcedRedirect": True,
-        }
-    }
+    resp = requests.post(
+        url="https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key={}".format(get_secret("dynamicLinkApiKey")),
+        headers={'Content-Type': 'application/json'},
+        data=json.dumps({
+            "dynamicLinkInfo": {
+                "domainUriPrefix": "https://nutmegapp.page.link",
+                "link": link,
+                "androidInfo": {
+                    "androidPackageName": 'com.nutmeg.nutmeg',
+                    "androidMinPackageVersionCode": '1'
+                },
+                "iosInfo": {
+                    "iosBundleId": "com.nutmeg.app",
+                    "iosAppStoreId": '1592985083',
+                }
+            }
+        }))
+    return json.loads(resp.text)["shortLink"]
 
-    short_link = dl.generate_dynamic_link(link, True, params)
-    return short_link
+
+if __name__ == '__main__':
+    print(build_dynamic_link("https://web.nutmegapp.com/user"))
