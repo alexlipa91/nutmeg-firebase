@@ -1,6 +1,5 @@
 import flask
 import stripe
-from firebase_dynamic_links import DynamicLinks
 from flask import Blueprint
 from utils import get_secret, build_dynamic_link
 from flask import current_app as app
@@ -140,27 +139,3 @@ def _create_checkout_session_with_deep_links(customer_id, connected_account_id, 
         metadata={"user_id": user_id, "match_id": match_id, "organizer_id": organizer_id}
     )
     return session
-
-
-def _build_redirect_to_app_link(match_id, outcome):
-    api_key = get_secret("dynamicLinkApiKey")
-    domain = 'nutmegapp.page.link'
-    dl = DynamicLinks(api_key, domain)
-    params = {
-        "androidInfo": {
-            "androidPackageName": 'com.nutmeg.nutmeg',
-            "androidMinPackageVersionCode": '1'
-        },
-        "iosInfo": {
-            "iosBundleId": 'com.nutmeg.app',
-            "iosAppStoreId": '1592985083',
-        },
-        "navigationInfo": {
-            "enableForcedRedirect": True,
-        }
-    }
-
-    link = 'http://web.nutmegapp.com/match/{}?payment_outcome={}'.format(match_id, outcome)
-
-    short_link = dl.generate_dynamic_link(link, True, params)
-    return short_link
