@@ -74,6 +74,11 @@ def build_dynamic_link(link):
                 "iosInfo": {
                     "iosBundleId": "com.nutmeg.app",
                     "iosAppStoreId": '1592985083',
+                },
+                "socialMetaTagInfo": {
+                    "socialTitle": "Nutmeg",
+                    "socialDescription": "Play Football in your city",
+                    # "socialImageLink": string
                 }
             }
         }))
