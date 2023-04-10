@@ -32,6 +32,11 @@ def before_request_callback():
         flask.g.uid = None
 
 
+@app.route("/routes", methods=["GET"])
+def routes():
+    return ['%s' % rule for rule in app.url_map.iter_rules()], 200
+
+
 @app.route("/_ah/warmup", methods=["GET"])
 def warmup():
     return {}, 200
