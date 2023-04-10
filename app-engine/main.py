@@ -6,6 +6,7 @@ from flask_cors import CORS
 
 import matches
 import payments
+import sportcenters
 import users
 
 
@@ -19,6 +20,7 @@ app.db_client = firestore.client()
 app.register_blueprint(matches.bp)
 app.register_blueprint(payments.bp)
 app.register_blueprint(users.bp)
+app.register_blueprint(sportcenters.bp)
 
 CORS(app)
 
