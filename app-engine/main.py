@@ -32,6 +32,11 @@ def before_request_callback():
         flask.g.uid = None
 
 
+@app.route("/_ah/warmup", methods=["GET"])
+def warmup():
+    return {}, 200
+
+
 if __name__ == "__main__":
     # Used when running locally only. When deploying to Google App
     # Engine, a webserver process such as Gunicorn will serve the app. This
