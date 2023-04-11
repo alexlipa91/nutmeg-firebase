@@ -68,7 +68,7 @@ def get_match(match_id):
 def get_ratings(match_id):
     match_stats = MatchStats.from_ratings_doc(match_id)
     if not match_stats:
-        return {}, 404
+        return {}, 200
     resp = {
         "scores": match_stats.get_user_scores()
     }
