@@ -53,13 +53,6 @@ def get_match(request):
     return {"data": asyncio.run(_get_match_firestore(request_data["id"]))}, 200
 
 
-def get_all_matches(request):
-    request_json = request.get_json(silent=True)
-    print("args {}, data {}".format(request.args, request_json))
-
-    return {"data": asyncio.run(_get_all_matches_firestore())}, 200
-
-
 def _edit_match_firestore(match_id, match_data):
     doc_ref = dbSync.collection("matches").document(match_id)
     if not doc_ref.get().exists:
