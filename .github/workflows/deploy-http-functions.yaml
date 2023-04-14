@@ -22,12 +22,6 @@ jobs:
       name: "edit_match"
       folder: "match_crud"
 
-  get_match:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "get_match"
-      folder: "match_crud"
-
   get_all_matches_v2:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
