@@ -7,6 +7,7 @@ from flask_cors import CORS
 import matches
 import payments
 import sportcenters
+import stats
 import users
 
 
@@ -21,6 +22,7 @@ app.register_blueprint(matches.bp)
 app.register_blueprint(payments.bp)
 app.register_blueprint(users.bp)
 app.register_blueprint(sportcenters.bp)
+app.register_blueprint(stats.bp)
 
 CORS(app)
 
