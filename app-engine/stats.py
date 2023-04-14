@@ -67,7 +67,7 @@ class MatchStats:
         return potms, potm_score
 
     def __repr__(self):
-        return "{}\n{}\n{}".format(str(self.going), str(self.raw_scores), str(self.raw_skill_scores))
+        return "{}\n{}\n{}".format(str(self.get_user_scores()), str(self.get_potms()), str(self.get_user_skills()))
 
 
 class UserStats:
@@ -124,7 +124,7 @@ class UserStats:
         return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm), str(self.skills))
 
 
-@bp.route("/recompute", methods=["GET"])
+@bp.route("/recompute/all", methods=["GET"])
 def recompute_stats():
     db = app.db_client
 
