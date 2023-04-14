@@ -55,16 +55,16 @@ class MatchStats:
 
         return user_skill_scores
 
-    def get_potms(self) -> (List[str], float):
+    def get_potms(self) -> List[str]:
         if len(self.get_user_scores()) == 0:
-            return None
+            return []
         sorted_user_scores = sorted(self.get_user_scores().items(), reverse=True, key=lambda x: x[1])
         potm_score = sorted_user_scores[0][1]
         potms = [x[0] for x in sorted_user_scores if x[1] == potm_score]
         # for now, one POTM
         if len(potms) > 1:
-            return None
-        return potms, potm_score
+            return []
+        return potms
 
     def __repr__(self):
         return "{}\n{}\n{}".format(str(self.get_user_scores()), str(self.get_potms()), str(self.get_user_skills()))
@@ -170,9 +170,8 @@ def recompute_stats():
             get_stat_object(u).num_played += 1
             get_stat_object(u).joined_matches[m.id] = match_data_cache[m.id]['dateTime']
 
-        if m.get_potms():
-            for u in m.get_potms()[0]:
-                get_stat_object(u).num_potm += 1
+        for u in m.get_potms():
+            get_stat_object(u).num_potm += 1
 
         user_scores = m.get_user_scores()
         for u in user_scores:

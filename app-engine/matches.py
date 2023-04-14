@@ -79,7 +79,6 @@ def get_ratings(match_id):
         return {}, 200
     resp = {
         "scores": match_stats.get_user_scores(),
-
         "potms": match_stats.get_potms()
     }
     return {"data": resp}, 200
