@@ -11,9 +11,10 @@ import geopy.distance
 import stripe
 from firebase_admin import firestore
 from flask import Blueprint
+
+from stats import MatchStats
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
 from flask import current_app as app
-from nutmeg_utils.ratings import MatchStats
 
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
@@ -66,11 +67,20 @@ def get_match(match_id):
 
 @bp.route("/<match_id>/ratings", methods=["GET"])
 def get_ratings(match_id):
-    match_stats = MatchStats.from_ratings_doc(match_id)
+    ratings_data = app.db_client.collection("ratings").document(match_id).get().to_dict()
+    match_stats = MatchStats(
+        match_id,
+        None,
+        [],
+        ratings_data.get("scores", {}),
+        ratings_data.get("skills", {})
+    )
     if not match_stats:
         return {}, 200
     resp = {
-        "scores": match_stats.get_user_scores()
+        "scores": match_stats.get_user_scores(),
+
+        "potms": match_stats.get_potms()
     }
     return {"data": resp}, 200
 
