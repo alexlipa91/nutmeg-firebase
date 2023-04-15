@@ -32,3 +32,25 @@ def get_location_predictions_from_query():
         results_formatted.append(r_formatted)
 
     return {"data": {"predictions": results_formatted}}, 200
+
+
+@bp.route("/cities", methods=["GET"])
+def get_city_from_query():
+    query = flask.request.args.get("query", None)
+
+    url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
+    req = requests.get(url + 'input=' + query + '&key=' + get_secret("placesApiKey")
+                       + '&types=(cities)'
+                       + '&fields=formatted_address')
+    resp = req.json()
+
+    results = resp['predictions']
+    results_formatted = []
+
+    for r in results:
+        r_formatted = {}
+        for k in ('description', 'matched_substrings', 'place_id'):
+            r_formatted[k] = r[k]
+        results_formatted.append(r_formatted)
+
+    return {"data": {"predictions": results_formatted}}, 200
