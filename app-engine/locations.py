@@ -56,7 +56,7 @@ def get_city_from_query():
     return {"data": {"predictions": results_formatted}}, 200
 
 
-@bp.route("/cities", methods=["GET"])
+@bp.route("/details", methods=["GET"])
 def get_location_details():
     data = flask.request.get_json()
 
