@@ -2,11 +2,11 @@ import random
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-from functools import reduce
 
 import dateutil.parser
 import firebase_admin
 import pytz
+import stripe
 
 import sportcenters
 
@@ -174,12 +174,8 @@ def add_user_to_match(match_id, user_id=None, payment_intent=None, local=False):
                                              match_doc_ref,
                                              payment_intent, user_id, match_id)
 
-    # if has teams assigned, recompute them
-    going_dict = app.db_client.collection("matches").document(match_id).get(field_paths=["going"]).to_dict()["going"]
-    has_teams = len(going_dict) > 0 and reduce(lambda a, b: a or b, ["team" in going_dict[u] for u in going_dict])
-
-    if has_teams:
-        get_teams(match_id, "balanced")
+    # recompute teams
+    get_teams(match_id, "balanced")
 
     return {"data": {}}, 200
 
@@ -426,4 +422,4 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        print(get_teams("4hmge78HyFwj87zb2kZB", "balanced"))
+        print(get_teams("zREVOEpCkKCHMt7NEI0z", "balanced"))
