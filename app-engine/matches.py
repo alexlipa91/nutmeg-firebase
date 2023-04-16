@@ -1,7 +1,9 @@
+import random
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 import dateutil.parser
+import firebase_admin
 import pytz
 
 import sportcenters
@@ -10,7 +12,7 @@ import flask
 import geopy.distance
 import stripe
 from firebase_admin import firestore
-from flask import Blueprint
+from flask import Blueprint, Flask
 
 from stats import MatchStats
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
@@ -103,18 +105,52 @@ def create_match():
 
 @bp.route("/<match_id>/teams/<algorithm>", methods=["GET"])
 def get_teams(match_id, algorithm):
-    match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
-
-    if len(match_data.get("going", {})) == 0:
-        print("No one going yet...skipping")
-        return
-
+    going = list(app.db_client.collection('matches').document(match_id).get().to_dict().get("going", {}).keys())
     scores = {}
 
-    for u in match_data.get("going", {}):
+    for u in going:
         scores[u] = app.db_client.collection('users').document(u).get(field_paths=["avg_score"])\
             .to_dict().get("avg_score", 2.5)
-    print(scores)
+
+    teams = [[], []]
+    teams_total_score = [0, 0]
+
+    if algorithm == "random":
+        random.shuffle(going)
+        index = len(going) // 2
+        teams[0] = going[0:index]
+        teams[1] = going[index:]
+        for i, team in enumerate(teams):
+            for u in team:
+                teams_total_score[i] += scores[u]
+    elif algorithm == "balanced":
+        users_sorted_by_score = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        i = 0
+        while i < len(users_sorted_by_score):
+            if teams_total_score[0] <= teams_total_score[1]:
+                next_team_to_assign = 0
+            else:
+                next_team_to_assign = 1
+            teams[next_team_to_assign].append(users_sorted_by_score[i][0])
+            teams_total_score[next_team_to_assign] += users_sorted_by_score[i][1]
+            i = i + 1
+            if i < len(users_sorted_by_score):
+                teams[not next_team_to_assign].append(users_sorted_by_score[i][0])
+                teams_total_score[not next_team_to_assign] += users_sorted_by_score[i][1]
+            i = i + 1
+
+    assert len(going) == len(teams[0]) + len(teams[1])
+
+    # write to db
+    match_updates = {"team_weight.a": teams_total_score[0], "team_weight.b": teams_total_score[1]}
+    for u in teams[0]:
+        match_updates["going.{}.team".format(u)] = "a"
+    for u in teams[1]:
+        match_updates["going.{}.team".format(u)] = "b"
+    app.db_client.collection("matches").document(match_id).update(match_updates)
+
+    print(teams, teams_total_score)
+    return {}
 
 
 class MatchStatus(Enum):
@@ -328,3 +364,12 @@ def _update_user_account(user_id, is_test, match_id):
     user_doc_ref.update(user_updates)
 
     return organizer_id
+
+
+if __name__ == '__main__':
+    firebase_admin.initialize_app()
+    app = Flask("test_app")
+    app.db_client = firestore.client()
+
+    with app.app_context():
+        print(get_teams("4hmge78HyFwj87zb2kZB", "balanced"))
