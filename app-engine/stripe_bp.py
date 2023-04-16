@@ -1,3 +1,5 @@
+import flask
+
 import stripe
 from flask import Blueprint
 
@@ -7,25 +9,16 @@ from utils import get_secret
 bp = Blueprint('stripe', __name__, url_prefix='/stripe')
 
 
-@bp.route("/checkout_webhook", methods=["GET"])
-def stripe_checkout_webhook(request):
-    _exec(request)
-
-
-def stripe_checkout_webhook_test(request):
-    _exec(request)
-
-
-def _exec(request):
+@bp.route("/checkout_webhook", methods=["POST"])
+def stripe_checkout_webhook():
+    is_test = flask.request.args.get("test", False)
     event = None
-    payload = request.data
-    print(payload)
-    sig_header = request.headers['STRIPE_SIGNATURE']
+    sig_header = flask.request.headers['STRIPE_SIGNATURE']
 
-    secret = get_secret('stripeCheckoutWebhookSecret')
+    secret = get_secret('stripeCheckoutWebhookSecret' if not is_test else 'stripeCheckoutWebhookTestSecret')
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, secret)
+        event = stripe.Webhook.construct_event(flask.request.data, sig_header, secret)
     except ValueError as e:
         # Invalid payload
         raise e

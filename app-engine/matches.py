@@ -12,7 +12,7 @@ import sportcenters
 
 import flask
 import geopy.distance
-import stripe
+import stripe_bp
 from firebase_admin import firestore
 from flask import Blueprint, Flask
 
