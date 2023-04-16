@@ -56,7 +56,7 @@ def get_city_from_query():
     return {"data": {"predictions": results_formatted}}, 200
 
 
-@bp.route("/details", methods=["GET"])
+@bp.route("/coordinates", methods=["GET"])
 def get_location_details():
     data = flask.request.args
 
@@ -85,7 +85,8 @@ def get_location_details():
     return {"data": result}, 200
 
 
-def get_place_details(place_id):
+@bp.route("/place/<place_id>", methods=["GET"])
+def get_place_location_info(place_id):
     url = "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields={}&key={}".format(
         place_id,
         "%2C".join(["name", "formatted_address", "geometry", "utc_offset", "address_components"]),
@@ -95,4 +96,24 @@ def get_place_details(place_id):
     response = requests.request("GET", url, headers={}, data={})
     result = response.json()["result"]
 
-    return result
+    lat = result["geometry"]["location"]["lat"]
+    lng = result["geometry"]["location"]["lng"]
+
+    country = None
+    city = None
+    for a in result["address_components"]:
+        if "country" in a["types"]:
+            country = a["short_name"]
+        elif "locality" in a["types"]:
+            city = a["short_name"]
+
+    return {
+        "data": {
+            "name": result["name"],
+            "formatted_address": result["formatted_address"],
+            "country": country,
+            "city": city,
+            "lat": lat,
+            "lng": lng,
+        }
+    }

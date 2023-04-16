@@ -5,7 +5,7 @@ import requests
 from flask import Blueprint
 from flask import current_app as app
 
-from locations import get_place_details
+from locations import get_place_location_info
 from utils import get_secret
 
 bp = Blueprint('sportcenters', __name__, url_prefix='/sportcenters')
@@ -31,25 +31,17 @@ def get_sportcenter(sportcenter_id):
 @bp.route("/add", methods=["POST"])
 def add_sportcenter():
     data = flask.request.get_json()
-    print(data)
 
-    result = get_place_details(data["place_id"])
-
-    lat = result["geometry"]["location"]["lat"]
-    lng = result["geometry"]["location"]["lng"]
-
-    country = None
-    for a in result["address_components"]:
-        if "country" in a["types"]:
-            country = a["short_name"]
+    result = get_place_location_info(data["place_id"])
 
     sport_center = {
         "address": result["formatted_address"],
         "name": result["name"],
-        "country": country,
-        "lat": lat,
-        "lng": lng,
-        "timeZoneId": _get_timezone_id(lat, lng)
+        "country": result["country"],
+        "city": result["city"],
+        "lat": result["lat"],
+        "lng": result["lng"],
+        "timeZoneId": _get_timezone_id(result["lat"], result["lng"])
     }
     for k in data:
         sport_center[k] = data[k]
