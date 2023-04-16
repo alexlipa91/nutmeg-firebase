@@ -106,7 +106,7 @@ def create_match():
 
 
 @bp.route("/<match_id>/teams/<algorithm>", methods=["GET"])
-def get_teams(match_id, algorithm):
+def get_teams(match_id, algorithm="balanced"):
     going = list(app.db_client.collection('matches').document(match_id).get().to_dict().get("going", {}).keys())
     scores = {}
 
@@ -175,9 +175,76 @@ def add_user_to_match(match_id, user_id=None, payment_intent=None, local=False):
                                              payment_intent, user_id, match_id)
 
     # recompute teams
-    get_teams(match_id, "balanced")
+    get_teams(match_id)
 
     return {"data": {}}, 200
+
+
+@bp.route("/<match_id>/users/remove", methods=["POST"])
+def remove_user_from_match(match_id):
+    user_id = flask.g.uid
+
+    transactions_doc_ref = app.db_client.collection('matches').document(match_id).collection("transactions").document()
+    user_stat_doc_ref = app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
+    match_doc_ref = app.db_client.collection('matches').document(match_id)
+
+    _remove_user_from_match_stripe_refund_firestore_transaction(app.db_client.transaction(),
+                                                                match_doc_ref, user_stat_doc_ref,
+                                                                transactions_doc_ref, user_id, match_id)
+    _remove_user_from_match_firestore(match_id, user_id)
+
+    # recompute teams
+    get_teams(match_id)
+
+    return {"data": {}}, 200
+
+
+def _remove_user_from_match_firestore(match_id, user_id):
+    db = firestore.client()
+
+    transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
+    user_stat_doc_ref = db.collection("users").document(user_id).collection("stats").document("match_votes")
+    match_doc_ref = db.collection('matches').document(match_id)
+
+    _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_stat_doc_ref,
+                                                                transactions_doc_ref, user_id, match_id)
+
+
+@firestore.transactional
+def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, match_doc_ref, user_stat_doc_ref,
+                                                                transaction_doc_ref, user_id, match_id):
+    timestamp = datetime.now(tz)
+
+    match = match_doc_ref.get(transaction=transaction).to_dict()
+    payment_intent = match["going"][user_id]["payment_intent"]
+
+    if not match.get("going", {}).get(user_id, None):
+        raise Exception("User is not part of the match")
+
+    # remove if user is in going
+    transaction.update(match_doc_ref, {
+        u'going.' + user_id: firestore.DELETE_FIELD
+    })
+
+    # remove match in user list
+    transaction.update(user_stat_doc_ref, {
+        u'joinedMatches.' + match_id: firestore.DELETE_FIELD
+    })
+
+    transaction_log = {"type": "user_left", "userId": user_id, "createdAt": timestamp}
+
+    if match.get("managePayments", True):
+        # issue_refund
+        stripe.api_key = get_secret('stripeCheckoutWebhookSecret' if not match["isTest"]
+                                    else 'stripeCheckoutWebhookTestSecret')
+        refund_amount = match["pricePerPerson"] - match.get("fee", 50)
+        refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+        transaction_log["paymentIntent"] = payment_intent
+        transaction_log["refund_id"] = refund.id
+        transaction_log["moneyRefunded"] = refund_amount
+
+    # record transaction
+    transaction.set(transaction_doc_ref, transaction_log)
 
 
 @firestore.transactional
@@ -192,7 +259,8 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
         return
 
     # add user to list of going
-    transaction.set(match_doc_ref, {"going": {user_id: {"createdAt": timestamp}}}, merge=True)
+    transaction.set(match_doc_ref, {"going": {user_id: {"createdAt": timestamp, "payment_intent": payment_intent}}},
+                    merge=True)
 
     # add match to user
     if not match["isTest"]:
