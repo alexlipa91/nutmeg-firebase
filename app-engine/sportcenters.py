@@ -5,6 +5,7 @@ import requests
 from flask import Blueprint
 from flask import current_app as app
 
+from locations import get_place_details
 from utils import get_secret
 
 bp = Blueprint('sportcenters', __name__, url_prefix='/sportcenters')
@@ -32,14 +33,7 @@ def add_sportcenter():
     data = flask.request.get_json()
     print(data)
 
-    url = "https://maps.googleapis.com/maps/api/place/details/json?place_id={}&fields={}&key={}".format(
-        data["place_id"],
-        "%2C".join(["name", "formatted_address", "geometry", "utc_offset", "address_components"]),
-        get_secret("placesApiKey")
-    )
-
-    response = requests.request("GET", url, headers={}, data={})
-    result = response.json()["result"]
+    result = get_place_details(data["place_id"])
 
     lat = result["geometry"]["location"]["lat"]
     lng = result["geometry"]["location"]["lng"]

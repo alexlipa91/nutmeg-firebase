@@ -58,7 +58,7 @@ def get_city_from_query():
 
 @bp.route("/details", methods=["GET"])
 def get_location_details():
-    data = flask.request.get_json()
+    data = flask.request.args
 
     lat = data["lat"]
     lng = data["lng"]
