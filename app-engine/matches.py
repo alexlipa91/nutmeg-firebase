@@ -20,21 +20,6 @@ from flask import current_app as app
 bp = Blueprint('matches', __name__, url_prefix='/matches')
 
 
-# todo deprecate
-@bp.route("/", methods=["POST"])
-def matches():
-    request_json = flask.request.get_json(silent=True)
-
-    # when can have values: 'future', 'all'
-    when = request_json.get("when", None)
-    with_user = request_json.get("with_user", None)
-    organized_by = request_json.get("organized_by", None)
-
-    result = _get_matches_firestore(when=when, with_user=with_user, organized_by=organized_by, version=1)
-
-    return {"data": result}, 200
-
-
 @bp.route("", methods=["GET"])
 def get_matches():
     # when can have values: 'future', 'past'
@@ -43,7 +28,7 @@ def get_matches():
     organized_by = flask.request.args.get("organized_by", None)
     lat = flask.request.args.get("lat", None)
     lng = flask.request.args.get("lng", None)
-    radius_km = flask.request.args.get("radius_km", None)
+    radius_km = float(flask.request.args.get("radius_km", None))
     version = int(flask.request.args.get("version", 1))
     user_id = flask.g.uid
 
