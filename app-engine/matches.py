@@ -28,7 +28,7 @@ def get_matches():
     organized_by = flask.request.args.get("organized_by", None)
     lat = flask.request.args.get("lat", None)
     lng = flask.request.args.get("lng", None)
-    radius_km = float(flask.request.args.get("radius_km", None))
+    radius_km = flask.request.args.get("radius_km", None)
     version = int(flask.request.args.get("version", 1))
     user_id = flask.g.uid
 
@@ -139,6 +139,7 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             # location filter
             outside_radius = False
             if radius_km:
+                radius_km = float(radius_km)
                 if "sportCenter" in data:
                     match_location = (data["sportCenter"]["lat"], data["sportCenter"]["lng"])
                 else:
