@@ -81,6 +81,7 @@ def get_location_details():
 
     result["lat"] = results[0]["geometry"]["location"]["lat"]
     result["lng"] = results[0]["geometry"]["location"]["lng"]
+    result["place_id"] = results[0]["place_id"]
 
     return {"data": result}, 200
 
@@ -117,3 +118,7 @@ def get_place_location_info(place_id):
             "lng": lng,
         }
     }
+
+
+if __name__ == '__main__':
+    print(get_location_details())
