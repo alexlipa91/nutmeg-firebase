@@ -30,7 +30,6 @@ def stripe_checkout_webhook():
 
     # Handle the event
     if event["type"] == "checkout.session.completed":
-        print("checkout successful")
         add_user_to_match(
             event_data["metadata"]["match_id"],
             event_data["metadata"]["user_id"],
