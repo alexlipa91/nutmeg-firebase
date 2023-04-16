@@ -235,8 +235,8 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
 
     if match.get("managePayments", True):
         # issue_refund
-        stripe.api_key = get_secret('stripeCheckoutWebhookSecret' if not match["isTest"]
-                                    else 'stripeCheckoutWebhookTestSecret')
+        stripe.api_key = get_secret('stripeProdKey' if not match["isTest"]
+                                    else 'stripeTestKey')
         refund_amount = match["pricePerPerson"] - match.get("fee", 50)
         refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
         transaction_log["paymentIntent"] = payment_intent
