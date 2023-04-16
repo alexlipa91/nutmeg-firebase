@@ -1,5 +1,6 @@
 import flask
-import stripe_bp
+import stripe
+
 from flask import Blueprint
 from utils import get_secret, build_dynamic_link
 from flask import current_app as app
