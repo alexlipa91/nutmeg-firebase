@@ -11,7 +11,7 @@ bp = Blueprint('stripe', __name__, url_prefix='/stripe')
 
 @bp.route("/checkout_webhook", methods=["POST"])
 def stripe_checkout_webhook():
-    is_test = flask.request.args.get("test", False)
+    is_test = flask.request.args.get("test", "false") == "true"
     event = None
     sig_header = flask.request.headers['STRIPE_SIGNATURE']
 
