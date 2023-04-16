@@ -2,6 +2,8 @@ import random
 import traceback
 from datetime import datetime, timezone, timedelta
 from enum import Enum
+from functools import reduce
+
 import dateutil.parser
 import firebase_admin
 import pytz
@@ -20,6 +22,7 @@ from flask import current_app as app
 
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
+tz = pytz.timezone('Europe/Amsterdam')
 
 
 @bp.route("", methods=["GET"])
@@ -149,8 +152,58 @@ def get_teams(match_id, algorithm):
         match_updates["going.{}.team".format(u)] = "b"
     app.db_client.collection("matches").document(match_id).update(match_updates)
 
-    print(teams, teams_total_score)
+    print("teams: {}, total scores: {}".format(teams, teams_total_score))
     return {}
+
+
+@bp.route("/<match_id>/users/add", methods=["POST"])
+def add_user_to_match(match_id):
+    data = flask.request.get_json(silent=True)
+
+    user_id = data["user_id"]
+    payment_intent = data.get("payment_intent", None)
+
+    transactions_doc_ref = app.db_client.collection('matches').document(match_id).collection("transactions").document()
+    user_stat_doc_ref = app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
+    match_doc_ref = app.db_client.collection('matches').document(match_id)
+
+    _add_user_to_match_firestore_transaction(app.db_client.transaction(),
+                                             transactions_doc_ref,
+                                             user_stat_doc_ref,
+                                             match_doc_ref,
+                                             payment_intent, user_id, match_id)
+
+    # if has teams assigned, recompute them
+    going_dict = app.db_client.collection("matches").document(match_id).get(field_paths=["going"]).to_dict()["going"]
+    has_teams = len(going_dict) > 0 and reduce(lambda a, b: a or b, ["team" in going_dict[u] for u in going_dict])
+
+    if has_teams:
+        get_teams(match_id, "balanced")
+
+    return {"data": {}}, 200
+
+
+@firestore.transactional
+def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, user_stat_doc_ref,
+                                             match_doc_ref, payment_intent, user_id, match_id):
+    timestamp = datetime.now(tz)
+
+    match = match_doc_ref.get(transaction=transaction).to_dict()
+
+    if match.get("going", {}).get(user_id, None):
+        print("User already going")
+        return
+
+    # add user to list of going
+    transaction.set(match_doc_ref, {"going": {user_id: {"createdAt": timestamp}}}, merge=True)
+
+    # add match to user
+    if not match["isTest"]:
+        transaction.set(user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True)
+
+    # record transaction
+    transaction.set(transactions_doc_ref, {"type": "joined", "userId": user_id, "createdAt": timestamp,
+                                           "paymentIntent": payment_intent})
 
 
 class MatchStatus(Enum):
