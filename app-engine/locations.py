@@ -82,7 +82,7 @@ def get_location_details():
     result["lat"] = results[0]["geometry"]["location"]["lat"]
     result["lng"] = results[0]["geometry"]["location"]["lng"]
 
-    return result
+    return {"data": result}, 200
 
 
 def get_place_details(place_id):
