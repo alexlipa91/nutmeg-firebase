@@ -9,6 +9,7 @@ import payments
 import sportcenters
 import locations
 import stats
+import stripe
 import users
 
 
@@ -25,6 +26,7 @@ app.register_blueprint(users.bp)
 app.register_blueprint(sportcenters.bp)
 app.register_blueprint(stats.bp)
 app.register_blueprint(locations.bp)
+app.register_blueprint(stripe.bp)
 
 
 CORS(app)

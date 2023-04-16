@@ -157,11 +157,13 @@ def get_teams(match_id, algorithm):
 
 
 @bp.route("/<match_id>/users/add", methods=["POST"])
-def add_user_to_match(match_id):
-    data = flask.request.get_json(silent=True)
+def add_user_to_match(match_id, user_id=None, payment_intent=None, local=False):
+    if not local:
+        # remote call, get from request
+        data = flask.request.get_json(silent=True)
 
-    user_id = data["user_id"]
-    payment_intent = data.get("payment_intent", None)
+        user_id = data["user_id"]
+        payment_intent = data.get("payment_intent", None)
 
     transactions_doc_ref = app.db_client.collection('matches').document(match_id).collection("transactions").document()
     user_stat_doc_ref = app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
