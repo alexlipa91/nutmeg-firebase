@@ -53,6 +53,8 @@ def get_match(match_id):
 @bp.route("/<match_id>/ratings", methods=["GET"])
 def get_ratings(match_id):
     ratings_data = app.db_client.collection("ratings").document(match_id).get().to_dict()
+    if not ratings_data:
+        return {}, 200
     match_stats = MatchStats(
         match_id,
         None,
@@ -97,6 +99,22 @@ def create_match():
     _update_user_account(organizer_id, is_test, match_id)
 
     return {"data": {"id": match_id}}, 200
+
+
+@bp.route("/<match_id>/teams/<algorithm>", methods=["GET"])
+def get_teams(match_id, algorithm):
+    match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
+
+    if len(match_data.get("going", {})) == 0:
+        print("No one going yet...skipping")
+        return
+
+    scores = {}
+
+    for u in match_data.get("going", {}):
+        scores[u] = app.db_client.collection('users').document(u).get(field_paths=["avg_score"])\
+            .to_dict().get("avg_score", 2.5)
+    print(scores)
 
 
 class MatchStatus(Enum):
