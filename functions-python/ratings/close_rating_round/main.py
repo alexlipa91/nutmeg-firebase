@@ -73,7 +73,7 @@ def _close_rating_round_transaction(transaction, calculations, match_doc_ref, us
     transaction.set(match_doc_ref, calculations.match_udpates, merge=True)
 
     _send_close_voting_notification(match_doc_ref.id, calculations.get_going_users(), calculations.get_potms(),
-                                    match_data["sportCenterId"])
+                                    match_data.get("sportCenter", None))
 
 
 class RatingsRoundResult:
@@ -186,17 +186,15 @@ def _compute_weighted_avg_score(user_id):
     return numerator / denominator
 
 
-def _send_close_voting_notification(match_id, going_users, potms, sport_center_id):
-    db = firestore.client()
-
-    sport_center = db.collection('sport_centers').document(sport_center_id).get().to_dict()["name"]
-
+def _send_close_voting_notification(match_id, going_users, potms, sport_center):
     for p in potms:
         going_users.remove(p)
 
+    sport_center_name = sport_center.get("name", "")
+
     send_notification_to_users(
         title="Match stats are available!",
-        body="Check out the stats from the match at {}".format(sport_center),
+        body="Check out the stats for the{} match".format(" " + sport_center_name),
         users=list(going_users),
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
@@ -207,7 +205,7 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center_i
 
     send_notification_to_users(
         title="Congratulations! " + u"\U0001F3C6",
-        body="You won the Player of the Match award for the {} match".format(sport_center),
+        body="You won the Player of the Match award for the{} match".format(" " + sport_center_name),
         users=list(potms),
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
