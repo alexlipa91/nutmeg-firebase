@@ -16,6 +16,7 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 
 from stats import MatchStats
+from users import get_user, _get_user_firestore
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
 from flask import current_app as app
 
@@ -111,8 +112,7 @@ def get_teams(match_id, algorithm="balanced"):
     scores = {}
 
     for u in going:
-        scores[u] = app.db_client.collection('users').document(u).get(field_paths=["avg_score"])\
-            .to_dict().get("avg_score", 2.5)
+        scores[u] = _get_user_firestore(u).get("avg_score", 2.5)
 
     teams = [[], []]
     teams_total_score = [0, 0]
@@ -227,9 +227,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     })
 
     # remove match in user list
-    transaction.update(user_stat_doc_ref, {
-        u'joinedMatches.' + match_id: firestore.DELETE_FIELD
-    })
+    transaction_get_user_firestore(u)
 
     transaction_log = {"type": "user_left", "userId": user_id, "createdAt": timestamp}
 
