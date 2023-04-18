@@ -6,6 +6,7 @@ from firebase_admin import firestore
 import firebase_admin
 from nutmeg_utils.notifications import send_notification_to_users
 from nutmeg_utils.ratings import MatchStats
+import requests
 
 firebase_admin.initialize_app()
 
@@ -15,7 +16,8 @@ def close_rating_round(request):
     print("data {}".format(request_json))
 
     request_data = request_json["data"]
-    _close_rating_round(request_data["match_id"])
+    resp = requests.post("https://nutmeg-9099c.ew.r.appspot.com/matches/{}/stats/freeze".format(request_data["match_id"]))
+    print(resp)
 
     return {"data": {}}, 200
 
