@@ -1,5 +1,7 @@
+import json
 import random
 import traceback
+from collections import namedtuple
 from datetime import datetime, timezone, timedelta
 from enum import Enum
 
@@ -17,7 +19,7 @@ from flask import Blueprint, Flask
 
 from stats import MatchStats
 from users import get_user, _get_user_firestore
-from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link
+from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link, send_notification_to_users
 from flask import current_app as app
 
 
@@ -45,14 +47,17 @@ def get_matches():
 
 
 @bp.route("/<match_id>", methods=["GET"])
-def get_match(match_id):
+def get_match(match_id, is_local=False):
     match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
 
-    version = int(flask.request.args.get("version", 1))
+    version = 2 if is_local else int(flask.request.args.get("version", 1))
+
+    if is_local:
+        return match_data
 
     if not match_data:
         return {}, 404
-    return {"data": _format_match_data_v2(match_data, version)}, 200
+    return {"data": _format_match_data_v2(match_data, version)}
 
 
 @bp.route("/<match_id>/ratings", methods=["GET"])
@@ -144,11 +149,12 @@ def get_teams(match_id, algorithm="balanced"):
     assert len(going) == len(teams[0]) + len(teams[1])
 
     # write to db
-    match_updates = {"team_weight.a": teams_total_score[0], "team_weight.b": teams_total_score[1]}
-    for u in teams[0]:
-        match_updates["going.{}.team".format(u)] = "a"
-    for u in teams[1]:
-        match_updates["going.{}.team".format(u)] = "b"
+    match_updates = {
+        "teams.balanced.weights.a": teams_total_score[0],
+        "teams.balanced.weights.b": teams_total_score[1],
+        "teams.balanced.players.a": teams[0],
+        "teams.balanced.players.b": teams[1],
+    }
     app.db_client.collection("matches").document(match_id).update(match_updates)
 
     print("teams: {}, total scores: {}".format(teams, teams_total_score))
@@ -199,6 +205,164 @@ def remove_user_from_match(match_id):
     return {"data": {}}, 200
 
 
+Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_updates")
+
+
+@bp.route("/<match_id>/stats/freeze", methods=["POST"])
+def freeze_stats(match_id, write=True):
+    updates = Updates(
+        match_updates={"scoresComputedAt": datetime.utcnow()},
+        users_updates={},
+        users_match_stats_updates={}
+    )
+
+    # compute ratings updates
+    match_data = get_match(match_id, is_local=True)
+    ratings_doc = app.db_client.collection("ratings").document(match_id).get()
+    potms = []
+    if ratings_doc.exists and len(ratings_doc.to_dict()["scores"]) > 0:
+        match_stats = MatchStats(
+            match_id,
+            match_data.get("dateTime"),
+            match_data.get("going", {}),
+            ratings_doc.to_dict()["scores"],
+            ratings_doc.to_dict().get("skills", {})
+        )
+        potms = match_stats.get_potms()
+
+        skill_scores = match_stats.get_user_skills()
+
+        # store score for users
+        for user, score in match_stats.get_user_scores().items():
+            user_match_stats = {
+                "scoreMatches": {match_id: score},
+            }
+            if user in skill_scores:
+                user_match_stats["skillScores"] = {match_id: skill_scores[user]}
+
+            skill_scores_increment = {}
+            for skill in skill_scores.get(user, {}):
+                skill_scores_increment[skill] = firestore.firestore.Increment(skill_scores[user][skill])
+
+            user_stats_increments = {
+                "skills_count": skill_scores_increment,
+                "scores.number_of_scored_games": firestore.firestore.Increment(1),
+                "scores.total_sum": firestore.firestore.Increment(score),
+                "last_date_scores.{}".format(match_data["dateTime"].strftime("%Y%m%d%H%M%S")): score
+            }
+            if user in match_stats.get_potms():
+                user_stats_increments["potm_count"] = firestore.firestore.Increment(1)
+
+            updates.users_match_stats_updates[user] = user_match_stats
+            updates.users_updates[user] = user_stats_increments
+    else:
+        print("No ratings for match {}".format(match_id))
+
+    # check win-loss updates
+    if "score" in match_data and len(match_data["score"]) == 2:
+        score = match_data["score"]
+        team_logic = "manual" if match_data.get("hasManualTeams", False) else "balanced"
+        teams = match_data["teams"][team_logic]["players"]
+
+        for t in teams:
+            team_outcome = score[0] - score[1] if t == "a" else score[1] - score[0]
+            for u in teams[t]:
+                if team_outcome > 0:
+                    updates.users_updates.setdefault(u, {})["record.num_win"] = firestore.firestore.Increment(1)
+                elif team_outcome == 0:
+                    updates.users_updates.setdefault(u, {})["record.num_draw"] = firestore.firestore.Increment(1)
+                else:
+                    updates.users_updates.setdefault(u, {})["record.num_loss"] = firestore.firestore.Increment(1)
+    else:
+        print("No scores for match {}".format(match_id))
+
+    _log_updates(updates)
+
+    if write:
+        match_doc_ref = app.db_client.collection("matches").document(match_id)
+        users_doc_ref = {}
+        users_stats_doc_ref = {}
+
+        # write to db
+        for u in match_data.get("going", {}).keys():
+            users_doc_ref[u] = app.db_client.collection("users").document(u)
+            users_stats_doc_ref[u] = app.db_client.collection("users").document(u).collection("stats").document("match_votes")
+
+        # def dumper(obj):
+        # if isinstance(obj, datetime.datetime):
+        #     return "date"
+        # try:
+        #     return obj.toJSON()
+        # except:
+        #     return obj.__dict__
+        # print(json.dumps(calculations, default=dumper, indent=2))
+        _close_rating_round_transaction(app.db_client.transaction(),
+                                        updates,
+                                        potms,
+                                        match_doc_ref,
+                                        users_doc_ref,
+                                        users_stats_doc_ref)
+
+
+def _log_updates(updates: Updates):
+    def dumper(obj):
+        if isinstance(obj, datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            return obj.toJSON()
+        except:
+            return obj.__dict__
+    print(json.dumps(updates, default=dumper, indent=2))
+
+
+@firestore.transactional
+def _close_rating_round_transaction(transaction, updates: Updates, potms, match_doc_ref, users_docs_ref, users_stats_docs_ref):
+    match_data = match_doc_ref.get(transaction=transaction).to_dict()
+
+    for u in updates.users_match_stats_updates:
+        transaction.set(users_stats_docs_ref[u], updates.users_match_stats_updates[u], merge=True)
+        transaction.set(users_docs_ref[u], updates.users_updates[u], merge=True)
+
+    transaction.set(match_doc_ref, updates.match_updates, merge=True)
+
+    _send_close_voting_notification(match_doc_ref.id,
+                                    match_data.get("going", {}),
+                                    potms,
+                                    match_data.get("sportCenter", None))
+
+
+def _send_close_voting_notification(match_id, going_users, potms, sport_center):
+    for p in potms:
+        going_users.remove(p)
+
+    sport_center_name = sport_center.get("name", "")
+
+    send_notification_to_users(
+        app.db_client,
+        title="Match stats are available!",
+        body="Check out the stats for the{} match".format(" " + sport_center_name),
+        users=list(going_users),
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
+            "match_id": match_id,
+        }
+    )
+
+    send_notification_to_users(
+        app.db_client,
+        title="Congratulations! " + u"\U0001F3C6",
+        body="You won the Player of the Match award for the{} match".format(" " + sport_center_name),
+        users=list(potms),
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "match_id": match_id,
+            "route": "/match/" + match_id,
+            "event": "potm",
+        }
+    )
+
+
 def _remove_user_from_match_firestore(match_id, user_id):
     db = firestore.client()
 
@@ -227,7 +391,9 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     })
 
     # remove match in user list
-    transaction_get_user_firestore(u)
+    transaction.update(user_stat_doc_ref, {
+        u'joinedMatches.' + match_id: firestore.DELETE_FIELD
+    })
 
     transaction_log = {"type": "user_left", "userId": user_id, "createdAt": timestamp}
 
@@ -488,4 +654,4 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        print(get_teams("zREVOEpCkKCHMt7NEI0z", "balanced"))
+        print(freeze_stats("4hmge78HyFwj87zb2kZB", write=False))

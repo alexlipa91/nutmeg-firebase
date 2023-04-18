@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 import google.api_core.datetime_helpers
+from firebase_admin import messaging
 from google.auth import compute_engine
 from google.cloud import secretmanager, tasks_v2
 from google.protobuf import timestamp_pb2
@@ -93,6 +94,42 @@ def get_remote_config():
     #     , scopes=['https://www.googleapis.com/auth/cloud-platform']
     # )
     return credentials.token
+
+
+def send_notification_to_users(db, title, body, data, users):
+    # normal send
+    tokens = set()
+    for user_id in users:
+        user_data = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()
+        if user_data:
+            for t in user_data.get("tokens", []):
+                tokens.add(t)
+    _send_notification_to_tokens(title, body, data, list(tokens))
+
+    # forward to admins
+    admins = ["IwrZWBFb4LZl3Kto1V3oUKPnCni1", "bQHD0EM265V6GuSZuy1uQPHzb602"]
+    admins_to_forward = set()
+    [admins_to_forward.add(a) for a in admins if a not in users]
+
+    tokens = set()
+    for user_id in admins_to_forward:
+        admins_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
+        for t in admins_tokens:
+            tokens.add(t)
+    _send_notification_to_tokens("[admin] {}".format(title), body, data, list(tokens))
+
+
+def _send_notification_to_tokens(title, body, data, tokens):
+    message = messaging.MulticastMessage(
+        notification=messaging.Notification(
+            title=title,
+            body=body
+        ),
+        data=data,
+        tokens=tokens,
+    )
+    response = messaging.send_multicast(message)
+    print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
 
 
 if __name__ == '__main__':
