@@ -18,8 +18,9 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 
 from stats import MatchStats
-from users import get_user, _get_user_firestore
-from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link, send_notification_to_users
+from users import _get_user_firestore
+from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link, send_notification_to_users, \
+    schedule_app_engine_call
 from flask import current_app as app
 
 
@@ -597,6 +598,13 @@ def _add_match_firestore(match_data):
             {"match_id": doc_ref.id},
             cancellation_time - timedelta(hours=1)
         )
+
+    schedule_app_engine_call(
+        task_name="close_rating_round_{}".format(doc_ref.id),
+        endpoint="matches/{}/stats/freeze".format(doc_ref.id),
+        date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(days=1),
+        function_payload={}
+    )
 
     return doc_ref.id
 
