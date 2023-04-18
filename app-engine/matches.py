@@ -9,6 +9,7 @@ import dateutil.parser
 import firebase_admin
 import pytz
 import stripe
+from google.cloud import tasks_v2
 
 import sportcenters
 
@@ -602,6 +603,7 @@ def _add_match_firestore(match_data):
     schedule_app_engine_call(
         task_name="close_rating_round_{}".format(doc_ref.id),
         endpoint="matches/{}/stats/freeze".format(doc_ref.id),
+        method=tasks_v2.HttpMethod.POST,
         date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(days=1),
         function_payload={}
     )
