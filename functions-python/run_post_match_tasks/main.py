@@ -32,12 +32,6 @@ def _run_post_match_tasks(match_id):
     going_users = match_data.get("going", {}).keys()
     organiser_id = match_data.get("organizerId", None)
 
-    # update number of played stats
-    summed_field_name = "num_matches_joined" if not match_data["isTest"] else "num_matches_joined_test"
-    for u in going_users:
-        db.collection("users").document(u).update(
-            {summed_field_name: firestore.firestore.Increment(1)})
-
     send_notification_to_users(
         title="Rate players! " + u"\u2B50\uFE0F",
         body="You have 24h to rate the players of today's match.",
