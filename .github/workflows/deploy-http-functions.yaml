@@ -236,12 +236,6 @@ jobs:
       name: "send_pre_cancellation_organizer_notification"
       folder: "notifications"
 
-  make_teams:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "make_teams"
-      folder: "team_recommendations"
-
   get_teams:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
