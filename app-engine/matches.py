@@ -29,6 +29,21 @@ bp = Blueprint('matches', __name__, url_prefix='/matches')
 tz = pytz.timezone('Europe/Amsterdam')
 
 
+# todo deprecate
+@bp.route("/", methods=["POST"])
+def matches():
+    request_json = flask.request.get_json(silent=True)
+
+    # when can have values: 'future', 'all'
+    when = request_json.get("when", None)
+    with_user = request_json.get("with_user", None)
+    organized_by = request_json.get("organized_by", None)
+
+    result = _get_matches_firestore(when=when, with_user=with_user, organized_by=organized_by, version=1)
+
+    return {"data": result}, 200
+
+
 @bp.route("", methods=["GET"])
 def get_matches():
     # when can have values: 'future', 'past'
@@ -119,7 +134,7 @@ def get_teams(match_id, algorithm="balanced"):
     scores = {}
 
     for u in going:
-        scores[u] = _get_user_firestore(u).get("avg_score", 2.5)
+        scores[u] = _get_user_firestore(u).get("avg_score", 3)
 
     teams = [[], []]
     teams_total_score = [0, 0]
@@ -664,4 +679,4 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        print(freeze_stats("4hmge78HyFwj87zb2kZB", write=False))
+        print(get_teams("1P5bpytjssPulh1ofnJk"))
