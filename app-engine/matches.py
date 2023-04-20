@@ -123,7 +123,7 @@ def create_match():
     organizer_id = request_json["organizerId"]
 
     match_id = _add_match_firestore(request_json)
-    _update_user_account(organizer_id, is_test, match_id)
+    _update_user_account(organizer_id, is_test, match_id, request_json["managePayments"])
 
     return {"data": {"id": match_id}}, 200
 
@@ -582,21 +582,38 @@ def _add_match_firestore(match_data):
             # add it as draft
             match_data["unpublished_reason"] = "organizer_not_onboarded"
 
-    # add nutmeg fee to price
-    if match_data.get("organizerId") == "bQHD0EM265V6GuSZuy1uQPHzb602":
-        fee = 50
-    else:
-        fee = 0
-    match_data["pricePerPerson"] = match_data["pricePerPerson"] + fee
-    match_data["userFee"] = fee
+        # add nutmeg fee to price
+        if match_data.get("organizerId") == "bQHD0EM265V6GuSZuy1uQPHzb602":
+            fee = 50
+        else:
+            fee = 0
+        match_data["pricePerPerson"] = match_data["pricePerPerson"] + fee
+        match_data["userFee"] = fee
+
+        # create stripe object
+        stripe.api_key = get_secret("stripeTestKey" if match_data["isTest"] else "stripeProdKey")
+        response = stripe.Product.create(
+            name="Nutmeg Match - {} - {}".format(match_data["sportCenter"]["name"], match_data["dateTime"]),
+            description="Address: " + match_data["sportCenter"]["address"]
+        )
+        match_data["stripeProductId"] = response["id"]
+        response = stripe.Price.create(
+            nickname='Standard Price',
+            unit_amount=match_data["pricePerPerson"],
+            currency="eur",
+            product=match_data["stripeProductId"]
+        )
+        match_data["stripePriceId"] = response.id
 
     doc_ref = app.db_client.collection('matches').document()
     doc_ref.set(match_data)
 
     # POST CREATION
-    # add dynamic link
+    # dynamic link
+    dynamic_link = build_dynamic_link('http://web.nutmegapp.com/match/{}'.format(doc_ref.id))
+
     app.db_client.collection("matches").document(doc_ref.id).update({
-        'dynamicLink': build_dynamic_link('http://web.nutmegapp.com/match/{}'.format(doc_ref.id))
+        'dynamicLink': dynamic_link,
     })
 
     # schedule cancellation check if required
@@ -615,6 +632,7 @@ def _add_match_firestore(match_data):
             cancellation_time - timedelta(hours=1)
         )
 
+    # schedule close rating round
     schedule_app_engine_call(
         task_name="close_rating_round_{}".format(doc_ref.id),
         endpoint="matches/{}/stats/freeze".format(doc_ref.id),
@@ -626,7 +644,7 @@ def _add_match_firestore(match_data):
     return doc_ref.id
 
 
-def _update_user_account(user_id, is_test, match_id):
+def _update_user_account(user_id, is_test, match_id, manage_payments):
     stripe.api_key = get_secret("stripeTestKey" if is_test else "stripeProdKey")
     organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
 
@@ -637,40 +655,39 @@ def _update_user_account(user_id, is_test, match_id):
         "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
     }
 
-    # check if we need to create a stripe connected account
-    user_data = user_doc_ref.get().to_dict()
-    if organizer_id_field_name in user_data:
-        print("{} already created".format(organizer_id_field_name))
-        organizer_id = user_data[organizer_id_field_name]
-    else:
-        response = stripe.Account.create(
-            type="express",
-            country="NL",
-            capabilities={
-                "transfers": {"requested": True},
-            },
-            business_type="individual",
-            business_profile={
-                "product_description": "Nutmeg football matches"
-            },
-            metadata={
-                "userId": user_id
-            },
-            settings={
-                "payouts": {
-                    "debit_negative_balances": True,
-                    "schedule": {
-                        "interval": "manual"
+    if manage_payments:
+        # check if we need to create a stripe connected account
+        user_data = user_doc_ref.get().to_dict()
+        if organizer_id_field_name in user_data:
+            print("{} already created".format(organizer_id_field_name))
+            organizer_id = user_data[organizer_id_field_name]
+        else:
+            response = stripe.Account.create(
+                type="express",
+                country="NL",
+                capabilities={
+                    "transfers": {"requested": True},
+                },
+                business_type="individual",
+                business_profile={
+                    "product_description": "Nutmeg football matches"
+                },
+                metadata={
+                    "userId": user_id
+                },
+                settings={
+                    "payouts": {
+                        "debit_negative_balances": True,
+                        "schedule": {
+                            "interval": "manual"
+                        }
                     }
                 }
-            }
-        )
-        organizer_id = response.id
-        user_updates[organizer_id_field_name] = response.id
+            )
+            organizer_id = response.id
+            user_updates[organizer_id_field_name] = response.id
 
     user_doc_ref.update(user_updates)
-
-    return organizer_id
 
 
 if __name__ == '__main__':
