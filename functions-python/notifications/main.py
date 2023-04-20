@@ -1,10 +1,7 @@
-from datetime import datetime, timedelta
-
 import firebase_admin
 import pytz
 from firebase_admin import firestore
 from nutmeg_utils import notifications
-from nutmeg_utils.schedule_function import schedule_function
 
 firebase_admin.initialize_app()
 
@@ -128,32 +125,3 @@ def _send_start_voting_notification(match_id):
             "match_id": match_id
         }
     )
-
-
-"""
-gcloud functions deploy schedule_start_voting_notification \
-                         --runtime python37 \
-                         --trigger-event "providers/cloud.firestore/eventTypes/document.create" \
-                         --trigger-resource "projects/nutmeg-9099c/databases/(default)/documents/matches/{matchId}" \
-                         --region europe-central2
-"""
-def schedule_start_voting_notification(data, context):
-    trigger_resource = context.resource
-    print('Function triggered by change to: %s' % trigger_resource)
-
-    match_id = data["value"]["name"].split("/")[-1]
-    date_time = datetime.strptime(data["value"]["fields"]["dateTime"]["timestampValue"], "%Y-%m-%dT%H:%M:%SZ")
-
-    _schedule_start_voting_notification(match_id, date_time)
-
-
-def _schedule_start_voting_notification(match_id, date_time):
-    send_at = date_time + timedelta(hours=3)
-
-    schedule_function(
-        task_name="send_start_voting_notification_{}".format(match_id),
-        function_name="send_start_voting_notification",
-        function_payload={"match_id": match_id},
-        date_time_to_execute=send_at
-    )
-
