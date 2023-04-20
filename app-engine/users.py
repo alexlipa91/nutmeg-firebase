@@ -1,7 +1,8 @@
+import firebase_admin
 import flask
 import stripe
 from firebase_admin import firestore
-from flask import Blueprint
+from flask import Blueprint, Flask
 from flask import current_app as app
 
 from utils import get_secret
@@ -56,4 +57,23 @@ def _get_user_firestore(user_id):
     if "scores" in data and data["scores"].get("number_of_scored_games", 0) != 0:
         data["avg_score"] = data["scores"]["total_sum"] / data["scores"]["number_of_scored_games"]
 
+    if "last_date_scores" in data and len(data["last_date_scores"]) > 10:
+        l = data["last_date_scores"]
+        l_top = sorted(l.items(), key=lambda item: item[0], reverse=True)[:min(len(l), 10)]
+        data["last_date_scores"] = {k: v for k, v in l_top}
+
+    if "avg_score" in data and len(data.get("last_date_scores", {})) > 1:
+        previous_score = sorted(data["last_date_scores"].items(), key=lambda item: item[0], reverse=True)[0][1]
+        previous_avg_score = (data["scores"]["total_sum"] - previous_score) / (data["scores"]["number_of_scored_games"] - 1)
+        data["delta_from_last_score"] = data["avg_score"] - previous_avg_score
+
     return data
+
+
+if __name__ == '__main__':
+    firebase_admin.initialize_app()
+    app = Flask("test_app")
+    app.db_client = firestore.client()
+
+    with app.app_context():
+        print(_get_user_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
