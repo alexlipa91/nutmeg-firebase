@@ -11,14 +11,6 @@ jobs:
       folder: "create_stripe_customer"
       resource: users/{userId}
 
-
-  schedule_prematch_notification:
-    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
-    with:
-      name: "schedule_prematch_notification"
-      folder: "notifications"
-      resource: matches/{matchId}
-
   schedule_run_post_match_tasks:
     uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
     with:
