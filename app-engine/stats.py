@@ -1,73 +1,16 @@
-import dateutil.parser
 import firebase_admin
 from flask import Blueprint, Flask
 from flask import current_app as app
 
-from typing import Dict, List
+from typing import List
 
-import dateutil.tz
 from firebase_admin import firestore
 from datetime import datetime
 
+from matches import freeze_stats
+from statistics.stats_utils import UserUpdates
+
 bp = Blueprint('stats', __name__, url_prefix='/stats')
-
-
-class MatchStats:
-
-    # @staticmethod
-    # def from_ratings_doc(match_id):
-    #     db = firestore.client()
-    #     raw_scores_doc = db.collection("ratings").document(match_id).get().to_dict()
-    #     if not raw_scores_doc:
-    #         return None
-    #     return MatchStats(match_id, None, [], raw_scores_doc.get("scores", {}), raw_scores_doc.get("skills", {}))
-
-    def __init__(self,
-                 match_id,
-                 date,
-                 going: List[str],
-                 raw_scores: Dict[str, Dict[str, float]],
-                 skills_scores: Dict[str, Dict[str, List[str]]]):
-        self.id = match_id
-        self.date = date
-        self.going = going
-        self.raw_scores = raw_scores
-        self.raw_skill_scores = skills_scores
-
-    def get_user_scores(self) -> Dict[str, float]:
-        user_scores = {}
-        for u in self.raw_scores:
-            positive_scores = [v for v in self.raw_scores[u].values() if v > 0]
-            if len(positive_scores) > 1:
-                user_scores[u] = sum(positive_scores) / len(positive_scores)
-        return user_scores
-
-    def get_user_skills(self) -> Dict[str, Dict[str, int]]:
-        user_skill_scores = {}
-
-        for u in self.raw_skill_scores:
-            if len(self.raw_scores[u]) > 1:
-                for _, skills in self.raw_skill_scores[u].items():
-                    for s in skills:
-                        if u not in user_skill_scores:
-                            user_skill_scores[u] = {}
-                        user_skill_scores[u][s] = user_skill_scores[u].get(s, 0) + 1
-
-        return user_skill_scores
-
-    def get_potms(self) -> List[str]:
-        if len(self.get_user_scores()) == 0:
-            return []
-        sorted_user_scores = sorted(self.get_user_scores().items(), reverse=True, key=lambda x: x[1])
-        potm_score = sorted_user_scores[0][1]
-        potms = [x[0] for x in sorted_user_scores if x[1] == potm_score]
-        # for now, one POTM
-        if len(potms) > 1:
-            return []
-        return potms
-
-    def __repr__(self):
-        return "{}\n{}\n{}".format(str(self.get_user_scores()), str(self.get_potms()), str(self.get_user_skills()))
 
 
 class UserStats:
@@ -128,73 +71,17 @@ class UserStats:
 def recompute_stats():
     db = app.db_client
 
-    match_data_cache = {}
+    # updates aggregate
+    users_updates = {}
 
     # get match stats
-    match_stats = {}
     for m in db.collection("matches").get():
-        data = m.to_dict()
-        match_data_cache[m.id] = data
+        match_updates = freeze_stats(m.id, write=False)
+        for u in match_updates:
+            users_updates[u] = UserUpdates.sum(users_updates.get(u, UserUpdates.zero()), match_updates[u])
 
-        if datetime.now(dateutil.tz.UTC) < data["dateTime"] or data.get("cancelledAt", None):
-            print("skipping match {}".format(m.id))
-            continue
-
-        ratings_doc = db.collection("ratings").document(m.id).get()
-        raw_scores = {}
-        skill_scores = {}
-        if ratings_doc.exists:
-            ratings_doc_data = ratings_doc.to_dict()
-            raw_scores = ratings_doc_data.get("scores", {})
-            skill_scores = ratings_doc_data.get("skills", {})
-
-        match_stats[m.id] = MatchStats(
-            m.id,
-            data["dateTime"],
-            list(data.get("going", {}).keys()),
-            raw_scores,
-            skill_scores,
-        )
-
-    # generate users stats from these matches
-    user_stats: Dict[str, UserStats] = {}
-
-    def get_stat_object(user):
-        if user not in user_stats:
-            user_stats[user] = UserStats()
-        return user_stats[user]
-
-    for m in match_stats.values():
-        print(m.id)
-        for u in m.going:
-            get_stat_object(u).num_played += 1
-            get_stat_object(u).joined_matches[m.id] = match_data_cache[m.id]['dateTime']
-
-        for u in m.get_potms():
-            get_stat_object(u).num_potm += 1
-
-        user_scores = m.get_user_scores()
-        for u in user_scores:
-            get_stat_object(u).add_score(m.date, user_scores[u])
-            get_stat_object(u).score_matches[m.id] = user_scores[u]
-
-        user_skills = m.get_user_skills()
-        for u in user_skills:
-            for s in user_skills[u]:
-                get_stat_object(u).add_skills(s, user_skills[u][s])
-
-    for u, s in user_stats.items():
-        print(u)
-
-        print(s.get_user_updates())
-        print(s.get_user_stats_updates())
-
-        try:
-            db.collection("users").document(u).update(s.get_user_updates())
-            db.collection("users").document(u).collection("stats").document("match_votes").update(s.get_user_stats_updates())
-        except Exception as e:
-            print("Error writing to user {}".format(u))
-            print(e)
+    for u in users_updates:
+        db.collection("users").document(u).update(users_updates[u].to_num_update())
 
 
 if __name__ == '__main__':

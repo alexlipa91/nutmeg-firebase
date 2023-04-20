@@ -4,6 +4,7 @@ import traceback
 from collections import namedtuple
 from datetime import datetime, timezone, timedelta
 from enum import Enum
+from typing import List, Dict
 
 import dateutil.parser
 import firebase_admin
@@ -18,12 +19,11 @@ import geopy.distance
 from firebase_admin import firestore
 from flask import Blueprint, Flask
 
-from stats import MatchStats
+from statistics.stats_utils import UserUpdates
 from users import _get_user_firestore
 from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link, send_notification_to_users, \
     schedule_app_engine_call
 from flask import current_app as app
-
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
 tz = pytz.timezone('Europe/Amsterdam')
@@ -92,8 +92,8 @@ def get_ratings(match_id):
     if not match_stats:
         return {}, 200
     resp = {
-        "scores": match_stats.get_user_scores(),
-        "potms": match_stats.get_potms()
+        "scores": match_stats.user_scores,
+        "potms": match_stats.potms
     }
     return {"data": resp}, 200
 
@@ -227,75 +227,61 @@ Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_u
 
 @bp.route("/<match_id>/stats/freeze", methods=["POST"])
 def freeze_stats(match_id, write=True):
-    updates = Updates(
-        match_updates={"scoresComputedAt": datetime.utcnow()},
-        users_updates={},
-        users_match_stats_updates={}
+    match_data = get_match(match_id, is_local=True)
+
+    if datetime.now(dateutil.tz.UTC) < match_data["dateTime"] + timedelta(days=1):
+        print("skipping match {} because can compute only after {} and match is on {}".format(match_id,
+                                                                                              match_data[
+                                                                                                  "dateTime"] + timedelta(
+                                                                                                  days=1),
+                                                                                              match_data["dateTime"]))
+        return {}
+    if match_data.get("cancelledAt", None) or match_data.get("isTest", False):
+        print("skipping match {} because cancelled or test".format(match_id))
+        return {}
+
+    # ratings
+    ratings_doc = app.db_client.collection("ratings").document(match_id).get()
+    match_stats = MatchStats(
+        match_id,
+        match_data.get("dateTime"),
+        match_data.get("going", {}),
+        ratings_doc.to_dict().get("scores", {}) if ratings_doc.to_dict() else {},
+        ratings_doc.to_dict().get("skills", {}) if ratings_doc.to_dict() else {},
     )
 
-    # compute ratings updates
-    match_data = get_match(match_id, is_local=True)
-    ratings_doc = app.db_client.collection("ratings").document(match_id).get()
-    potms = []
-    if ratings_doc.exists and len(ratings_doc.to_dict()["scores"]) > 0:
-        match_stats = MatchStats(
-            match_id,
-            match_data.get("dateTime"),
-            match_data.get("going", {}),
-            ratings_doc.to_dict()["scores"],
-            ratings_doc.to_dict().get("skills", {})
-        )
-        potms = match_stats.get_potms()
-
-        skill_scores = match_stats.get_user_skills()
-
-        # store score for users
-        for user, score in match_stats.get_user_scores().items():
-            user_match_stats = {
-                "scoreMatches": {match_id: score},
-            }
-            if user in skill_scores:
-                user_match_stats["skillScores"] = {match_id: skill_scores[user]}
-
-            skill_scores_increment = {}
-            for skill in skill_scores.get(user, {}):
-                skill_scores_increment[skill] = firestore.firestore.Increment(skill_scores[user][skill])
-
-            user_stats_increments = {
-                "skills_count": skill_scores_increment,
-                "scores.number_of_scored_games": firestore.firestore.Increment(1),
-                "scores.total_sum": firestore.firestore.Increment(score),
-                "last_date_scores.{}".format(match_data["dateTime"].strftime("%Y%m%d%H%M%S")): score
-            }
-            if user in match_stats.get_potms():
-                user_stats_increments["potm_count"] = firestore.firestore.Increment(1)
-
-            updates.users_match_stats_updates[user] = user_match_stats
-            updates.users_updates[user] = user_stats_increments
-    else:
-        print("No ratings for match {}".format(match_id))
-
-    # check win-loss updates
+    # score
+    user_won = []
+    user_draw = []
+    user_lost = []
     if "score" in match_data and len(match_data["score"]) == 2:
-        score = match_data["score"]
+        score_delta = match_data["score"][0] - match_data["score"][1]
         team_logic = "manual" if match_data.get("hasManualTeams", False) else "balanced"
         teams = match_data["teams"][team_logic]["players"]
 
-        for t in teams:
-            team_outcome = score[0] - score[1] if t == "a" else score[1] - score[0]
-            for u in teams[t]:
-                if team_outcome > 0:
-                    updates.users_updates.setdefault(u, {})["record.num_win"] = firestore.firestore.Increment(1)
-                elif team_outcome == 0:
-                    updates.users_updates.setdefault(u, {})["record.num_draw"] = firestore.firestore.Increment(1)
-                else:
-                    updates.users_updates.setdefault(u, {})["record.num_loss"] = firestore.firestore.Increment(1)
-    else:
-        print("No scores for match {}".format(match_id))
+        if score_delta > 0:
+            user_won = teams['a']
+            user_lost = teams['b']
+        elif score_delta == 0:
+            user_draw = teams['a'] + teams['b']
+        else:
+            user_won = teams['b']
+            user_lost = teams['a']
 
-    _log_updates(updates)
+    user_updates = {}
+
+    # create updates
+    for u in match_data.get("going", {}).keys():
+        user_updates[u] = UserUpdates.from_single_game(
+            date=match_data["dateTime"],
+            score=match_stats.user_scores.get(u, None),
+            skills=match_stats.user_skills.get(u, {}),
+            wdl="w" if u in user_won else "d" if u in user_draw else "l" if u in user_lost else None,
+            is_potm=u in match_stats.potms
+        )
 
     if write:
+        print(user_updates)
         match_doc_ref = app.db_client.collection("matches").document(match_id)
         users_doc_ref = {}
         users_stats_doc_ref = {}
@@ -303,17 +289,17 @@ def freeze_stats(match_id, write=True):
         # write to db
         for u in match_data.get("going", {}).keys():
             users_doc_ref[u] = app.db_client.collection("users").document(u)
-            users_stats_doc_ref[u] = app.db_client.collection("users").document(u).collection("stats")\
+            users_stats_doc_ref[u] = app.db_client.collection("users").document(u).collection("stats") \
                 .document("match_votes")
 
         _close_rating_round_transaction(app.db_client.transaction(),
-                                        updates,
-                                        potms,
+                                        user_updates,
+                                        match_stats.potms,
                                         match_doc_ref,
                                         users_doc_ref,
                                         users_stats_doc_ref)
 
-    return {}
+    return user_updates
 
 
 def _log_updates(updates: Updates):
@@ -324,19 +310,21 @@ def _log_updates(updates: Updates):
             return obj.toJSON()
         except:
             return obj.__dict__
+
     print(json.dumps(updates, default=dumper, indent=2))
 
 
 @firestore.transactional
-def _close_rating_round_transaction(transaction, updates: Updates, potms, match_doc_ref, users_docs_ref,
-                                    users_stats_docs_ref):
+def _close_rating_round_transaction(transaction, user_updates: Dict[str, UserUpdates],
+                                    potms, match_doc_ref,
+                                    users_docs_ref):
     match_data = match_doc_ref.get(transaction=transaction).to_dict()
 
-    for u in updates.users_match_stats_updates:
-        transaction.set(users_stats_docs_ref[u], updates.users_match_stats_updates[u], merge=True)
-        transaction.set(users_docs_ref[u], updates.users_updates[u], merge=True)
+    for u in user_updates:
+        # transaction.set(users_stats_docs_ref[u], user_updates.to_db_update(), merge=True)
+        transaction.set(users_docs_ref[u], user_updates[u], merge=True)
 
-    transaction.set(match_doc_ref, updates.match_updates, merge=True)
+    transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
 
     _send_close_voting_notification(match_doc_ref.id,
                                     match_data.get("going", {}).keys(),
@@ -479,8 +467,8 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             # time filter
             now = datetime.now(tz=pytz.UTC)
             is_outside_time_range = (
-                when == "future" and raw_data["dateTime"] < now or
-                when == "past" and raw_data["dateTime"] > now
+                    when == "future" and raw_data["dateTime"] < now or
+                    when == "past" and raw_data["dateTime"] > now
             )
 
             data = _format_match_data_v2(raw_data, version)
@@ -504,7 +492,8 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             skip_status = organized_by is None and data["status"] == "unpublished"
 
             # test filter
-            is_admin = user_id is not None and user_id in ["IwrZWBFb4LZl3Kto1V3oUKPnCni1", "bQHD0EM265V6GuSZuy1uQPHzb602"]
+            is_admin = user_id is not None and user_id in ["IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+                                                           "bQHD0EM265V6GuSZuy1uQPHzb602"]
             is_test = data.get("isTest", False)
             hide_test_match = is_test and not is_admin
 
@@ -633,7 +622,8 @@ def _add_match_firestore(match_data):
         task_name="close_rating_round_{}".format(doc_ref.id),
         endpoint="matches/{}/stats/freeze".format(doc_ref.id),
         method=tasks_v2.HttpMethod.POST,
-        date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(days=1),
+        date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(
+            days=1),
         function_payload={}
     )
     # schedule notification
@@ -663,7 +653,6 @@ def _update_user_account(user_id, is_test, match_id, manage_payments):
         user_data = user_doc_ref.get().to_dict()
         if organizer_id_field_name in user_data:
             print("{} already created".format(organizer_id_field_name))
-            organizer_id = user_data[organizer_id_field_name]
         else:
             response = stripe.Account.create(
                 type="express",
@@ -687,10 +676,63 @@ def _update_user_account(user_id, is_test, match_id, manage_payments):
                     }
                 }
             )
-            organizer_id = response.id
             user_updates[organizer_id_field_name] = response.id
 
     user_doc_ref.update(user_updates)
+
+
+class MatchStats:
+
+    def __init__(self,
+                 match_id,
+                 date,
+                 going: List[str],
+                 raw_scores: Dict[str, Dict[str, float]],
+                 skills_scores: Dict[str, Dict[str, List[str]]]):
+        self.id = match_id
+        self.date = date
+        self.going = going
+        self.raw_scores = raw_scores
+        self.raw_skill_scores = skills_scores
+
+        self.user_scores = self.compute_user_scores()
+        self.potms = self.compute_potms()
+        self.user_skills = self.compute_user_skills()
+
+    def compute_user_scores(self) -> Dict[str, float]:
+        user_scores = {}
+        for u in self.raw_scores:
+            positive_scores = [v for v in self.raw_scores[u].values() if v > 0]
+            if len(positive_scores) > 1:
+                user_scores[u] = sum(positive_scores) / len(positive_scores)
+        return user_scores
+
+    def compute_user_skills(self) -> Dict[str, Dict[str, int]]:
+        user_skill_scores = {}
+
+        for u in self.raw_skill_scores:
+            if len(self.raw_scores[u]) > 1:
+                for _, skills in self.raw_skill_scores[u].items():
+                    for s in skills:
+                        if u not in user_skill_scores:
+                            user_skill_scores[u] = {}
+                        user_skill_scores[u][s] = user_skill_scores[u].get(s, 0) + 1
+
+        return user_skill_scores
+
+    def compute_potms(self) -> List[str]:
+        if len(self.user_scores) == 0:
+            return []
+        sorted_user_scores = sorted(self.user_scores.items(), reverse=True, key=lambda x: x[1])
+        potm_score = sorted_user_scores[0][1]
+        potms = [x[0] for x in sorted_user_scores if x[1] == potm_score]
+        # for now, one POTM
+        if len(potms) > 1:
+            return []
+        return potms
+
+    def __repr__(self):
+        return "{}\n{}\n{}".format(str(self.user_scores), str(self.potms), str(self.user_skills))
 
 
 if __name__ == '__main__':
@@ -699,4 +741,4 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        print(get_teams("1P5bpytjssPulh1ofnJk"))
+        print(freeze_stats("61MIUi1Anm1xzIBDpVzt", write=False))
