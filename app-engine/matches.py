@@ -640,6 +640,13 @@ def _add_match_firestore(match_data):
         date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(days=1),
         function_payload={}
     )
+    # schedule notification
+    schedule_function(
+        task_name="send_prematch_notification_{}".format(doc_ref.id),
+        function_name="send_prematch_notification",
+        function_payload={"match_id": doc_ref.id},
+        date_time_to_execute=match_data["dateTime"] - timedelta(hours=1)
+    )
 
     return doc_ref.id
 
