@@ -1,5 +1,0 @@
-firebase-admin==5.2.0
-protobuf==3.20.1
-python-dateutil
-google-cloud-tasks==2.7.2
--e git+https://github.com/alexlipa91/nutmeg-firebase.git@831f16125ba018f635a8f089e7e47890f1b9095b#subdirectory=nutmeg_utils&egg=nutmeg_utils

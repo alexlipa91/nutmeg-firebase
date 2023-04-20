@@ -4,13 +4,6 @@ on:
       - main
 
 jobs:
-  schedule_run_post_match_tasks:
-    uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
-    with:
-      name: "schedule_run_post_match_tasks"
-      folder: "run_post_match_tasks"
-      resource: matches/{matchId}
-
   schedule_start_voting_notification:
     uses: './.github/workflows/deploy-firestore-trigger-template.yaml'
     with:
