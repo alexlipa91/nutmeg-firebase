@@ -303,22 +303,17 @@ def freeze_stats(match_id, write=True):
         # write to db
         for u in match_data.get("going", {}).keys():
             users_doc_ref[u] = app.db_client.collection("users").document(u)
-            users_stats_doc_ref[u] = app.db_client.collection("users").document(u).collection("stats").document("match_votes")
+            users_stats_doc_ref[u] = app.db_client.collection("users").document(u).collection("stats")\
+                .document("match_votes")
 
-        # def dumper(obj):
-        # if isinstance(obj, datetime.datetime):
-        #     return "date"
-        # try:
-        #     return obj.toJSON()
-        # except:
-        #     return obj.__dict__
-        # print(json.dumps(calculations, default=dumper, indent=2))
         _close_rating_round_transaction(app.db_client.transaction(),
                                         updates,
                                         potms,
                                         match_doc_ref,
                                         users_doc_ref,
                                         users_stats_doc_ref)
+
+    return {}
 
 
 def _log_updates(updates: Updates):
@@ -333,7 +328,8 @@ def _log_updates(updates: Updates):
 
 
 @firestore.transactional
-def _close_rating_round_transaction(transaction, updates: Updates, potms, match_doc_ref, users_docs_ref, users_stats_docs_ref):
+def _close_rating_round_transaction(transaction, updates: Updates, potms, match_doc_ref, users_docs_ref,
+                                    users_stats_docs_ref):
     match_data = match_doc_ref.get(transaction=transaction).to_dict()
 
     for u in updates.users_match_stats_updates:
@@ -343,7 +339,7 @@ def _close_rating_round_transaction(transaction, updates: Updates, potms, match_
     transaction.set(match_doc_ref, updates.match_updates, merge=True)
 
     _send_close_voting_notification(match_doc_ref.id,
-                                    match_data.get("going", {}),
+                                    match_data.get("going", {}).keys(),
                                     potms,
                                     match_data.get("sportCenter", None))
 
