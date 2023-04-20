@@ -1,11 +1,10 @@
-import os
-
 import flask
+import stripe
 from firebase_admin import firestore
 from flask import Blueprint
 from flask import current_app as app
 
-from utils import get_remote_config
+from utils import get_secret
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 
@@ -20,12 +19,24 @@ def get_user(user_id):
         return {}, 200
 
 
-@bp.route("/test", methods=["GET"])
-def test():
-    t = get_remote_config()
-    print(t)
-    print(os.environ)
-    return {}, 200
+@bp.route("/<user_id>/add", methods=["POST"])
+def add_user(user_id):
+    data = flask.request.get_json()
+    assert "email" in data, "Required field missing"
+
+    data["createdAt"] = firestore.firestore.SERVER_TIMESTAMP
+
+    # create stripe customer
+    stripe.api_key = get_secret('stripeProdKey')
+    response = stripe.Customer.create(
+        email=data.get("email", None),
+        name=data.get("name", None)
+    )
+    data["stripeId"] = response["id"]
+
+    doc_ref = app.db_client.collection('users').document(user_id)
+    doc_ref.set(data)
+    return {}
 
 
 @bp.route("/<user_id>/tokens", methods=["POST"])
