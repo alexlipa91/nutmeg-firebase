@@ -78,24 +78,6 @@ jobs:
       name: "store_user_token"
       folder: "user_crud"
 
-  reset_ratings_for_match:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "reset_ratings_for_match"
-      folder: "ratings/reset_ratings_for_match"
-
-  get_ratings_by_match:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "get_ratings_by_match"
-      folder: "ratings/get_ratings_by_match"
-
-  get_ratings_by_match_v2:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "get_ratings_by_match_v2"
-      folder: "ratings/get_ratings_by_match"
-
   get_ratings_by_match_v3:
     uses: './.github/workflows/deploy-python-http-template.yaml'
     with:
@@ -137,12 +119,6 @@ jobs:
     with:
       name: "get_sportcenter"
       folder: "sportcenters_crud"
-
-  is_account_onboarded:
-    uses: './.github/workflows/deploy-python-http-template.yaml'
-    with:
-      name: "is_account_onboarded"
-      folder: "organizer_stripe_account"
 
   go_to_onboard_connected_account:
     uses: './.github/workflows/deploy-python-http-template.yaml'

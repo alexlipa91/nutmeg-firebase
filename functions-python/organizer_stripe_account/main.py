@@ -16,21 +16,6 @@ firebase_admin.initialize_app()
 
 
 @cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
-def is_account_onboarded(request):
-    request_json = request.get_json(silent=True)
-    print("data {}".format(request_json))
-    request_data = request_json["data"]
-
-    user_id = request_data["user_id"]
-    is_test = request_data["is_test"]
-
-    account_id = _get_account_id(user_id, is_test)
-    is_complete = _is_account_complete(account_id, is_test)
-
-    return {"data": {"is_complete": is_complete}}, 200
-
-
-@cross_origin(origins=["*"], allow_headers=["firebase-instance-id-token", "content-type", "authorization"])
 def go_to_onboard_connected_account(request):
     request_json = request.get_json(silent=True)
     print("args {}, data {}".format(request.args, request_json))
