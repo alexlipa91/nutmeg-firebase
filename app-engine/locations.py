@@ -69,19 +69,20 @@ def get_location_details():
                             + "&result_type=locality")
     results = response.json()["results"]
 
-    address_components = results[0]["address_components"]
-
     result = {}
 
-    for a in address_components:
-        if "locality" in a["types"]:
-            result["city"] = a["long_name"]
-        elif "country" in a["types"]:
-            result["country"] = a["short_name"]
+    if len(results) > 0:
+        address_components = results[0]["address_components"]
 
-    result["lat"] = results[0]["geometry"]["location"]["lat"]
-    result["lng"] = results[0]["geometry"]["location"]["lng"]
-    result["place_id"] = results[0]["place_id"]
+        for a in address_components:
+            if "locality" in a["types"]:
+                result["city"] = a["long_name"]
+            elif "country" in a["types"]:
+                result["country"] = a["short_name"]
+
+        result["lat"] = results[0]["geometry"]["location"]["lat"]
+        result["lng"] = results[0]["geometry"]["location"]["lng"]
+        result["place_id"] = results[0]["place_id"]
 
     return {"data": result}, 200
 
