@@ -1,9 +1,12 @@
+import os
+
 import firebase_admin
 import flask
 from firebase_admin import firestore, auth
 from flask import request
 from flask_cors import CORS
 
+import feedback
 import matches
 import payments
 import sportcenters
@@ -27,6 +30,7 @@ app.register_blueprint(sportcenters.bp)
 app.register_blueprint(stats.bp)
 app.register_blueprint(locations.bp)
 app.register_blueprint(stripe_bp.bp)
+app.register_blueprint(feedback.bp)
 
 
 CORS(app)
@@ -55,4 +59,5 @@ if __name__ == "__main__":
     # Used when running locally only. When deploying to Google App
     # Engine, a webserver process such as Gunicorn will serve the app. This
     # can be configured by adding an `entrypoint` to app.yaml.
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
     app.run(host="localhost", port=8080, debug=True)

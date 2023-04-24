@@ -13,8 +13,15 @@ bp = Blueprint('sportcenters', __name__, url_prefix='/sportcenters')
 
 @bp.route("", methods=["GET"])
 def get_sportcenters():
+    of_user = flask.request.args.get("user", None)
     result = {}
-    for s in app.db_client.collection('sport_centers').get():
+
+    if of_user:
+        collection = app.db_client.collection("users").document(of_user).collection('sportCenters')
+    else:
+        collection = app.db_client.collection('sport_centers')
+
+    for s in collection.get():
         result[s.id] = s.to_dict()
 
     return {"data": result}, 200

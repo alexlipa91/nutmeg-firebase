@@ -1,4 +1,3 @@
-import json
 import random
 import traceback
 from collections import namedtuple
@@ -63,18 +62,22 @@ def get_matches():
     return {"data": result}, 200
 
 
-@bp.route("/<match_id>", methods=["GET"])
+@bp.route("/<match_id>", methods=["GET", "POST"])
 def get_match(match_id, is_local=False):
-    match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
-
-    version = 2 if is_local else int(flask.request.args.get("version", 1))
-
     if is_local:
-        return match_data
+        return _format_match_data_v2(app.db_client.collection('matches').document(match_id).get().to_dict())
 
-    if not match_data:
-        return {}, 404
-    return {"data": _format_match_data_v2(match_data, version)}
+    if flask.request.method == "GET":
+        match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
+        version = 2 if is_local else int(flask.request.args.get("version", 1))
+
+        if not match_data:
+            return {}, 404
+        return {"data": _format_match_data_v2(match_data, version)}
+    elif flask.request.method == "POST":
+        data = flask.request.get_json()
+        app.db_client.collection("matches").document(match_id).update(data)
+        return {}, 200
 
 
 @bp.route("/<match_id>/ratings", methods=["GET"])
@@ -233,6 +236,105 @@ def remove_user_from_match(match_id):
     return {"data": {}}, 200
 
 
+@bp.route("/<match_id>/cancel", methods=["GET"])
+def cancel_match(match_id):
+    match_doc_ref = app.db_client.collection('matches').document(match_id)
+
+    match_data = match_doc_ref.get().to_dict()
+
+    if match_data.get("cancelledAt", None):
+        raise Exception("Match has already been cancelled")
+
+    users_stats_docs = {}
+    for u in match_data.get("going", {}).keys():
+        users_stats_docs[u] = app.db_client.collection("users").document(u).collection("stats").document("match_votes")
+
+    _cancel_match_firestore_transactional(app.db_client.transaction(), match_doc_ref, users_stats_docs,
+                                          match_id, match_data["isTest"], "manual")
+    return {}
+
+
+def _cancel_match_firestore(match_id, trigger):
+    db = app.db_client
+    match_doc_ref = db.collection('matches').document(match_id)
+
+    match_data = match_doc_ref.get().to_dict()
+
+    if match_data.get("cancelledAt", None):
+        raise Exception("Match has already been cancelled")
+
+    users_stats_docs = {}
+    for u in match_data.get("going", {}).keys():
+        users_stats_docs[u] = db.collection("users").document(u).collection("stats").document("match_votes")
+
+    _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_stats_docs,
+                                          match_id, match_data["isTest"], trigger)
+
+
+@firestore.transactional
+def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stats_docs, match_id, is_test, trigger):
+    stripe.api_key = get_secret("stripeTestKey" if is_test else "stripeProdKey")
+
+    match = get_match(match_id, is_local=True)
+    price = match["pricePerPerson"] / 100
+
+    transaction.update(match_doc_ref, {
+        "cancelledAt": datetime.now()
+    })
+
+    going = match.get("going", {})
+    for u in going:
+        print("processing cancellation for {}: refund and remove from stats".format(u))
+
+        # remove match in user list (if present)
+        transaction.update(users_stats_docs[u], {
+            u'joinedMatches.' + match_id: firestore.DELETE_FIELD
+        })
+
+        # refund
+        if match.get("managePayments", True) and "payment_intent" in going[u]:
+            payment_intent = going[u]["payment_intent"]
+            refund_amount = match["pricePerPerson"]
+            refund = stripe.Refund.create(payment_intent=payment_intent,
+                                          amount=refund_amount,
+                                          reverse_transfer=True,
+                                          refund_application_fee=True)
+
+            # record transaction
+            transaction_doc_ref = app.db_client.collection("matches").document(match_id).collection(
+                "transactions").document()
+            transaction.set(transaction_doc_ref,
+                            {"type": trigger.name.lower() + "_cancellation", "userId": u, "createdAt": datetime.now(),
+                             "paymentIntent": payment_intent,
+                             "refund_id": refund.id, "moneyRefunded": refund_amount})
+
+    send_notification_to_users(db=app.db_client,
+                               title="Match cancelled!",
+                               body="Your match at {} has been cancelled!".format(match["sportCenter"]["name"]) +
+                                    (" € {:.2f} have been refunded on your payment method".format(price) if match.get(
+                                        "managePayments", True) else ""),
+                               data={
+                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                   "route": "/match/" + match_id,
+                                   "match_id": match_id
+                               },
+                               users=list(going.keys()))
+
+    send_notification_to_users(db=app.db_client,
+                               title="Match cancelled!",
+                               body="Your match at {} has been {} as you requested!".format(
+                                   match["sportCenter"]["name"],
+                                   "cancelled" if trigger == "manual" else "automatically cancelled") + (
+                                        " All players have been refunded € {:.2f}".format(price) if match.get(
+                                            "managePayments", True) else ""),
+                               data={
+                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                   "route": "/match/" + match_id,
+                                   "match_id": match_id
+                               },
+                               users=[match["organizerId"]])
+
+
 Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_updates")
 
 
@@ -245,7 +347,8 @@ def freeze_stats(match_id, write=True, skip_test=True):
                                                                                               match_data[
                                                                                                   "dateTime"] + timedelta(
                                                                                                   days=1),
-                                                                                              match_data["dateTime"]))
+                                                                                              match_data[
+                                                                                                  "dateTime"]))
         return {}
     if match_data.get("cancelledAt", None) or (skip_test and match_data.get("isTest", False)):
         print("skipping match {} because cancelled or test".format(match_id))
@@ -311,18 +414,6 @@ def freeze_stats(match_id, write=True, skip_test=True):
                                         users_stats_doc_ref)
 
     return user_updates
-
-
-def _log_updates(updates: Updates):
-    def dumper(obj):
-        if isinstance(obj, datetime):
-            return obj.strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            return obj.toJSON()
-        except:
-            return obj.__dict__
-
-    print(json.dumps(updates, default=dumper, indent=2))
 
 
 @firestore.transactional
