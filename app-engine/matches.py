@@ -98,6 +98,17 @@ def get_ratings(match_id):
     return {"data": resp}, 200
 
 
+@bp.route("/<match_id>/ratings/add", methods=["POST"])
+def add_rating(match_id):
+    request_data = flask.request.get_json()
+
+    app.db_client.collection("ratings").document(match_id).set(
+        {"scores": {request_data["user_rated_id"]: {request_data["user_id"]: request_data["score"]}},
+         "skills": {request_data["user_rated_id"]: {request_data["user_id"]: request_data.get("skills", [])}}},
+        merge=True)
+    return {}
+
+
 @bp.route("/<match_id>/ratings/to_vote", methods=["GET"])
 def get_still_to_vote(match_id):
     all_going = app.db_client.collection("matches").document(match_id).get().to_dict().get("going", {}).keys()
@@ -226,7 +237,7 @@ Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_u
 
 
 @bp.route("/<match_id>/stats/freeze", methods=["POST"])
-def freeze_stats(match_id, write=True):
+def freeze_stats(match_id, write=True, skip_test=True):
     match_data = get_match(match_id, is_local=True)
 
     if datetime.now(dateutil.tz.UTC) < match_data["dateTime"] + timedelta(days=1):
@@ -236,7 +247,7 @@ def freeze_stats(match_id, write=True):
                                                                                                   days=1),
                                                                                               match_data["dateTime"]))
         return {}
-    if match_data.get("cancelledAt", None) or match_data.get("isTest", False):
+    if match_data.get("cancelledAt", None) or (skip_test and match_data.get("isTest", False)):
         print("skipping match {} because cancelled or test".format(match_id))
         return {}
 
