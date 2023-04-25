@@ -1,3 +1,4 @@
+import os
 import time
 
 import flask
@@ -64,7 +65,7 @@ def _get_timezone_id(lat, lng):
         lat,
         lng,
         int(time.time()),
-        get_secret("placesApiKey")
+        os.environ["GOOGLE_MAPS_API_KEY"]
     )
     response = requests.request("GET", url, headers={}, data={})
 
