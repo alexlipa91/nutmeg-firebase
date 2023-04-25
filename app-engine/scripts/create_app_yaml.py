@@ -9,5 +9,5 @@ template = templateEnv.get_template(TEMPLATE_FILE)
 
 outputText = template.render(env=os.environ)
 
-with open("app-test.yaml", "w") as fh:
+with open("app.yaml", "w") as fh:
     fh.write(outputText)

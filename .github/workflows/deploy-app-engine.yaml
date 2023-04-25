@@ -19,7 +19,7 @@ jobs:
         uses: cuchi/jinja2-action@v1.2.0
         with:
           template: app-engine/scripts/app.yaml.j2
-          output_file: app-engine/app-test.yaml
+          output_file: app-engine/app.yaml
         env:
           DYNAMIC_LINK_API_KEY: ${{ secrets.DYNAMIC_LINK_API_KEY }}
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
