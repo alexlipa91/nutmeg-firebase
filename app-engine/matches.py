@@ -416,6 +416,11 @@ def freeze_stats(match_id, write=True, skip_test=True):
     return user_updates
 
 
+@bp.route("/<match_id>/dynamicLink", methods=["GET"])
+def test_dynamic_link(match_id):
+    return flask.redirect(build_dynamic_link('http://web.nutmegapp.com/match/{}'.format(match_id)))
+
+
 @firestore.transactional
 def _close_rating_round_transaction(transaction, user_updates: Dict[str, UserUpdates],
                                     potms, match_doc_ref,

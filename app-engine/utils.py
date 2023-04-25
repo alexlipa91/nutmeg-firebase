@@ -7,6 +7,7 @@ from google.auth import compute_engine
 from google.cloud import secretmanager, tasks_v2
 from google.protobuf import timestamp_pb2
 import requests
+from os import environ
 
 
 def _serialize_dates(data):
@@ -98,7 +99,7 @@ def schedule_app_engine_call(task_name, endpoint, date_time_to_execute,
 
 def build_dynamic_link(link):
     resp = requests.post(
-        url="https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key={}".format(get_secret("dynamicLinkApiKey")),
+        url="https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key={}".format(environ["DYNAMIC_LINK_API_KEY"]),
         headers={'Content-Type': 'application/json'},
         data=json.dumps({
             "dynamicLinkInfo": {
