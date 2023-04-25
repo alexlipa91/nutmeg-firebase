@@ -17,10 +17,9 @@ jobs:
 
       - name: Create app yaml
         uses: cuchi/jinja2-action@v1.2.0
-        working-directory: app-engine
         with:
-          template: scripts/app.yaml.j2
-          output_file: app-test.yaml
+          template: app-engine/scripts/app.yaml.j2
+          output_file: app-engine/app-test.yaml
         env:
           DYNAMIC_LINK_API_KEY: ${{ secrets.DYNAMIC_LINK_API_KEY }}
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
