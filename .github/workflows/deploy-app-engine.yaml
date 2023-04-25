@@ -30,7 +30,7 @@ jobs:
           STRIPE_KEY: ${{ secrets.STRIPE_KEY }}
           STRIPE_KEY_TEST: ${{ secrets.STRIPE_KEY_TEST }}
 
-      - run cat/app-test.yaml
+      - run: "cat/app-test.yaml"
 
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'
