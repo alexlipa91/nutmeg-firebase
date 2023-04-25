@@ -65,7 +65,7 @@ def get_matches():
 @bp.route("/<match_id>", methods=["GET", "POST"])
 def get_match(match_id, is_local=False):
     if is_local:
-        return _format_match_data_v2(app.db_client.collection('matches').document(match_id).get().to_dict())
+        return app.db_client.collection('matches').document(match_id).get().to_dict()
 
     if flask.request.method == "GET":
         match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
