@@ -17,6 +17,7 @@ jobs:
 
       - name: Create app yaml
         uses: cuchi/jinja2-action@v1.2.0
+        working-directory: app-engine
         with:
           template: scripts/app.yaml.j2
           output_file: app-test.yaml
@@ -30,7 +31,7 @@ jobs:
           STRIPE_KEY: ${{ secrets.STRIPE_KEY }}
           STRIPE_KEY_TEST: ${{ secrets.STRIPE_KEY_TEST }}
 
-      - run: "cat/app-test.yaml"
+      - run: "cat app-engine/app-test.yaml"
 
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'
