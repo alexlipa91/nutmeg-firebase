@@ -1,3 +1,5 @@
+import os
+
 import firebase_admin
 import flask
 import stripe
@@ -5,7 +7,6 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 from flask import current_app as app
 
-from utils import get_secret
 
 bp = Blueprint('users', __name__, url_prefix='/users')
 
@@ -28,7 +29,7 @@ def add_user(user_id):
     data["createdAt"] = firestore.firestore.SERVER_TIMESTAMP
 
     # create stripe customer
-    stripe.api_key = get_secret('stripeProdKey')
+    stripe.api_key = os.environ["STRIPE_KEY"]
     response = stripe.Customer.create(
         email=data.get("email", None),
         name=data.get("name", None)

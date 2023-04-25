@@ -4,7 +4,6 @@ import flask
 import requests
 from flask import Blueprint
 
-from utils import get_secret
 
 bp = Blueprint('locations', __name__, url_prefix='/locations')
 

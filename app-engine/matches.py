@@ -1,3 +1,4 @@
+import os
 import random
 import traceback
 from collections import namedtuple
@@ -20,7 +21,7 @@ from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
 from users import _get_user_firestore
-from utils import _serialize_dates, schedule_function, get_secret, build_dynamic_link, send_notification_to_users, \
+from utils import _serialize_dates, schedule_function, build_dynamic_link, send_notification_to_users, \
     schedule_app_engine_call
 from flask import current_app as app
 
@@ -273,7 +274,7 @@ def _cancel_match_firestore(match_id, trigger):
 
 @firestore.transactional
 def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stats_docs, match_id, is_test, trigger):
-    stripe.api_key = get_secret("stripeTestKey" if is_test else "stripeProdKey")
+    stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
 
     match = get_match(match_id, is_local=True)
     price = match["pricePerPerson"] / 100
@@ -507,8 +508,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
 
     if match.get("managePayments", True):
         # issue_refund
-        stripe.api_key = get_secret('stripeProdKey' if not match["isTest"]
-                                    else 'stripeTestKey')
+        stripe.api_key = os.environ["STRIPE_KEY_TEST" if match["isTest"] else "STRIPE_KEY"]
         refund_amount = match["pricePerPerson"] - match.get("fee", 50)
         refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
         transaction_log["paymentIntent"] = payment_intent
@@ -683,7 +683,7 @@ def _add_match_firestore(match_data):
         match_data["userFee"] = fee
 
         # create stripe object
-        stripe.api_key = get_secret("stripeTestKey" if match_data["isTest"] else "stripeProdKey")
+        stripe.api_key = os.environ["STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"]
         response = stripe.Product.create(
             name="Nutmeg Match - {} - {}".format(match_data["sportCenter"]["name"], match_data["dateTime"]),
             description="Address: " + match_data["sportCenter"]["address"]
@@ -752,7 +752,7 @@ def _add_match_firestore(match_data):
 
 
 def _update_user_account(user_id, is_test, match_id, manage_payments):
-    stripe.api_key = get_secret("stripeTestKey" if is_test else "stripeProdKey")
+    stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
     organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
 
     # add to created matches

@@ -7,7 +7,7 @@ from flask import Blueprint
 from flask import current_app as app
 
 from locations import get_place_location_info
-from utils import get_secret
+
 
 bp = Blueprint('sportcenters', __name__, url_prefix='/sportcenters')
 

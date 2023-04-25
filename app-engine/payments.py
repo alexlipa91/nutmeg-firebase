@@ -1,8 +1,10 @@
+import os
+
 import flask
 import stripe
 
 from flask import Blueprint
-from utils import get_secret, build_dynamic_link
+from utils import build_dynamic_link
 from flask import current_app as app
 
 bp = Blueprint('payments', __name__, url_prefix='/payments')
@@ -48,7 +50,7 @@ def _get_match_info(match_id):
 
 
 def _get_stripe_customer_id(user_id, test_mode):
-    stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
+    stripe.api_key = os.environ["STRIPE_KEY_TEST" if test_mode else "STRIPE_KEY"]
 
     doc = app.db_client.collection('users').document(user_id)
 
@@ -85,7 +87,7 @@ def _get_stripe_connected_account_id(organizer_id, test_mode):
 def _create_checkout_redirects_to_web(customer_id, connected_account_id, user_id,
                                       organizer_id, match_id, price_id, application_fee_amount,
                                       test_mode):
-    stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
+    stripe.api_key = os.environ["STRIPE_KEY_TEST" if test_mode else "STRIPE_KEY"]
 
     session = stripe.checkout.Session.create(
         success_url="https://web.nutmegapp.com/match/{}?payment_outcome={}".format(match_id, "success"),
@@ -114,7 +116,7 @@ def _create_checkout_redirects_to_web(customer_id, connected_account_id, user_id
 def _create_checkout_session_with_deep_links(customer_id, connected_account_id, user_id,
                                              organizer_id, match_id, price_id, application_fee_amount,
                                              test_mode):
-    stripe.api_key = get_secret("stripeTestKey" if test_mode else "stripeProdKey")
+    stripe.api_key = os.environ["STRIPE_KEY_TEST" if test_mode else "STRIPE_KEY"]
 
     session = stripe.checkout.Session.create(
         success_url=build_dynamic_link('http://web.nutmegapp.com/match/{}?payment_outcome={}'

@@ -3,8 +3,7 @@ from datetime import datetime
 
 import google.api_core.datetime_helpers
 from firebase_admin import messaging
-from google.auth import compute_engine
-from google.cloud import secretmanager, tasks_v2
+from google.cloud import tasks_v2
 from google.protobuf import timestamp_pb2
 import requests
 from os import environ
@@ -17,15 +16,6 @@ def _serialize_dates(data):
         elif type(data[k]) == google.api_core.datetime_helpers.DatetimeWithNanoseconds:
             data[k] = datetime.isoformat(data[k])
     return data
-
-
-secretManagerClient = secretmanager.SecretManagerServiceClient()
-
-
-def get_secret(name):
-    return secretManagerClient.access_secret_version(
-        request={"name": "projects/956073807168/secrets/{}/versions/latest".format(name)}
-    ).payload.data.decode('utf-8')
 
 
 def schedule_function(task_name, function_name, function_payload, date_time_to_execute):
@@ -123,16 +113,6 @@ def build_dynamic_link(link):
     return json.loads(resp.text)["shortLink"]
 
 
-def get_remote_config():
-    credentials = compute_engine.Credentials()
-
-    # credentials = ServiceAccountCredentials.from_json_keyfile_name(
-    #     "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
-    #     , scopes=['https://www.googleapis.com/auth/cloud-platform']
-    # )
-    return credentials.token
-
-
 def send_notification_to_users(db, title, body, data, users):
     # normal send
     tokens = set()
@@ -177,4 +157,3 @@ def _send_notification_to_tokens(title, body, data, tokens):
 if __name__ == '__main__':
     import os
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
-    get_remote_config()
