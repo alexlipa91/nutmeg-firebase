@@ -255,6 +255,75 @@ def cancel_match(match_id):
     return {}
 
 
+@bp.route("/<match_id>/tasks/prematch", methods=["GET"])
+def run_prematch_tasks(match_id):
+    match = app.db_client.collection("matches").document(match_id).get().to_dict()
+    if not match or match.get("cancelledAt", None) is not None:
+        print("match not existing or cancelled...skipping")
+        return
+
+    users = match.get("going", {}).keys()
+    sport_center = match["sportCenter"]
+    date_time_local = match["dateTime"].astimezone(sport_center["timeZoneId"])
+
+    send_notification_to_users(db=app.db_client,
+                               title="Ready for the match? " + u"\u26BD\uFE0F",
+                               body="Your match today is at {} at {}. Tap here to check your team!".format(
+                                   date_time_local.strftime("%H:%M"),
+                                   sport_center["name"]),
+                               users=users,
+                               data={
+                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                   "route": "/match/" + match_id,
+                                   "match_id": match_id
+                               })
+
+
+@bp.route("/<match_id>/tasks/postmatch", methods=["GET"])
+def run_post_match_tasks(match_id):
+    match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
+
+    if not match_data or match_data.get("cancelledAt", None) is not None:
+        print("match deleted or cancelled...skipping")
+        return
+
+    going_users = match_data.get("going", {}).keys()
+    organiser_id = match_data.get("organizerId", None)
+
+    send_notification_to_users(
+        db=app.db_client,
+        title="Rate players! " + u"\u2B50\uFE0F",
+        body="You have 24h to rate the players of today's match.",
+        users=going_users,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
+            "match_id": match_id
+        }
+    )
+
+    if organiser_id:
+        send_notification_to_users(
+            db=app.db_client,
+            title="Add match result! " + u"\u2B50\uFE0F",
+            body="Add the final score for your match.",
+            users=organiser_id,
+            data={
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "route": "/match/" + match_id,
+                "match_id": match_id
+            }
+        )
+
+    # payout
+    schedule_function(
+        "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
+        "create_organizer_payout",
+        {"match_id": match_id, "attempt": 1},
+        datetime.now() + timedelta(days=3)
+    )
+
+
 def _cancel_match_firestore(match_id, trigger):
     db = app.db_client
     match_doc_ref = db.collection('matches').document(match_id)
@@ -734,16 +803,14 @@ def _add_match_firestore(match_data):
         function_payload={}
     )
     # schedule notifications
-    schedule_function(
+    schedule_app_engine_call(
         task_name="send_prematch_notification_{}".format(doc_ref.id),
-        function_name="send_prematch_notification",
-        function_payload={"match_id": doc_ref.id},
+        endpoint="matches/{}/tasks/prematch".format(doc_ref.id),
         date_time_to_execute=match_data["dateTime"] - timedelta(hours=1)
     )
-    schedule_function(
+    schedule_app_engine_call(
         task_name="run_post_match_tasks_{}".format(doc_ref.id),
-        function_name="run_post_match_tasks",
-        function_payload={"match_id": doc_ref.id},
+        endpoint="matches/{}/tasks/postmatch".format(doc_ref.id),
         date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(
             hours=1)
     )
