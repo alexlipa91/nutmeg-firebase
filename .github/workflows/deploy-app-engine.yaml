@@ -15,6 +15,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Create app yaml
+        uses: cuchi/jinja2-action@v1.2.0
+        with:
+          template: scripts/app.yaml.j2
+          output_file: app-test.yaml
+        env:
+          DYNAMIC_LINK_API_KEY: ${{ secrets.DYNAMIC_LINK_API_KEY }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          STRIPE_CHECKOUT_WEBHOOK_SECRET: ${{ secrets.STRIPE_CHECKOUT_WEBHOOK_SECRET }}
+          STRIPE_CHECKOUT_WEBHOOK_SECRET_TEST: ${{ secrets.STRIPE_CHECKOUT_WEBHOOK_SECRET_TEST }}
+          STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET: ${{ secrets.STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET }}
+          STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET_TEST: ${{ secrets.STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET_TEST }}
+          STRIPE_KEY: ${{ secrets.STRIPE_KEY }}
+          STRIPE_KEY_TEST: ${{ secrets.STRIPE_KEY_TEST }}
+
+      - run cat/app-test.yaml
+
       - id: 'auth'
         uses: 'google-github-actions/auth@v1'
         with:

@@ -1,0 +1,17 @@
+runtime: python39
+env: standard
+instance_class: F1
+automatic_scaling:
+  max_instances: 1
+  min_instances: 1
+inbound_services:
+  - warmup
+env_variables:
+    DYNAMIC_LINK_API_KEY: {{ env['DYNAMIC_LINK_API_KEY'] }}
+    GOOGLE_MAPS_API_KEY: {{ env['GOOGLE_MAPS_API_KEY'] }}
+    STRIPE_CHECKOUT_WEBHOOK_SECRET: {{ env['STRIPE_CHECKOUT_WEBHOOK_SECRET'] }}
+    STRIPE_CHECKOUT_WEBHOOK_SECRET_TEST: {{ env['STRIPE_CHECKOUT_WEBHOOK_SECRET_TEST'] }}
+    STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET: {{ env['STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET'] }}
+    STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET_TEST: {{ env['STRIPE_CONNECT_UPDATED_WEBHOOK_SECRET_TEST'] }}
+    STRIPE_KEY: {{ env['STRIPE_KEY'] }}
+    STRIPE_KEY_TEST: {{ env['STRIPE_KEY_TEST'] }}
