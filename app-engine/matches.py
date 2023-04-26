@@ -293,6 +293,27 @@ def run_prematch_tasks(match_id):
                                })
 
 
+@bp.route("/<match_id>/tasks/precancellation", methods=["GET"])
+def run_precancellation_tasks(match_id):
+    match = app.db_client.collection("matches").document(match_id).get().to_dict()
+    organizer_id = match["organizerId"]
+    num_going = len(match.get("going", {}))
+    min_players = match["minPlayers"]
+
+    if num_going < min_players:
+        send_notification_to_users(
+            db=app.db_client,
+            title="Your match might be canceled in 1 hour!",
+            body="Currently only {} players out of {} have joined your match.".format(num_going, min_players),
+            users=[organizer_id],
+            data={
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "route": "/match/" + match_id,
+                "match_id": match_id
+            }
+        )
+
+
 @bp.route("/<match_id>/tasks/postmatch", methods=["GET"])
 def run_post_match_tasks(match_id):
     match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
@@ -857,11 +878,10 @@ def _add_match_firestore(match_data):
             endpoint="matches/{}/confirm".format(doc_ref.id),
             date_time_to_execute=cancellation_time
         )
-        schedule_function(
-            "send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
-            "send_pre_cancellation_organizer_notification",
-            {"match_id": doc_ref.id},
-            cancellation_time - timedelta(hours=1)
+        schedule_app_engine_call(
+            task_name="send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
+            endpoint="matches/{}/tasks/precancellation".format(doc_ref.id),
+            date_time_to_execute=cancellation_time - timedelta(hours=1)
         )
 
     # schedule close rating round
