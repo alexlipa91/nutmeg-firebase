@@ -316,12 +316,70 @@ def run_post_match_tasks(match_id):
         )
 
     # payout
-    schedule_function(
-        "payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
-        "create_organizer_payout",
-        {"match_id": match_id, "attempt": 1},
-        datetime.now() + timedelta(days=3)
+    schedule_app_engine_call(
+        task_name="payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
+        endpoint="matches/{}/payout?attempt={}".format(match_id, 1),
+        date_time_to_execute=datetime.now() + timedelta(days=3)
     )
+
+
+@bp.route("/<match_id>/tasks/payout", methods=["GET"])
+def create_organizer_payout(match_id):
+    attempt = flask.request.args.get("attempt", 1)
+    match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
+
+    if not match_data:
+        print("Cannot find match...stopping")
+        return
+
+    amount = (match_data["pricePerPerson"] - match_data.get("fee", 50)) * len(match_data.get("going", {}))
+    if amount == 0:
+        print("Nothing to payout")
+        return
+
+    is_test = match_data["isTest"]
+    organizer_account = app.db_client.collection("users").document(match_data["organizerId"]).get().to_dict()[
+        "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
+    ]
+    stripe.api_key = os.environ["STRIPE_KEY" if not is_test else "STRIPE_KEY_TEST"]
+
+    # check if enough balance
+    balance = stripe.Balance.retrieve(stripe_account=organizer_account)
+    available_amount = balance['available'][0]['amount']
+
+    print("trying to payout: {}, current balance {}".format(amount, available_amount))
+
+    if available_amount >= amount:
+        payout = stripe.Payout.create(
+            amount=amount,
+            currency='eur',
+            stripe_account=organizer_account,
+            metadata={"match_id": match_id, "attempt": attempt},
+        )
+        print("payout of {} created: {}".format(amount, payout.id))
+        app.db_client.collection("matches").document(match_id).update({
+            "paid_out_at": firestore.firestore.SERVER_TIMESTAMP,
+            "payout_id": payout.id
+        })
+        send_notification_to_users(db=app.db_client,
+                                   title="Your money is on the way! " + u"\U0001F4B5",
+                                   body="The amount of € {:.2f} for the match on {} is on its way to your bank account"
+                                   .format(amount / 100, datetime.strftime(match_data["dateTime"], "%B %-d, %Y")),
+                                   data={
+                                       "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                                       "route": "/match/" + match_id,
+                                       "match_id": match_id
+                                   },
+                                   users=[match_data["organizerId"]])
+        return True
+    else:
+        print("not enough balance...retry in 24 hours")
+        schedule_app_engine_call(
+            task_name="payout_organizer_for_match_{}_attempt_number_{}".format(match_id, attempt + 1),
+            endpoint="matches/{}/payout?attempt={}".format(match_id, attempt + 1),
+            date_time_to_execute=datetime.now() + timedelta(days=1)
+        )
+        return False
 
 
 def _cancel_match_firestore(match_id, trigger):
