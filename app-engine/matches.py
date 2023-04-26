@@ -238,7 +238,7 @@ def remove_user_from_match(match_id):
 
 
 @bp.route("/<match_id>/cancel", methods=["GET"])
-def cancel_match(match_id):
+def cancel_match(match_id, trigger="manual"):
     match_doc_ref = app.db_client.collection('matches').document(match_id)
 
     match_data = match_doc_ref.get().to_dict()
@@ -251,8 +251,22 @@ def cancel_match(match_id):
         users_stats_docs[u] = app.db_client.collection("users").document(u).collection("stats").document("match_votes")
 
     _cancel_match_firestore_transactional(app.db_client.transaction(), match_doc_ref, users_stats_docs,
-                                          match_id, match_data["isTest"], "manual")
+                                          match_id, match_data["isTest"], trigger)
     return {}
+
+
+@bp.route("/<match_id>/confirm", methods=["GET"])
+def confirm_match(match_id):
+    match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
+
+    if len(match_data.get("going", {}).keys()) < match_data["minPlayers"]:
+        print("canceling match")
+        cancel_match(match_id, "automatic")
+    else:
+        print("confirming match")
+        app.db_client.collection('matches').document(match_id).update({"confirmedAt": datetime.now()})
+
+    return {}, 200
 
 
 @bp.route("/<match_id>/tasks/prematch", methods=["GET"])
@@ -838,11 +852,10 @@ def _add_match_firestore(match_data):
     # schedule cancellation check if required
     if "cancelHoursBefore" in match_data:
         cancellation_time = match_data["dateTime"] - timedelta(hours=match_data["cancelHoursBefore"])
-        schedule_function(
-            "cancel_or_confirm_match_{}".format(doc_ref.id),
-            "cancel_or_confirm_match",
-            {"match_id": doc_ref.id},
-            cancellation_time
+        schedule_app_engine_call(
+            task_name="cancel_or_confirm_match_{}".format(doc_ref.id),
+            endpoint="matches/{}/confirm".format(doc_ref.id),
+            date_time_to_execute=cancellation_time
         )
         schedule_function(
             "send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
