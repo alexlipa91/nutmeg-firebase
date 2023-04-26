@@ -21,7 +21,7 @@ from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
 from users import _get_user_firestore
-from utils import _serialize_dates, schedule_function, build_dynamic_link, send_notification_to_users, \
+from utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
     schedule_app_engine_call
 from flask import current_app as app
 
