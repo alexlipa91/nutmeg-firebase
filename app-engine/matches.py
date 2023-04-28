@@ -360,7 +360,8 @@ def run_post_match_tasks(match_id):
 
 @bp.route("/<match_id>/tasks/payout", methods=["GET"])
 def create_organizer_payout(match_id):
-    attempt = flask.request.args.get("attempt", 1)
+    # attempt = flask.request.args.get("attempt", 1)
+    attempt = 1
     match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
 
     if not match_data:
@@ -573,8 +574,7 @@ def freeze_stats(match_id, write=True, skip_test=True):
                                         user_updates,
                                         match_stats.potms,
                                         match_doc_ref,
-                                        users_doc_ref,
-                                        users_stats_doc_ref)
+                                        users_doc_ref)
 
     return user_updates
 
@@ -592,12 +592,12 @@ def _close_rating_round_transaction(transaction, user_updates: Dict[str, UserUpd
 
     for u in user_updates:
         # transaction.set(users_stats_docs_ref[u], user_updates.to_db_update(), merge=True)
-        transaction.set(users_docs_ref[u], user_updates[u], merge=True)
+        transaction.set(users_docs_ref[u], user_updates[u].to_db_update(), merge=True)
 
     transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
 
     _send_close_voting_notification(match_doc_ref.id,
-                                    match_data.get("going", {}).keys(),
+                                    list(match_data.get("going", {}).keys()),
                                     potms,
                                     match_data.get("sportCenter", None))
 
@@ -1013,4 +1013,4 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        print(freeze_stats("61MIUi1Anm1xzIBDpVzt", write=False))
+        print(freeze_stats("ks4h1tzcaK1a4kVoC2Vw", write=True))
