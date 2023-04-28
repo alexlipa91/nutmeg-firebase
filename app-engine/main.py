@@ -61,5 +61,4 @@ if __name__ == "__main__":
     # can be configured by adding an `entrypoint` to app.yaml.
     from dotenv import load_dotenv
     load_dotenv("scripts/.env.local")
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
     app.run(host="localhost", port=8080, debug=True)

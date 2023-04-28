@@ -113,6 +113,17 @@ def add_rating(match_id):
     return {}
 
 
+@bp.route("/<match_id>/ratings/add_multi", methods=["POST"])
+def add_rating_multi(match_id):
+    request_data = flask.request.get_json()
+    update = {"scores": {}}
+    for receiver in request_data:
+        update["scores"][receiver] = {flask.g.uid: request_data[receiver]}
+    print(update)
+    app.db_client.collection("ratings").document(match_id).set(update, merge=True)
+    return {}
+
+
 @bp.route("/<match_id>/ratings/to_vote", methods=["GET"])
 def get_still_to_vote(match_id):
     all_going = app.db_client.collection("matches").document(match_id).get().to_dict().get("going", {}).keys()
@@ -1013,4 +1024,5 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     with app.app_context():
-        print(freeze_stats("ks4h1tzcaK1a4kVoC2Vw", write=True))
+        add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
+        # print(freeze_stats("ks4h1tzcaK1a4kVoC2Vw", write=True))

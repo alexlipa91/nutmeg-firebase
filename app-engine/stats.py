@@ -89,5 +89,7 @@ if __name__ == '__main__':
     app = Flask("test_app")
     app.db_client = firestore.client()
 
+    from dotenv import load_dotenv
+    load_dotenv("scripts/.env.local")
     with app.app_context():
         recompute_stats()

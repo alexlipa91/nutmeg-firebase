@@ -45,8 +45,10 @@ class UserUpdates:
         return {
             "num_matches_joined": firestore.firestore.Increment(self.num_matches_joined),
             "skills_count": {s: firestore.firestore.Increment(c) for s, c in self.skills_count.items()},
-            "scores.number_of_scored_games": firestore.firestore.Increment(self.num_scored_games),
-            "scores.total_sum": firestore.firestore.Increment(self.total_sum_score),
+            "scores": {
+                "number_of_scored_games": firestore.firestore.Increment(self.num_scored_games),
+                "total_sum": firestore.firestore.Increment(self.total_sum_score)
+            },
             "last_date_scores": {
                 d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
             },
@@ -62,8 +64,10 @@ class UserUpdates:
         return {
             "num_matches_joined": self.num_matches_joined,
             "skills_count": {s: c for s, c in self.skills_count.items()},
-            "scores.number_of_scored_games": self.num_scored_games,
-            "scores.total_sum": self.total_sum_score,
+            "scores": {
+                "number_of_scored_games": self.num_scored_games,
+                "total_sum": self.total_sum_score,
+            },
             "last_date_scores": {
                 d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
             },
