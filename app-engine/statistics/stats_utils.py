@@ -51,9 +51,11 @@ class UserUpdates:
                 d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
             },
             'potm_count': firestore.firestore.Increment(self.num_potms),
-            "record.num_win": firestore.firestore.Increment(self.num_win),
-            "record.num_draw": firestore.firestore.Increment(self.num_draw),
-            "record.num_loss": firestore.firestore.Increment(self.num_loss),
+            "record": {
+                "num_win": firestore.firestore.Increment(self.num_win),
+                "num_draw": firestore.firestore.Increment(self.num_draw),
+                "num_loss": firestore.firestore.Increment(self.num_loss),
+            }
         }
 
     def to_num_update(self):
@@ -66,9 +68,11 @@ class UserUpdates:
                 d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
             },
             'potm_count': self.num_potms,
-            "record.num_win": self.num_win,
-            "record.num_draw": self.num_draw,
-            "record.num_loss": self.num_loss,
+            "record": {
+                "num_win": self.num_win,
+                "num_draw": self.num_draw,
+                "num_loss": self.num_loss,
+            }
         }
 
     @staticmethod
