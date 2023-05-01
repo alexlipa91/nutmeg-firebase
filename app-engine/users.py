@@ -51,7 +51,7 @@ def add_token(user_id):
 
 @bp.route("/organisers_with_fee", methods=["GET"])
 def get_organisers_with_fees():
-    return {'data': {'users': ['bQHD0EM265V6GuSZuy1uQPHzb602']}}, 200
+    return {'data': {'users': ['bQHD0EM265V6GuSZuy1uQPHzb602', 'IwrZWBFb4LZl3Kto1V3oUKPnCni1']}}, 200
 
 
 def _get_user_firestore(user_id):

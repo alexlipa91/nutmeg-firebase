@@ -149,7 +149,15 @@ def create_match():
     organizer_id = request_json["organizerId"]
 
     match_id = _add_match_firestore(request_json)
-    _update_user_account(organizer_id, is_test, match_id, request_json["managePayments"])
+
+    # todo legacy
+    match_with_payments = False
+    if "managePayments" in request_json:
+        match_with_payments = request_json["managePayments"]
+    elif "price" in request_json:
+        match_with_payments = True
+
+    _update_user_account(organizer_id, is_test, match_id, match_with_payments)
 
     return {"data": {"id": match_id}}, 200
 
@@ -237,9 +245,6 @@ def remove_user_from_match(match_id):
     user_stat_doc_ref = app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
     match_doc_ref = app.db_client.collection('matches').document(match_id)
 
-    _remove_user_from_match_stripe_refund_firestore_transaction(app.db_client.transaction(),
-                                                                match_doc_ref, user_stat_doc_ref,
-                                                                transactions_doc_ref, user_id, match_id)
     _remove_user_from_match_firestore(match_id, user_id)
 
     # recompute teams
@@ -379,7 +384,7 @@ def create_organizer_payout(match_id):
         print("Cannot find match...stopping")
         return
 
-    amount = (match_data["pricePerPerson"] - match_data.get("fee", 50)) * len(match_data.get("going", {}))
+    amount = _get_stripe_price_amount(match_data, "base") * len(match_data.get("going", {}))
     if amount == 0:
         print("Nothing to payout")
         return
@@ -451,7 +456,10 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
 
     match = get_match(match_id, is_local=True)
-    price = match["pricePerPerson"] / 100
+    if trigger == "manual":
+        price = _get_stripe_price_amount(match, "base")
+    else:
+        price = _get_stripe_price_amount(match, "full")
 
     transaction.update(match_doc_ref, {
         "cancelledAt": datetime.now()
@@ -469,7 +477,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
         # refund
         if match.get("managePayments", True) and "payment_intent" in going[u]:
             payment_intent = going[u]["payment_intent"]
-            refund_amount = match["pricePerPerson"]
+            refund_amount = price,
             refund = stripe.Refund.create(payment_intent=payment_intent,
                                           amount=refund_amount,
                                           reverse_transfer=True,
@@ -486,7 +494,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
     send_notification_to_users(db=app.db_client,
                                title="Match cancelled!",
                                body="Your match at {} has been cancelled!".format(match["sportCenter"]["name"]) +
-                                    (" € {:.2f} have been refunded on your payment method".format(price) if match.get(
+                                    (" € {:.2f} have been refunded on your payment method".format(price / 100) if match.get(
                                         "managePayments", True) else ""),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
@@ -500,7 +508,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                body="Your match at {} has been {} as you requested!".format(
                                    match["sportCenter"]["name"],
                                    "cancelled" if trigger == "manual" else "automatically cancelled") + (
-                                        " All players have been refunded € {:.2f}".format(price) if match.get(
+                                        " All players have been refunded € {:.2f}".format(price / 100) if match.get(
                                             "managePayments", True) else ""),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
@@ -662,7 +670,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     timestamp = datetime.now(tz)
 
     match = match_doc_ref.get(transaction=transaction).to_dict()
-    payment_intent = match["going"][user_id]["payment_intent"]
+    payment_intent = match["going"][user_id].get("payment_intent", None)
 
     if not match.get("going", {}).get(user_id, None):
         raise Exception("User is not part of the match")
@@ -679,10 +687,10 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
 
     transaction_log = {"type": "user_left", "userId": user_id, "createdAt": timestamp}
 
-    if match.get("managePayments", True):
+    if payment_intent:
         # issue_refund
         stripe.api_key = os.environ["STRIPE_KEY_TEST" if match["isTest"] else "STRIPE_KEY"]
-        refund_amount = match["pricePerPerson"] - match.get("fee", 50)
+        refund_amount = _get_stripe_price_amount(match, "base")
         refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
         transaction_log["paymentIntent"] = payment_intent
         transaction_log["refund_id"] = refund.id
@@ -829,7 +837,6 @@ def _get_status(match_data):
 
 
 def _add_match_firestore(match_data):
-    assert match_data.get("pricePerPerson", None) is not None, "Required field missing"
     assert match_data.get("maxPlayers", None) is not None, "Required field missing"
     assert match_data.get("dateTime", None) is not None, "Required field missing"
     assert match_data.get("duration", None) is not None, "Required field missing"
@@ -847,11 +854,6 @@ def _add_match_firestore(match_data):
             # add it as draft
             match_data["unpublished_reason"] = "organizer_not_onboarded"
 
-        # add nutmeg fee to price todo legacy remove
-        fee = 50
-        match_data["pricePerPerson"] = match_data["pricePerPerson"] + fee
-        match_data["userFee"] = fee
-
         # create stripe object
         stripe.api_key = os.environ["STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"]
         response = stripe.Product.create(
@@ -861,7 +863,7 @@ def _add_match_firestore(match_data):
         match_data["stripeProductId"] = response["id"]
         response = stripe.Price.create(
             nickname='Standard Price',
-            unit_amount=match_data["pricePerPerson"],
+            unit_amount=_get_stripe_price_amount(match_data, "full"),
             currency="eur",
             product=match_data["stripeProductId"]
         )
@@ -915,6 +917,18 @@ def _add_match_firestore(match_data):
     )
 
     return doc_ref.id
+
+
+def _get_stripe_price_amount(match_data, type):
+    base_price = 0
+    full_price = 0
+    if "pricePerPerson" in match_data:
+        base_price = match_data["pricePerPerson"]
+        full_price = base_price + 50
+    elif "price" in match_data:
+        base_price = match_data["price"]["basePrice"]
+        full_price = match_data["price"]["basePrice"] + match_data["price"]["userFee"]
+    return base_price if type == "base" else full_price
 
 
 def _update_user_account(user_id, is_test, match_id, manage_payments):
