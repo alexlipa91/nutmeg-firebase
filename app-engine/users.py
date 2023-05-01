@@ -49,7 +49,7 @@ def add_token(user_id):
     return {}, 200
 
 
-@bp.route("/organisers_with_fees", methods=["GET"])
+@bp.route("/organisers_with_fee", methods=["GET"])
 def get_organisers_with_fees():
     return {'users': ['bQHD0EM265V6GuSZuy1uQPHzb602']}, 200
 
