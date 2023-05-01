@@ -74,7 +74,8 @@ def get_match(match_id, is_local=False):
 
         if not match_data:
             return {}, 404
-        return {"data": _format_match_data_v2(match_data, version)}
+        return {"data": _format_match_data_v2(match_id, match_data, version,
+                                              add_organizer_info=match_data.get("organizerId", None) == flask.g.uid)}
     elif flask.request.method == "POST":
         data = flask.request.get_json()
         app.db_client.collection("matches").document(match_id).update(data)
@@ -240,11 +241,6 @@ def add_user_to_match(match_id, user_id=None, payment_intent=None, local=False):
 @bp.route("/<match_id>/users/remove", methods=["POST"])
 def remove_user_from_match(match_id):
     user_id = flask.g.uid
-
-    transactions_doc_ref = app.db_client.collection('matches').document(match_id).collection("transactions").document()
-    user_stat_doc_ref = app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
-    match_doc_ref = app.db_client.collection('matches').document(match_id)
-
     _remove_user_from_match_firestore(match_id, user_id)
 
     # recompute teams
@@ -759,7 +755,7 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
                     when == "past" and raw_data["dateTime"] > now
             )
 
-            data = _format_match_data_v2(raw_data, version)
+            data = _format_match_data_v2(m.id, raw_data, version)
 
             # location filter
             outside_radius = False
@@ -795,7 +791,7 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
     return res
 
 
-def _format_match_data_v2(match_data, version):
+def _format_match_data_v2(match_id, match_data, version, add_organizer_info=False):
     # add status
     match_data["status"] = _get_status(match_data).value
 
@@ -807,6 +803,29 @@ def _format_match_data_v2(match_data, version):
             sportcenter = sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"]
             sportcenter["placeId"] = match_data["sportCenterId"]
             match_data["sportCenter"] = sportcenter
+
+    if add_organizer_info:
+        try:
+            if "payout_id" in match_data:
+                stripe.api_key = os.environ["STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"]
+                field_name = "stripeConnectedAccountId" if not match_data["isTest"] else "stripeConnectedAccountTestId"
+                stripe_connected_account_id = app.db_client.collection("users").document(match_data["organizerId"]) \
+                    .get(field_paths={field_name}).to_dict()[field_name]
+                info = stripe.Payout.retrieve(match_data["payout_id"], stripe_account=stripe_connected_account_id)
+                match_data["payout"] = {
+                    "status": info.status,
+                    "amount": info.amount,
+                    "arrival_date": info.arrival_date
+                }
+        except Exception as e:
+            app.logger.error("Failed to get payout info {} for match {}".format(e, match_id))
+
+    # todo support legacy
+    if "pricePerPerson" in match_data:
+        match_data["price"] = {
+            "basePrice": match_data["pricePerPerson"] - match_data.get("userFee", 50),
+            "userFee": match_data.get("userFee", 50)
+        }
 
     return match_data
 
@@ -929,6 +948,11 @@ def _get_stripe_price_amount(match_data, type):
         base_price = match_data["price"]["basePrice"]
         full_price = match_data["price"]["basePrice"] + match_data["price"]["userFee"]
     return base_price if type == "base" else full_price
+
+
+def delete_tests():
+    for m in app.db_client.collection("matches").where("isTest", "==", True).get():
+        app.db_client.collection("matches").document(m.id).delete()
 
 
 def _update_user_account(user_id, is_test, match_id, manage_payments):
