@@ -847,11 +847,8 @@ def _add_match_firestore(match_data):
             # add it as draft
             match_data["unpublished_reason"] = "organizer_not_onboarded"
 
-        # add nutmeg fee to price
-        if match_data.get("organizerId") == "bQHD0EM265V6GuSZuy1uQPHzb602":
-            fee = 50
-        else:
-            fee = 0
+        # add nutmeg fee to price todo legacy remove
+        fee = 50
         match_data["pricePerPerson"] = match_data["pricePerPerson"] + fee
         match_data["userFee"] = fee
 
