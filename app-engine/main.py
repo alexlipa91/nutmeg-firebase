@@ -1,5 +1,3 @@
-import os
-
 import firebase_admin
 import flask
 from firebase_admin import firestore, auth
