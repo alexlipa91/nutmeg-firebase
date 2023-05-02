@@ -303,6 +303,7 @@ def run_prematch_tasks(match_id):
                                    "route": "/match/" + match_id,
                                    "match_id": match_id
                                })
+    return {}
 
 
 @bp.route("/<match_id>/tasks/precancellation", methods=["GET"])
