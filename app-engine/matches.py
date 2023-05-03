@@ -56,6 +56,13 @@ def get_matches():
     version = int(flask.request.args.get("version", 1))
     user_id = flask.g.uid
 
+    if lat == "null":
+        app.logger.error("received null as lat, fallback to Ams")
+        lat = 52.3676
+    if lng == "null":
+        app.logger.error("received null as lng, fallback to Ams")
+        lng = 4.9041
+
     result = _get_matches_firestore(user_location=(lat, lng), when=when, with_user=with_user,
                                     organized_by=organized_by, radius_km=radius_km, user_id=user_id,
                                     version=version)
