@@ -297,7 +297,7 @@ def run_prematch_tasks(match_id):
 
     users = match.get("going", {}).keys()
     sport_center = match["sportCenter"]
-    date_time_local = match["dateTime"].astimezone(sport_center["timeZoneId"])
+    date_time_local = match["dateTime"].astimezone(pytz.timezone(sport_center["timeZoneId"]))
 
     send_notification_to_users(db=app.db_client,
                                title="Ready for the match? " + u"\u26BD\uFE0F",
