@@ -19,7 +19,8 @@ jobs:
         run: pip3 install mock-firestore python-dateutil
 
       - name: Test
-        run: python3 -m unittest discover app-engine/tests
+        run: python3 -m unittest discover tests
+        working-directory: app-engine
 
       - name: Create app yaml
         uses: cuchi/jinja2-action@v1.2.0
