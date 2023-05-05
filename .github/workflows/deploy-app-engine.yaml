@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Install test deps
+        run: pip3 install mock-firestore
+
       - name: Test
         run: python3 -m unittest discover app-engine/tests
 
