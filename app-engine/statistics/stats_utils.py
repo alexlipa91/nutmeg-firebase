@@ -8,9 +8,8 @@ from firebase_admin import firestore
 class UserUpdates:
 
     @staticmethod
-    def from_single_game(date, score, skills, wdl, is_potm):
+    def from_single_game(date, score, wdl, is_potm):
         return UserUpdates(
-            skills_count=skills,
             date_score={date: score},
             total_sum_score=score if score else 0,
             num_win=1 if wdl == "w" else 0,
@@ -22,7 +21,6 @@ class UserUpdates:
         )
 
     def __init__(self,
-                 skills_count: Dict[str, float],
                  date_score: Dict,
                  total_sum_score,
                  num_potms,
@@ -32,7 +30,6 @@ class UserUpdates:
                  num_scored_games,
                  num_matches_joined):
         self.num_matches_joined = num_matches_joined
-        self.skills_count = skills_count
         self.num_scored_games = num_scored_games
         self.total_sum_score = total_sum_score
         self.num_potms = num_potms
@@ -42,24 +39,13 @@ class UserUpdates:
         self.num_loss = num_loss
 
     def to_user_document_update(self):
-        return {
-            "num_matches_joined": firestore.firestore.Increment(self.num_matches_joined),
-            "scores": {
-                "number_of_scored_games": firestore.firestore.Increment(self.num_scored_games),
-                "total_sum": firestore.firestore.Increment(self.total_sum_score)
-            },
-            "last_date_scores": {
-                d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
-            },
-            'potm_count': firestore.firestore.Increment(self.num_potms),
-            "record": {
-                "num_win": firestore.firestore.Increment(self.num_win),
-                "num_draw": firestore.firestore.Increment(self.num_draw),
-                "num_loss": firestore.firestore.Increment(self.num_loss),
-            }
+        base_fields = self.to_leaderboard_document_update()
+        base_fields["last_date_scores"] = {
+            d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
         }
+        return base_fields
 
-    def to_leaderboard_update(self):
+    def to_leaderboard_document_update(self):
         return {
             "num_matches_joined": firestore.firestore.Increment(self.num_matches_joined),
             "scores": {
@@ -75,22 +61,11 @@ class UserUpdates:
         }
 
     def to_absolute_user_doc_update(self):
-        return {
-            "num_matches_joined": self.num_matches_joined,
-            "scores": {
-                "number_of_scored_games": self.num_scored_games,
-                "total_sum": self.total_sum_score,
-            },
-            "last_date_scores": {
-                d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
-            },
-            'potm_count': self.num_potms,
-            "record": {
-                "num_win": self.num_win,
-                "num_draw": self.num_draw,
-                "num_loss": self.num_loss,
-            }
+        base_updates = self.to_absolute_leaderboard_doc_update()
+        base_updates["last_date_scores"] = {
+            d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
         }
+        return base_updates
 
     def to_absolute_leaderboard_doc_update(self):
         return {
@@ -118,11 +93,7 @@ class UserUpdates:
 
     @staticmethod
     def sum(a, b):
-        all_keys = set(list(a.skills_count.keys()) + list(b.skills_count.keys()))
-        skills = {s: a.skills_count.get(s, 0) + b.skills_count.get(s, 0) for s in all_keys}
-
-        sum = UserUpdates(
-            skills_count=skills,
+        return UserUpdates(
             date_score=dict(list(a.date_score.items()) + list(b.date_score.items())),
             num_win=a.num_win + b.num_win,
             num_draw=a.num_draw + b.num_draw,
@@ -132,12 +103,10 @@ class UserUpdates:
             total_sum_score=a.total_sum_score + b.total_sum_score,
             num_potms=a.num_potms + b.num_potms
         )
-        return sum
 
     @staticmethod
     def zero():
         return UserUpdates(
-            skills_count={},
             date_score={},
             num_win=0,
             num_loss=0,

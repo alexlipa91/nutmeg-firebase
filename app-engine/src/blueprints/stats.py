@@ -2,13 +2,13 @@ import firebase_admin
 from flask import Blueprint, Flask
 from flask import current_app as app
 
-from typing import List, Dict
+from typing import List
 
 from firebase_admin import firestore
 from datetime import datetime
 
 
-from src.blueprints.matches import freeze_stats
+from src.blueprints.matches import _freeze_match_stats
 from statistics.stats_utils import UserUpdates
 
 bp = Blueprint('stats', __name__, url_prefix='/stats')
@@ -21,7 +21,6 @@ class UserStats:
         self.sum_of_all_scores = 0
         self.number_of_scored_games = 0
         self.num_potm = 0
-        self.skills = {}
 
         self.joined_matches = {}
         self.score_matches = {}
@@ -31,9 +30,6 @@ class UserStats:
         self.scores.append((date, score))
         self.sum_of_all_scores += score
         self.number_of_scored_games += 1
-
-    def add_skills(self, s, count):
-        self.skills[s] = self.skills.get(s, 0) + count
 
     def get_avg_score(self):
         if len(self.scores) == 0:
@@ -51,79 +47,55 @@ class UserStats:
         return {
             "num_matches_joined": self.num_played,
             "potm_count": self.num_potm,
-            "skills_count": self.skills,
             "scores.total_sum": self.sum_of_all_scores,
             "scores.number_of_scored_games": self.number_of_scored_games,
             "last_date_scores": self.get_last_x_scores()
         }
 
-    # get updates for documents in the `users_stats` collection
-    def get_user_stats_updates(self):
-        return {
-            "joinedMatches": self.joined_matches,
-            "scoreMatches": self.score_matches,
-        }
-
     def __repr__(self):
-        return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm), str(self.skills))
+        return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm))
 
 
 @bp.route("/recompute/all", methods=["GET"])
-def recompute_stats(write_user_doc=True, write_leaderboard=True, month=None) -> Dict[str, UserUpdates]:
+def recompute_stats():
     db = app.db_client
 
     # updates aggregate
-    users_updates = {}
+    all_time_users_updates = {}
+    per_month_update = {}
 
-    num_analyzed = 0
-    num_skipped = 0
+    log = {}
 
     # get match stats
     for m in db.collection("matches").get():
-        if not month or m.to_dict()["dateTime"].month == month:
-            match_updates = freeze_stats(m.id, write=False, notify=False, local=True)
-            if len(match_updates) == 0:
-                num_skipped += 1
-            else:
-                num_analyzed += 1
-            for u in match_updates:
-                users_updates[u] = UserUpdates.sum(users_updates.get(u, UserUpdates.zero()), match_updates[u])
-    print("Analyzed {} matches and skipped {} matches".format(num_analyzed, num_skipped))
+        year_month = m.to_dict()["dateTime"].strftime("%Y%m")
+        user_updates, error = _freeze_match_stats(m.id, m.to_dict())
+        if error:
+            log[error] = log.get(error, 0)
+        else:
+            log["success"] = log.get("success", 0) + 1
+            for u in user_updates:
+                # add to all time leaderboard
+                all_time_users_updates[u] = UserUpdates.sum(all_time_users_updates.get(u, UserUpdates.zero()),
+                                                            user_updates[u])
+                # add to monthly leaderboard
+                current = per_month_update.setdefault(year_month, {})
+                current[u] = UserUpdates.sum(current.get(u, UserUpdates.zero()), user_updates[u])
+    print("recompute stats log: {}".format(log))
 
-    if write_user_doc:
-        for u in users_updates:
-            db.collection("users").document(u).update(users_updates[u].to_absolute_user_doc_update())
-    if write_leaderboard:
-        update = {}
-        for u in users_updates:
-            update[u] = users_updates[u].to_absolute_leaderboard_doc_update()
-        db.collection("leaderboards").document("all-200001").set({"entries": update})
+    for u in all_time_users_updates:
+        db.collection("users").document(u).update(all_time_users_updates[u].to_absolute_user_doc_update())
+
+    # update leaderboards
+    db.collection("leaderboards").document("abs")\
+        .set({"entries": {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates}},
+             merge=True)
+    for m in per_month_update:
+        db.collection("leaderboards").document(m) \
+            .set({"entries": {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]}},
+                 merge=True)
 
     return {}
-
-
-@bp.route("/leaderboard/<group>/<from_time>", methods=["GET"])
-def recompute_leaderboard(group, from_time):
-    # from_time is a string of type YYYY-MM
-    stats = recompute_stats()
-
-    entries = {}
-    for u in stats:
-        v = stats[u].to_absolute_user_doc_update()
-        num_scored = v.get("scores", {}).get("num_scored_games", 0)
-        num_win = v.get("record", {}).get("num_win", 0)
-        num_draw = v.get("record", {}).get("num_draw", 0)
-        num_lost = v.get("record", {}).get("num_lost", 0)
-
-        entries[u] = {
-            "num_matches_joined": v["num_matches_joined"],
-            "avg_score": None if num_scored == 0 else v["scores"]["total_sum_score"] / num_scored,
-            "potm_count": v["potm_count"],
-            "win_loss_ratio": None if num_win + num_draw + num_lost == 0 else num_win / (num_win + num_draw + num_lost)
-        }
-    app.db_client.collection("leaderboards").document("{}-{}".format(group, from_time)).set({
-        "entries": entries
-    })
 
 
 if __name__ == '__main__':
@@ -155,4 +127,4 @@ if __name__ == '__main__':
         #              None if total_record == 0 else values["record"]["num_win"] / total_record
         #              ]
         #         )
-        recompute_stats(write_user_doc=False)
+        recompute_stats()

@@ -4,24 +4,25 @@ from datetime import timedelta
 from unittest import mock
 
 from mockfirestore import MockFirestore
-from dateutil import  tz
+from dateutil import tz
 
-from src import _create_app, utils
-from unittest.mock import patch
-
+from src import _create_app
 
 def notification_mock(match_id, going_users, potms, sport_center):
     print("skipping notification")
 
-class BasicTests(unittest.TestCase):
+class StatTests(unittest.TestCase):
 
     @staticmethod
     @mock.patch('src.matches._send_close_voting_notification', side_effect=notification_mock)
-    def test_home_page_post(mock):
+    def test_stat_computation(mock):
         db = MockFirestore()
         flask_app = _create_app(db)
 
         now = datetime.datetime.utcnow().astimezone(tz.gettz("Europe/Amsterdam"))
+
+        # add docs (it is needed because the mock won't work well with increments)
+        [db.collection("users").document(u).set({"name": u}) for u in ["user_one", "user_two", "user_three"]]
 
         # add two matches
         db.collection("matches").document("match_one").set({
@@ -83,10 +84,12 @@ class BasicTests(unittest.TestCase):
         assert user_one["num_matches_joined"] == 1
         assert user_one["scores"] == {"total_sum": 2.5, "number_of_scored_games": 1}
         assert user_one["record"] == {"num_win": 1, "num_draw": 0, "num_loss": 0}
+        assert user_one["potm_count"] == 0
 
         user_two = db.collection("users").document("user_two").get().to_dict()
         assert user_two["num_matches_joined"] == 1
         assert user_two["scores"] == {"total_sum": 4, "number_of_scored_games": 1}
+        assert user_two["potm_count"] == 1
         assert user_two["record"] == {"num_win": 1, "num_draw": 0, "num_loss": 0}
 
         # freeze stats second match
@@ -116,5 +119,3 @@ class BasicTests(unittest.TestCase):
         assert user_two["num_matches_joined"] == 2
         assert user_two["scores"] == {"total_sum": 6.5, "number_of_scored_games": 2}
         assert user_two["record"] == {"num_win": 1, "num_draw": 0, "num_loss": 0}
-
-        # assert b"Flask User Management Example!" not in response.data

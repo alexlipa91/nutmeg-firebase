@@ -527,20 +527,38 @@ Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_u
 
 
 @bp.route("/<match_id>/stats/freeze", methods=["POST"])
-def freeze_stats(match_id, write=True, skip_test_match=True, notify=True, local=False):
+def freeze_match_stats(match_id, notify=True):
     match_data = get_match(match_id, is_local=True)
+    updates, error = _freeze_match_stats(match_id, match_data)
 
+    if error:
+        return {"error": error}
+
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
+    users_doc_ref = {u: app.db_client.collection("users").document(u) for u in updates}
+
+    # write to db
+    _close_rating_round_transaction(app.db_client.transaction(),
+                                    match_data["dateTime"].strftime("%Y%m"),
+                                    updates,
+                                    match_doc_ref,
+                                    users_doc_ref)
+    if notify:
+        _send_close_voting_notification(match_doc_ref.id,
+                                        list(match_data.get("going", {}).keys()),
+                                        [u for u in updates if updates[u].num_potms == 1],
+                                        match_data.get("sportCenter", None))
+
+    return {}
+
+
+def _freeze_match_stats(match_id, match_data):
     if datetime.now(dateutil.tz.UTC) < match_data["dateTime"] + timedelta(days=1):
-        print("skipping match {} because can compute only after {} and match is on {}".format(match_id,
-                                                                                              match_data[
-                                                                                                  "dateTime"] + timedelta(
-                                                                                                  days=1),
-                                                                                              match_data[
-                                                                                                  "dateTime"]))
-        return {}
-    if match_data.get("cancelledAt", None) or (skip_test_match and match_data.get("isTest", False)):
-        print("skipping match {} because cancelled or test".format(match_id))
-        return {}
+        return None, "too_early"
+    if match_data.get("cancelledAt", None):
+        return None, "cancelled"
+    if match_data.get("isTest", False):
+        return None, "test"
 
     # ratings
     ratings_doc = app.db_client.collection("ratings").document(match_id).get()
@@ -577,37 +595,11 @@ def freeze_stats(match_id, write=True, skip_test_match=True, notify=True, local=
         user_updates[u] = UserUpdates.from_single_game(
             date=match_data["dateTime"],
             score=match_stats.user_scores.get(u, None),
-            skills=match_stats.user_skills.get(u, {}),
             wdl="w" if u in user_won else "d" if u in user_draw else "l" if u in user_lost else None,
             is_potm=u in match_stats.potms
         )
 
-    if write:
-        print(user_updates)
-        match_doc_ref = app.db_client.collection("matches").document(match_id)
-        users_doc_ref = {}
-        users_stats_doc_ref = {}
-
-        # write to db
-        for u in match_data.get("going", {}).keys():
-            users_doc_ref[u] = app.db_client.collection("users").document(u)
-            users_stats_doc_ref[u] = app.db_client.collection("users").document(u).collection("stats") \
-                .document("match_votes")
-
-        _close_rating_round_transaction(app.db_client.transaction(),
-                                        user_updates,
-                                        match_doc_ref,
-                                        users_doc_ref)
-
-        if notify:
-            _send_close_voting_notification(match_doc_ref.id,
-                                            list(match_data.get("going", {}).keys()),
-                                            match_stats.potms,
-                                            match_data.get("sportCenter", None))
-
-    if local:
-        return user_updates
-    return {}
+    return user_updates, None
 
 
 @bp.route("/<match_id>/dynamicLink", methods=["GET"])
@@ -616,12 +608,18 @@ def test_dynamic_link(match_id):
 
 
 @firestore.transactional
-def _close_rating_round_transaction(transaction, user_updates: Dict[str, UserUpdates],
+def _close_rating_round_transaction(transaction,
+                                    yearmonth,
+                                    user_updates: Dict[str, UserUpdates],
                                     match_doc_ref,
                                     users_docs_ref):
     for u in user_updates:
-        # transaction.set(users_stats_docs_ref[u], user_updates.to_db_update(), merge=True)
         transaction.set(users_docs_ref[u], user_updates[u].to_user_document_update(), merge=True)
+
+    for leaderboard in ["abs", yearmonth]:
+        app.db_client.collection("leaderboards").document(leaderboard).set(
+            {"entries": {u: user_updates[u].to_leaderboard_document_update() for u in user_updates}},
+            merge=True)
 
     transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
 
@@ -1064,9 +1062,9 @@ class MatchStats:
 
 if __name__ == '__main__':
     firebase_admin.initialize_app()
-    app = Flask("test_app")
+    app = Flask()
     app.db_client = firestore.client()
 
     with app.app_context():
-        add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
-        # print(freeze_stats("ks4h1tzcaK1a4kVoC2Vw", write=True))
+        # add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
+        print(freeze_match_stats("1exZGB1uY5X2kqU4eYX2"))
