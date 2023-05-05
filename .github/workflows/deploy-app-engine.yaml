@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Test
+        run: python3 -m unittest discover tests
+
       - name: Create app yaml
         uses: cuchi/jinja2-action@v1.2.0
         with:

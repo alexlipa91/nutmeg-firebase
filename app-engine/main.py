@@ -1,56 +1,14 @@
 import firebase_admin
-import flask
-from firebase_admin import firestore, auth
-from flask import request
-from flask_cors import CORS
+from firebase_admin import firestore
 
-import feedback
-import matches
-import payments
-import sportcenters
-import locations
-import stats
-import stripe_bp
-import users
+from src import _create_app
+
+def create_app():
+    firebase_admin.initialize_app()
+    return _create_app(firestore.client())
 
 
-# If `entrypoint` is not defined in app.yaml, App Engine will look for an app
-# called `app` in `main.py`.
-app = flask.Flask(__name__)
-
-firebase_admin.initialize_app()
-app.db_client = firestore.client()
-
-app.register_blueprint(matches.bp)
-app.register_blueprint(payments.bp)
-app.register_blueprint(users.bp)
-app.register_blueprint(sportcenters.bp)
-app.register_blueprint(stats.bp)
-app.register_blueprint(locations.bp)
-app.register_blueprint(stripe_bp.bp)
-app.register_blueprint(feedback.bp)
-
-
-CORS(app)
-
-
-@app.before_request
-def before_request_callback():
-    if "Authorization" in request.headers:
-        decoded_token = auth.verify_id_token(request.headers["Authorization"].split(" ")[1])
-        flask.g.uid = decoded_token['uid']
-    else:
-        flask.g.uid = None
-
-
-@app.route("/routes", methods=["GET"])
-def routes():
-    return ['%s' % rule for rule in app.url_map.iter_rules()], 200
-
-
-@app.route("/_ah/warmup", methods=["GET"])
-def warmup():
-    return {}, 200
+app = create_app()
 
 
 if __name__ == "__main__":
@@ -60,3 +18,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv("scripts/.env.local")
     app.run(host="localhost", port=8080, debug=True)
+
+
+
+

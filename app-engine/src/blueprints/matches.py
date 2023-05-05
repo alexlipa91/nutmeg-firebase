@@ -12,7 +12,7 @@ import pytz
 import stripe
 from google.cloud import tasks_v2
 
-import sportcenters
+from src.blueprints import sportcenters
 
 import flask
 import geopy.distance
@@ -20,8 +20,8 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
-from users import _get_user_firestore
-from utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
+from src.blueprints.users import _get_user_firestore
+from src.utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
     schedule_app_engine_call
 from flask import current_app as app
 
@@ -498,7 +498,8 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
     send_notification_to_users(db=app.db_client,
                                title="Match cancelled!",
                                body="Your match at {} has been cancelled!".format(match["sportCenter"]["name"]) +
-                                    (" € {:.2f} have been refunded on your payment method".format(price / 100) if match.get(
+                                    (" € {:.2f} have been refunded on your payment method".format(
+                                        price / 100) if match.get(
                                         "managePayments", True) else ""),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
@@ -526,7 +527,7 @@ Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_u
 
 
 @bp.route("/<match_id>/stats/freeze", methods=["POST"])
-def freeze_stats(match_id, write=True, skip_test=True):
+def freeze_stats(match_id, write=True, skip_test_match=True, notify=True, local=False):
     match_data = get_match(match_id, is_local=True)
 
     if datetime.now(dateutil.tz.UTC) < match_data["dateTime"] + timedelta(days=1):
@@ -537,7 +538,7 @@ def freeze_stats(match_id, write=True, skip_test=True):
                                                                                               match_data[
                                                                                                   "dateTime"]))
         return {}
-    if match_data.get("cancelledAt", None) or (skip_test and match_data.get("isTest", False)):
+    if match_data.get("cancelledAt", None) or (skip_test_match and match_data.get("isTest", False)):
         print("skipping match {} because cancelled or test".format(match_id))
         return {}
 
@@ -595,11 +596,18 @@ def freeze_stats(match_id, write=True, skip_test=True):
 
         _close_rating_round_transaction(app.db_client.transaction(),
                                         user_updates,
-                                        match_stats.potms,
                                         match_doc_ref,
                                         users_doc_ref)
 
-    return user_updates
+        if notify:
+            _send_close_voting_notification(match_doc_ref.id,
+                                            list(match_data.get("going", {}).keys()),
+                                            match_stats.potms,
+                                            match_data.get("sportCenter", None))
+
+    if local:
+        return user_updates
+    return {}
 
 
 @bp.route("/<match_id>/dynamicLink", methods=["GET"])
@@ -609,20 +617,13 @@ def test_dynamic_link(match_id):
 
 @firestore.transactional
 def _close_rating_round_transaction(transaction, user_updates: Dict[str, UserUpdates],
-                                    potms, match_doc_ref,
+                                    match_doc_ref,
                                     users_docs_ref):
-    match_data = match_doc_ref.get(transaction=transaction).to_dict()
-
     for u in user_updates:
         # transaction.set(users_stats_docs_ref[u], user_updates.to_db_update(), merge=True)
-        transaction.set(users_docs_ref[u], user_updates[u].to_db_update(), merge=True)
+        transaction.set(users_docs_ref[u], user_updates[u].to_user_document_update(), merge=True)
 
     transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
-
-    _send_close_voting_notification(match_doc_ref.id,
-                                    list(match_data.get("going", {}).keys()),
-                                    potms,
-                                    match_data.get("sportCenter", None))
 
 
 def _send_close_voting_notification(match_id, going_users, potms, sport_center):

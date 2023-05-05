@@ -41,10 +41,9 @@ class UserUpdates:
         self.num_draw = num_draw
         self.num_loss = num_loss
 
-    def to_db_update(self):
+    def to_user_document_update(self):
         return {
             "num_matches_joined": firestore.firestore.Increment(self.num_matches_joined),
-            "skills_count": {s: firestore.firestore.Increment(c) for s, c in self.skills_count.items()},
             "scores": {
                 "number_of_scored_games": firestore.firestore.Increment(self.num_scored_games),
                 "total_sum": firestore.firestore.Increment(self.total_sum_score)
@@ -60,16 +59,45 @@ class UserUpdates:
             }
         }
 
-    def to_num_update(self):
+    def to_leaderboard_update(self):
+        return {
+            "num_matches_joined": firestore.firestore.Increment(self.num_matches_joined),
+            "scores": {
+                "number_of_scored_games": firestore.firestore.Increment(self.num_scored_games),
+                "total_sum": firestore.firestore.Increment(self.total_sum_score)
+            },
+            'potm_count': firestore.firestore.Increment(self.num_potms),
+            "record": {
+                "num_win": firestore.firestore.Increment(self.num_win),
+                "num_draw": firestore.firestore.Increment(self.num_draw),
+                "num_loss": firestore.firestore.Increment(self.num_loss),
+            }
+        }
+
+    def to_absolute_user_doc_update(self):
         return {
             "num_matches_joined": self.num_matches_joined,
-            "skills_count": {s: c for s, c in self.skills_count.items()},
             "scores": {
                 "number_of_scored_games": self.num_scored_games,
                 "total_sum": self.total_sum_score,
             },
             "last_date_scores": {
                 d.strftime("%Y%m%d%H%M%S"): v for d, v in self.date_score.items() if v
+            },
+            'potm_count': self.num_potms,
+            "record": {
+                "num_win": self.num_win,
+                "num_draw": self.num_draw,
+                "num_loss": self.num_loss,
+            }
+        }
+
+    def to_absolute_leaderboard_doc_update(self):
+        return {
+            "num_matches_joined": self.num_matches_joined,
+            "scores": {
+                "number_of_scored_games": self.num_scored_games,
+                "total_sum": self.total_sum_score,
             },
             'potm_count': self.num_potms,
             "record": {
@@ -121,4 +149,4 @@ class UserUpdates:
         )
 
     def __repr__(self):
-        return json.dumps(self.to_num_update(), default=self.dumper, indent=2)
+        return json.dumps(self.to_absolute_user_doc_update(), default=self.dumper, indent=2)

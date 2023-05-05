@@ -6,8 +6,8 @@ import stripe
 from flask import Blueprint
 from flask import current_app as app
 
-from utils import build_dynamic_link
-from matches import add_user_to_match
+from src.utils import build_dynamic_link
+from src.blueprints.matches import add_user_to_match
 
 bp = Blueprint('stripe', __name__, url_prefix='/stripe')
 

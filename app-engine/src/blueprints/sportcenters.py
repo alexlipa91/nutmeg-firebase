@@ -6,7 +6,7 @@ import requests
 from flask import Blueprint
 from flask import current_app as app
 
-from locations import get_place_location_info
+from src.blueprints.locations import get_place_location_info
 
 
 bp = Blueprint('sportcenters', __name__, url_prefix='/sportcenters')

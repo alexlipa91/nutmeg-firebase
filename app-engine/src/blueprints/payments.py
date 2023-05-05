@@ -4,7 +4,7 @@ import flask
 import stripe
 
 from flask import Blueprint
-from utils import build_dynamic_link
+from src.utils import build_dynamic_link
 from flask import current_app as app
 
 bp = Blueprint('payments', __name__, url_prefix='/payments')
