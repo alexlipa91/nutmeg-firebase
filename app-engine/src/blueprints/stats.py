@@ -95,7 +95,7 @@ def recompute_stats():
             .set({"entries": {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]}},
                  merge=True)
 
-    return {}
+    return log
 
 
 if __name__ == '__main__':

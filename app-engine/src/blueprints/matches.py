@@ -376,6 +376,7 @@ def run_post_match_tasks(match_id):
         endpoint="matches/{}/payout?attempt={}".format(match_id, 1),
         date_time_to_execute=datetime.now() + timedelta(days=3)
     )
+    return {}
 
 
 @bp.route("/<match_id>/tasks/payout", methods=["GET"])
