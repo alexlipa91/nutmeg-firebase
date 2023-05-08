@@ -554,6 +554,8 @@ def freeze_match_stats(match_id, notify=True):
 
 
 def _freeze_match_stats(match_id, match_data):
+    if not match_data:
+        return None, "not_found"
     if datetime.now(dateutil.tz.UTC) < match_data["dateTime"] + timedelta(days=1):
         return None, "too_early"
     if match_data.get("cancelledAt", None):
