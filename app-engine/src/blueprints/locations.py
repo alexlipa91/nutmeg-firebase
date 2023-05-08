@@ -11,15 +11,9 @@ bp = Blueprint('locations', __name__, url_prefix='/locations')
 @bp.route("/predictions", methods=["GET"])
 def get_location_predictions_from_query():
     query = flask.request.args.get("query", None)
-    country = flask.request.args.get("country",
-                                     flask.request.headers.get('X-Appengine-Country'))
-
-    if country is None or country == "ZZ":
-        country = "NL"
 
     url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
     req = requests.get(url + 'input=' + query + '&key=' + os.environ["GOOGLE_MAPS_API_KEY"]
-                       + '&components=country:{}'.format(country)
                        + '&fields=formatted_address')
     resp = req.json()
 
