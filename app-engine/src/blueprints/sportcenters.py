@@ -40,7 +40,7 @@ def get_sportcenter(sportcenter_id):
 def add_sportcenter():
     data = flask.request.get_json()
 
-    result = get_place_location_info(data["place_id"])
+    result = get_place_location_info(data["place_id"])["data"]
 
     sport_center = {
         "address": result["formatted_address"],
