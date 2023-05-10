@@ -791,7 +791,10 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             is_test = data.get("isTest", False)
             hide_test_match = is_test and not is_admin
 
-            if not (skip_status or outside_radius or is_outside_time_range or hide_test_match):
+            # private match
+            hide_private_match = with_user is None and data.get("isPrivate", False)
+
+            if not (skip_status or outside_radius or is_outside_time_range or hide_test_match or hide_private_match):
                 res[m.id] = data
 
         except Exception as e:
