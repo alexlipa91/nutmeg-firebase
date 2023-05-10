@@ -30,6 +30,7 @@ def _create_app(db):
             flask.g.uid = decoded_token['uid']
         else:
             flask.g.uid = None
+        app.logger.info("client-version: ${}".format(request.headers.get("app-version", "unknown")))
 
     @app.route("/routes", methods=["GET"])
     def routes():
