@@ -3,7 +3,7 @@ from firebase_admin import auth
 from flask import request
 from flask_cors import CORS
 
-from src.blueprints import feedback, stats, sportcenters, locations, users, stripe_bp, matches, payments
+from src.blueprints import feedback, stats, sportcenters, locations, users, stripe_bp, matches, payments, leaderboard
 
 
 def _create_app(db):
@@ -20,6 +20,7 @@ def _create_app(db):
     app.register_blueprint(locations.bp)
     app.register_blueprint(stripe_bp.bp)
     app.register_blueprint(feedback.bp)
+    app.register_blueprint(leaderboard.bp)
 
     CORS(app)
 
