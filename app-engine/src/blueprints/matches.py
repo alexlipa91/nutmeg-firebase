@@ -792,7 +792,7 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             hide_test_match = is_test and not is_admin
 
             # private match
-            hide_private_match = with_user is None and data.get("isPrivate", False)
+            hide_private_match = with_user is None and organized_by is None and data.get("isPrivate", False)
 
             if not (skip_status or outside_radius or is_outside_time_range or hide_test_match or hide_private_match):
                 res[m.id] = data
