@@ -159,11 +159,7 @@ def create_match():
     match_id = _add_match_firestore(request_json)
 
     # todo legacy
-    match_with_payments = False
-    if "managePayments" in request_json:
-        match_with_payments = request_json["managePayments"]
-    elif "price" in request_json:
-        match_with_payments = True
+    match_with_payments = "price" in request_json
 
     _update_user_account(organizer_id, is_test, match_id, match_with_payments)
 
@@ -333,6 +329,8 @@ def run_precancellation_tasks(match_id):
             }
         )
 
+    return {}
+
 
 @bp.route("/<match_id>/tasks/postmatch", methods=["GET"])
 def run_post_match_tasks(match_id):
@@ -480,7 +478,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
         })
 
         # refund
-        if match.get("managePayments", True) and "payment_intent" in going[u]:
+        if "price" in match and "payment_intent" in going[u]:
             payment_intent = going[u]["payment_intent"]
             refund_amount = price,
             refund = stripe.Refund.create(payment_intent=payment_intent,
@@ -500,8 +498,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                title="Match cancelled!",
                                body="Your match at {} has been cancelled!".format(match["sportCenter"]["name"]) +
                                     (" € {:.2f} have been refunded on your payment method".format(
-                                        price / 100) if match.get(
-                                        "managePayments", True) else ""),
+                                        price / 100) if "price" in match else ""),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                    "route": "/match/" + match_id,
@@ -514,8 +511,8 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                body="Your match at {} has been {} as you requested!".format(
                                    match["sportCenter"]["name"],
                                    "cancelled" if trigger == "manual" else "automatically cancelled") + (
-                                        " All players have been refunded € {:.2f}".format(price / 100) if match.get(
-                                            "managePayments", True) else ""),
+                                        " All players have been refunded € {:.2f}".format(price / 100)
+                                        if "price" in match else ""),
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                    "route": "/match/" + match_id,
@@ -876,7 +873,7 @@ def _add_match_firestore(match_data):
     match_data["dateTime"] = dateutil.parser.isoparse(match_data["dateTime"])
     match_data["createdAt"] = firestore.firestore.SERVER_TIMESTAMP
 
-    if match_data.get("managePayments", True):
+    if "price" in match_data:
         # check if organizer can receive payments and if not do not publish yet
         organizer_data = app.db_client.collection('users').document(match_data["organizerId"]).get().to_dict()
         field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
