@@ -9,6 +9,7 @@ from datetime import datetime
 
 
 from src.blueprints.matches import _freeze_match_stats
+from src.utils import update_leaderboard
 from statistics.stats_utils import UserUpdates
 
 bp = Blueprint('stats', __name__, url_prefix='/stats')
@@ -87,18 +88,14 @@ def recompute_stats():
         db.collection("users").document(u).update(all_time_users_updates[u].to_absolute_user_doc_update())
 
     # update leaderboards
-    update_leaderboard("abs", {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates})
+    update_leaderboard(app, "abs", {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates})
     for m in per_month_update:
-        update_leaderboard(m, {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]})
+        update_leaderboard(app, m, {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]})
 
     return log
 
 
-def update_leaderboard(leaderboard_id, updates_map):
-    cache_user_data = {u: app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
-                       for u in updates_map.keys()}
-    app.db_client.collection("leaderboards").document(leaderboard_id) \
-        .set({"entries": updates_map, "cache_user_data": cache_user_data}, merge=True)
+
 
 
 if __name__ == '__main__':

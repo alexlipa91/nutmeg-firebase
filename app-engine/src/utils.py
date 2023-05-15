@@ -121,6 +121,13 @@ def _send_notification_to_tokens(title, body, data, tokens):
     print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
 
 
+def update_leaderboard(app, leaderboard_id, updates_map):
+    cache_user_data = {u: app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
+                       for u in updates_map.keys()}
+    app.db_client.collection("leaderboards").document(leaderboard_id) \
+        .set({"entries": updates_map, "cache_user_data": cache_user_data}, merge=True)
+
+
 if __name__ == '__main__':
     import os
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
