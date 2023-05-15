@@ -19,6 +19,7 @@ import geopy.distance
 from firebase_admin import firestore
 from flask import Blueprint, Flask
 
+from src.blueprints.stats import update_leaderboard
 from statistics.stats_utils import UserUpdates
 from src.blueprints.users import _get_user_firestore
 from src.utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
@@ -617,9 +618,7 @@ def _close_rating_round_transaction(transaction,
         transaction.set(users_docs_ref[u], user_updates[u].to_user_document_update(), merge=True)
 
     for leaderboard in ["abs", yearmonth]:
-        app.db_client.collection("leaderboards").document(leaderboard).set(
-            {"entries": {u: user_updates[u].to_leaderboard_document_update() for u in user_updates}},
-            merge=True)
+        update_leaderboard(leaderboard, {u: user_updates[u].to_leaderboard_document_update() for u in user_updates})
 
     transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
 

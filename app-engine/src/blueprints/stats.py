@@ -87,15 +87,18 @@ def recompute_stats():
         db.collection("users").document(u).update(all_time_users_updates[u].to_absolute_user_doc_update())
 
     # update leaderboards
-    db.collection("leaderboards").document("abs")\
-        .set({"entries": {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates}},
-             merge=True)
+    update_leaderboard("abs", {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates})
     for m in per_month_update:
-        db.collection("leaderboards").document(m) \
-            .set({"entries": {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]}},
-                 merge=True)
+        update_leaderboard(m, {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]})
 
     return log
+
+
+def update_leaderboard(leaderboard_id, updates_map):
+    cache_user_data = {u: app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
+                       for u in updates_map.keys()}
+    app.db_client.collection("leaderboards").document(leaderboard_id) \
+        .set({"entries": updates_map, "cache_user_data": cache_user_data}, merge=True)
 
 
 if __name__ == '__main__':
@@ -107,24 +110,4 @@ if __name__ == '__main__':
 
     load_dotenv("../../scripts/.env.local")
     with app.app_context():
-        # updates = recompute_stats(write=False, month=4)
-        # import csv
-        #
-        # with open('eggs.csv', 'w', newline='') as csvfile:
-        #     spamwriter = csv.writer(csvfile, delimiter=',',
-        #                             quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        #     for u in updates:
-        #         values = updates[u].to_num_update()
-        #         name = app.db_client.collection("users").document(u).get(field_paths={"name"}).to_dict().get("name",
-        #                                                                                                      "name_unkown")
-        #         print(name)
-        #         total_record = values["record"]["num_win"] + values["record"]["num_loss"]
-        #         num_scored_games = values["scores"]["number_of_scored_games"]
-        #         spamwriter.writerow(
-        #             [u, name, values["num_matches_joined"],
-        #              None if num_scored_games == 0 else values["scores"]["total_sum"] / num_scored_games,
-        #              values["potm_count"],
-        #              None if total_record == 0 else values["record"]["num_win"] / total_record
-        #              ]
-        #         )
         recompute_stats()
