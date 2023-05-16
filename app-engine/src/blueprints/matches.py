@@ -158,7 +158,6 @@ def create_match():
 
     match_id = _add_match_firestore(request_json)
 
-    # todo legacy
     match_with_payments = "price" in request_json
 
     _update_user_account(organizer_id, is_test, match_id, match_with_payments)
@@ -479,10 +478,16 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
         if to_refund and "payment_intent" in going[u]:
             payment_intent = going[u]["payment_intent"]
             refund_amount = to_refund
-            refund = stripe.Refund.create(payment_intent=payment_intent,
-                                          amount=refund_amount,
-                                          reverse_transfer=True,
-                                          refund_application_fee=True)
+            refund_id = None
+            try:
+                refund = stripe.Refund.create(payment_intent=payment_intent,
+                                              amount=refund_amount,
+                                              reverse_transfer=True,
+                                              refund_application_fee=True)
+                refund_id = refund.id
+            except Exception as e:
+                app.logger.error("Failed to send refund to {}".format(u))
+                traceback.print_exc()
 
             # record transaction
             transaction_doc_ref = app.db_client.collection("matches").document(match_id).collection(
@@ -490,7 +495,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
             transaction.set(transaction_doc_ref,
                             {"type": trigger.lower() + "_cancellation", "userId": u, "createdAt": datetime.now(),
                              "paymentIntent": payment_intent,
-                             "refund_id": refund.id, "moneyRefunded": refund_amount})
+                             "refund_id": refund_id, "moneyRefunded": refund_amount})
 
     user_info_message = "Your match at {} has been cancelled!".format(match["sportCenter"]["name"])
     if to_refund:
@@ -1071,4 +1076,4 @@ if __name__ == '__main__':
 
     with app.app_context():
         # add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
-        print(freeze_match_stats("1exZGB1uY5X2kqU4eYX2"))
+        print(cancel_match("brJTCnl6ACpYqMxh0wfb"))
