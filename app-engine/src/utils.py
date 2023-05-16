@@ -122,10 +122,12 @@ def _send_notification_to_tokens(title, body, data, tokens):
 
 
 def update_leaderboard(app, leaderboard_id, updates_map):
-    cache_user_data = {u: app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
-                       for u in updates_map.keys()}
+    cache_user_data = {u: _get_user_basic_data(app, u) for u in updates_map.keys()}
     app.db_client.collection("leaderboards").document(leaderboard_id) \
         .set({"entries": updates_map, "cache_user_data": cache_user_data}, merge=True)
+
+def _get_user_basic_data(app, u):
+    app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
 
 
 if __name__ == '__main__':

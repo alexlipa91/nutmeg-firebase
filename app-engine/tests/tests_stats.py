@@ -11,11 +11,16 @@ from src import _create_app
 def notification_mock(match_id, going_users, potms, sport_center):
     print("skipping notification")
 
+def get_basic_user_data_mock(app, u):
+    return {"id": u}
+
+
 class StatTests(unittest.TestCase):
 
     @staticmethod
     @mock.patch('src.matches._send_close_voting_notification', side_effect=notification_mock)
-    def test_stat_computation(mock):
+    @mock.patch('src.utils._get_user_basic_data', side_effect=get_basic_user_data_mock)
+    def test_stat_computation(mock_notifications, mock_user_data):
         db = MockFirestore()
         flask_app = _create_app(db)
 

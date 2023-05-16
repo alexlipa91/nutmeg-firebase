@@ -19,11 +19,10 @@ import geopy.distance
 from firebase_admin import firestore
 from flask import Blueprint, Flask
 
-from src.blueprints.stats import update_leaderboard
 from statistics.stats_utils import UserUpdates
 from src.blueprints.users import _get_user_firestore
 from src.utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
-    schedule_app_engine_call
+    schedule_app_engine_call, update_leaderboard
 from flask import current_app as app
 
 bp = Blueprint('matches', __name__, url_prefix='/matches')
