@@ -488,7 +488,7 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
             transaction_doc_ref = app.db_client.collection("matches").document(match_id).collection(
                 "transactions").document()
             transaction.set(transaction_doc_ref,
-                            {"type": trigger.name.lower() + "_cancellation", "userId": u, "createdAt": datetime.now(),
+                            {"type": trigger.lower() + "_cancellation", "userId": u, "createdAt": datetime.now(),
                              "paymentIntent": payment_intent,
                              "refund_id": refund.id, "moneyRefunded": refund_amount})
 
