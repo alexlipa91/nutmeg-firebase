@@ -460,28 +460,26 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
 
     match = get_match(match_id, is_local=True)
-    if trigger == "manual":
-        price = _get_stripe_price_amount(match, "base")
-    else:
-        price = _get_stripe_price_amount(match, "full")
+    to_refund = None
+    if "price" in match:
+        to_refund = match["price"]["basePrice"] + match["price"].get("userFee", 0)
 
     transaction.update(match_doc_ref, {
-        "cancelledAt": datetime.now()
+        "cancelledAt": datetime.now(),
+        "cancelledReason": trigger
     })
 
     going = match.get("going", {})
     for u in going:
-        print("processing cancellation for {}: refund and remove from stats".format(u))
-
         # remove match in user list (if present)
         transaction.update(users_stats_docs[u], {
             u'joinedMatches.' + match_id: firestore.DELETE_FIELD
         })
 
         # refund
-        if "price" in match and "payment_intent" in going[u]:
+        if to_refund and "payment_intent" in going[u]:
             payment_intent = going[u]["payment_intent"]
-            refund_amount = price,
+            refund_amount = to_refund
             refund = stripe.Refund.create(payment_intent=payment_intent,
                                           amount=refund_amount,
                                           reverse_transfer=True,
@@ -495,11 +493,14 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                              "paymentIntent": payment_intent,
                              "refund_id": refund.id, "moneyRefunded": refund_amount})
 
+    user_info_message = "Your match at {} has been cancelled!".format(match["sportCenter"]["name"])
+    if to_refund:
+        user_info_message = user_info_message \
+                            + " € {:.2f} have been refunded on your payment method".format(to_refund / 100)
+
     send_notification_to_users(db=app.db_client,
                                title="Match cancelled!",
-                               body="Your match at {} has been cancelled!".format(match["sportCenter"]["name"]) +
-                                    (" € {:.2f} have been refunded on your payment method".format(
-                                        price / 100) if "price" in match else ""),
+                               body=user_info_message,
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                    "route": "/match/" + match_id,
@@ -507,13 +508,15 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
                                },
                                users=list(going.keys()))
 
+    org_info_message = "Your match at {} has been {} as you requested!".format(
+        match["sportCenter"]["name"],
+        "cancelled" if trigger == "manual" else "automatically cancelled")
+    if to_refund:
+        org_info_message = org_info_message + " All players have been refunded € {:.2f}".format(to_refund / 100)
+
     send_notification_to_users(db=app.db_client,
                                title="Match cancelled!",
-                               body="Your match at {} has been {} as you requested!".format(
-                                   match["sportCenter"]["name"],
-                                   "cancelled" if trigger == "manual" else "automatically cancelled") + (
-                                        " All players have been refunded € {:.2f}".format(price / 100)
-                                        if "price" in match else ""),
+                               body=org_info_message,
                                data={
                                    "click_action": "FLUTTER_NOTIFICATION_CLICK",
                                    "route": "/match/" + match_id,
