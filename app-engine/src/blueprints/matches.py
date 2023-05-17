@@ -288,7 +288,7 @@ def run_prematch_tasks(match_id):
     match = app.db_client.collection("matches").document(match_id).get().to_dict()
     if not match or match.get("cancelledAt", None) is not None:
         print("match not existing or cancelled...skipping")
-        return
+        return {"status": "skipped", "reason": "cancelled"}
 
     users = match.get("going", {}).keys()
     sport_center = match["sportCenter"]
@@ -305,7 +305,7 @@ def run_prematch_tasks(match_id):
                                    "route": "/match/" + match_id,
                                    "match_id": match_id
                                })
-    return {}
+    return {"status": "success"}
 
 
 @bp.route("/<match_id>/tasks/precancellation", methods=["GET"])
@@ -327,17 +327,21 @@ def run_precancellation_tasks(match_id):
                 "match_id": match_id
             }
         )
+        return {"status": "success"}
 
-    return {}
+    return {"status": "skipped", "reason": "enough_players"}
 
 
 @bp.route("/<match_id>/tasks/postmatch", methods=["GET"])
 def run_post_match_tasks(match_id):
     match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
 
-    if not match_data or match_data.get("cancelledAt", None) is not None:
-        print("match deleted or cancelled...skipping")
-        return
+    if not match_data:
+        print("match deleted...skipping")
+        return {"status": "skipped", "reason": "deleted"}
+    if match_data.get("cancelledAt", None) is not None:
+        print("match cancelled...skipping")
+        return {"status": "skipped", "reason": "cancelled"}
 
     going_users = match_data.get("going", {}).keys()
     organiser_id = match_data.get("organizerId", None)
@@ -373,7 +377,7 @@ def run_post_match_tasks(match_id):
         endpoint="matches/{}/payout?attempt={}".format(match_id, 1),
         date_time_to_execute=datetime.now() + timedelta(days=3)
     )
-    return {}
+    return {"status": "success"}
 
 
 @bp.route("/<match_id>/tasks/payout", methods=["GET"])
@@ -383,13 +387,13 @@ def create_organizer_payout(match_id):
     match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
 
     if not match_data:
-        print("Cannot find match...stopping")
-        return
+        print("Cannot find match...skipping")
+        return {"status": "skipped", "reason": "deleted"}
 
     amount = _get_stripe_price_amount(match_data, "base") * len(match_data.get("going", {}))
     if amount == 0:
-        print("Nothing to payout")
-        return
+        print("Nothing to payout...skipping")
+        return {"status": "skipped", "reason": "no_players"}
 
     is_test = match_data["isTest"]
     organizer_account = app.db_client.collection("users").document(match_data["organizerId"]).get().to_dict()[
@@ -425,7 +429,7 @@ def create_organizer_payout(match_id):
                                        "match_id": match_id
                                    },
                                    users=[match_data["organizerId"]])
-        return True
+        return {"status": "success"}
     else:
         print("not enough balance...retry in 24 hours")
         schedule_app_engine_call(
@@ -433,24 +437,7 @@ def create_organizer_payout(match_id):
             endpoint="matches/{}/payout?attempt={}".format(match_id, attempt + 1),
             date_time_to_execute=datetime.now() + timedelta(days=1)
         )
-        return False
-
-
-def _cancel_match_firestore(match_id, trigger):
-    db = app.db_client
-    match_doc_ref = db.collection('matches').document(match_id)
-
-    match_data = match_doc_ref.get().to_dict()
-
-    if match_data.get("cancelledAt", None):
-        raise Exception("Match has already been cancelled")
-
-    users_stats_docs = {}
-    for u in match_data.get("going", {}).keys():
-        users_stats_docs[u] = db.collection("users").document(u).collection("stats").document("match_votes")
-
-    _cancel_match_firestore_transactional(db.transaction(), match_doc_ref, users_stats_docs,
-                                          match_id, match_data["isTest"], trigger)
+        return {"status": "retry", "reason": "not_enough_balance"}
 
 
 @firestore.transactional
