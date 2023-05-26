@@ -10,6 +10,11 @@ from flask_cors import CORS
 from src.blueprints import feedback, stats, sportcenters, locations, users, stripe_bp, matches, payments, leaderboard
 
 
+def _setup_logging():
+    client = google.cloud.logging.Client()
+    client.setup_logging()
+
+
 def _create_app(db):
     app = flask.Flask(__name__)
 
@@ -26,10 +31,9 @@ def _create_app(db):
     app.register_blueprint(feedback.bp)
     app.register_blueprint(leaderboard.bp)
 
-    CORS(app)
+    _setup_logging()
 
-    client = google.cloud.logging.Client()
-    client.setup_logging()
+    CORS(app)
 
     @app.before_request
     def before_request_callback():
