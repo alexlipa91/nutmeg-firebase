@@ -1,4 +1,8 @@
+import json
+import logging
+
 import flask
+import google.cloud.logging
 from firebase_admin import auth
 from flask import request
 from flask_cors import CORS
@@ -24,6 +28,9 @@ def _create_app(db):
 
     CORS(app)
 
+    client = google.cloud.logging.Client()
+    client.setup_logging()
+
     @app.before_request
     def before_request_callback():
         if "Authorization" in request.headers:
@@ -31,7 +38,14 @@ def _create_app(db):
             flask.g.uid = decoded_token['uid']
         else:
             flask.g.uid = None
-        app.logger.info("client-version: ${}".format(request.headers.get("app-version", "unknown")))
+
+        structured_log = {
+            "client-version": "{}".format(request.headers.get("App-Version", "unknown"))
+        }
+        print(request.headers)
+        if "X-Cloud-Trace-Context" in request.headers:
+            structured_log["logging.googleapis.com/trace"] = request.headers["X-Cloud-Trace-Context"]
+        logging.info(json.dumps(structured_log))
 
     @app.route("/routes", methods=["GET"])
     def routes():
