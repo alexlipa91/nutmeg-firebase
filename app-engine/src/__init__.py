@@ -44,9 +44,9 @@ def _create_app(db):
             flask.g.uid = None
 
         structured_log = {
-            "client-version": "{}".format(request.headers.get("App-Version", "unknown"))
+            "client-version": "{}".format(request.headers.get("App-Version", "unknown")),
+            "user-id": flask.g.uid
         }
-        print(request.headers)
         if "X-Cloud-Trace-Context" in request.headers:
             structured_log["logging.googleapis.com/trace"] = request.headers["X-Cloud-Trace-Context"]
         logging.info(json.dumps(structured_log))
