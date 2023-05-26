@@ -61,7 +61,10 @@ def go_to_onboard_connected_account():
     is_test = flask.request.args["is_test"].lower() == "true"
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
     field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
-    account_id = app.db_client.collection('users').document(flask.g.uid).get().to_dict()[field_name]
+    # remove this
+    user_id = flask.request.args.get("user_id", "Bthm3lwFfoai8MszdAIbzEHFXbC2")
+
+    account_id = app.db_client.collection('users').document(user_id).get().to_dict()[field_name]
 
     redirect_link = build_dynamic_link('https://nutmegapp.com/user'),
     refresh_link = "https://nutmeg-9099c.ew.r.appspot.com/account/onboard"
