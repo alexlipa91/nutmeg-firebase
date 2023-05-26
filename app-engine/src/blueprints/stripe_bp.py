@@ -50,7 +50,7 @@ def go_to_account_login_link():
     is_test = flask.request.args["is_test"].lower() == "true"
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
     field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
-    account_id = app.db_client.collection('users').document(flask.request.args["user_id"]).get().to_dict()[field_name]
+    account_id = app.db_client.collection('users').document(flask.request.args.get("user_id", "Bthm3lwFfoai8MszdAIbzEHFXbC2")).get().to_dict()[field_name]
 
     response = stripe.Account.create_login_link(account_id)
     return flask.redirect(response.url)
