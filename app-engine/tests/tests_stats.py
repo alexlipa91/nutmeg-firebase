@@ -14,13 +14,17 @@ def notification_mock(match_id, going_users, potms, sport_center):
 def get_basic_user_data_mock(app, u):
     return {"id": u}
 
+def setup_logging_mock():
+    print("setup logging mock")
+
 
 class StatTests(unittest.TestCase):
 
     @staticmethod
     @mock.patch('src.matches._send_close_voting_notification', side_effect=notification_mock)
     @mock.patch('src.utils._get_user_basic_data', side_effect=get_basic_user_data_mock)
-    def test_stat_computation(mock_notifications, mock_user_data):
+    @mock.patch('src._setup_logging', side_effect=setup_logging_mock)
+    def test_stat_computation(mock_notifications, mock_user_data, mock_setup_logging):
         db = MockFirestore()
         flask_app = _create_app(db)
 
