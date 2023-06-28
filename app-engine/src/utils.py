@@ -116,7 +116,7 @@ def _send_notification_to_tokens(title, body, data, tokens):
     if response.failure_count > 0:
         for r in response.responses:
             if not r.success:
-                print("Logging one error: {}".format(r.exception))
+                print("Logging one error:\n{}".format(r.exception))
                 break
     print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
 
