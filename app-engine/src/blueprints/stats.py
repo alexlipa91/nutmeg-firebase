@@ -8,7 +8,7 @@ from firebase_admin import firestore
 from datetime import datetime
 
 
-from src.blueprints.matches import _freeze_match_stats
+from src.blueprints.matches import _freeze_match_stats, delete_tests, freeze_match_stats
 from src.utils import update_leaderboard
 from statistics.stats_utils import UserUpdates
 
@@ -69,10 +69,11 @@ def recompute_stats():
 
     # get match stats
     for m in db.collection("matches").get():
+        print("Analyzing {}".format(m.id))
         year_month = m.to_dict()["dateTime"].strftime("%Y%m")
         user_updates, error = _freeze_match_stats(m.id, m.to_dict())
         if error:
-            log[error] = log.get(error, 0)
+            log[error] = log.get(error, 0) + 1
         else:
             log["success"] = log.get("success", 0) + 1
             for u in user_updates:
@@ -93,9 +94,6 @@ def recompute_stats():
         update_leaderboard(app, m, {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]})
 
     return log
-
-
-
 
 
 if __name__ == '__main__':

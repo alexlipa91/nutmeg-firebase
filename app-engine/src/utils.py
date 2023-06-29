@@ -127,7 +127,7 @@ def update_leaderboard(app, leaderboard_id, updates_map):
         .set({"entries": updates_map, "cache_user_data": cache_user_data}, merge=True)
 
 def _get_user_basic_data(app, u):
-    app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
+    return app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
 
 
 if __name__ == '__main__':
