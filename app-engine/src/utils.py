@@ -121,10 +121,13 @@ def _send_notification_to_tokens(title, body, data, tokens):
     print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
 
 
-def update_leaderboard(app, leaderboard_id, updates_map):
+def update_leaderboard(app, leaderboard_id, match_list, updates_map):
     cache_user_data = {u: _get_user_basic_data(app, u) for u in updates_map.keys()}
     app.db_client.collection("leaderboards").document(leaderboard_id) \
-        .set({"entries": updates_map, "cache_user_data": cache_user_data}, merge=True)
+        .set({"entries": updates_map,
+              "cache_user_data": cache_user_data,
+              "matches": {match_id: True for match_id in match_list}},
+             merge=True)
 
 def _get_user_basic_data(app, u):
     return app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()

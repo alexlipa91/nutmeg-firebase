@@ -63,7 +63,9 @@ def recompute_stats():
 
     # updates aggregate
     all_time_users_updates = {}
+    all_time_match_list = []
     per_month_update = {}
+    per_month_match_list = {}
 
     log = {}
 
@@ -80,18 +82,27 @@ def recompute_stats():
                 # add to all time leaderboard
                 all_time_users_updates[u] = UserUpdates.sum(all_time_users_updates.get(u, UserUpdates.zero()),
                                                             user_updates[u])
+                all_time_match_list.append(m.id)
+
                 # add to monthly leaderboard
                 current = per_month_update.setdefault(year_month, {})
                 current[u] = UserUpdates.sum(current.get(u, UserUpdates.zero()), user_updates[u])
+
+                current_match_list = per_month_match_list.setdefault(year_month, [])
+                current_match_list.append(m.id)
     print("recompute stats log: {}".format(log))
 
     for u in all_time_users_updates:
         db.collection("users").document(u).update(all_time_users_updates[u].to_absolute_user_doc_update())
 
     # update leaderboards
-    update_leaderboard(app, "abs", {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates})
+    update_leaderboard(app, "abs",
+                       all_time_match_list,
+                       {u: all_time_users_updates[u].to_absolute_leaderboard_doc_update() for u in all_time_users_updates})
     for m in per_month_update:
-        update_leaderboard(app, m, {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]})
+        update_leaderboard(app, m,
+                           per_month_match_list[m],
+                           {u: per_month_update[m][u].to_absolute_leaderboard_doc_update() for u in per_month_update[m]})
 
     return log
 

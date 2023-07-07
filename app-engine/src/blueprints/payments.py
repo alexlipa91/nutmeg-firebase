@@ -1,9 +1,14 @@
 import os
 
+import firebase_admin
 import flask
 import stripe
+from dotenv import load_dotenv
+from firebase_admin import firestore
 
-from flask import Blueprint
+from flask import Blueprint, Flask
+
+from src.blueprints.stats import recompute_stats
 from src.utils import build_dynamic_link
 from flask import current_app as app
 
@@ -142,3 +147,13 @@ def _create_checkout_session_with_deep_links(customer_id, connected_account_id, 
         metadata={"user_id": user_id, "match_id": match_id, "organizer_id": organizer_id}
     )
     return session
+
+
+if __name__ == '__main__':
+    load_dotenv("scripts/.env.local")
+    firebase_admin.initialize_app()
+    app = Flask("test_app")
+    app.db_client = firestore.client()
+
+    with app.app_context():
+        recompute_stats()

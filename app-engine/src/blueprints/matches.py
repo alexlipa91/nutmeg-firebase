@@ -613,7 +613,9 @@ def _close_rating_round_transaction(transaction,
         transaction.set(users_docs_ref[u], user_updates[u].to_user_document_update(), merge=True)
 
     for leaderboard in ["abs", yearmonth]:
-        update_leaderboard(app, leaderboard, {u: user_updates[u].to_leaderboard_document_update() for u in user_updates})
+        print("updating leaderboard {}".format(leaderboard))
+        update_leaderboard(app, leaderboard, [match_doc_ref.id],
+                           {u: user_updates[u].to_leaderboard_document_update() for u in user_updates})
 
     transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
 
