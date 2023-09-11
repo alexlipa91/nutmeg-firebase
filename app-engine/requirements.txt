@@ -11,3 +11,4 @@ requests
 mock-firestore
 urllib3==1.26.15
 google-cloud-logging==3.5.0
+dotenv
