@@ -375,7 +375,7 @@ def run_post_match_tasks(match_id):
     # payout
     schedule_app_engine_call(
         task_name="payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
-        endpoint="matches/{}/payout?attempt={}".format(match_id, 1),
+        endpoint="matches/{}/tasks/payout?attempt={}".format(match_id, 1),
         date_time_to_execute=datetime.now() + timedelta(days=3)
     )
     return {"status": "success"}
@@ -389,6 +389,10 @@ def create_organizer_payout(match_id):
 
     if not match_data:
         print("Cannot find match...skipping")
+        return {"status": "skipped", "reason": "deleted"}
+
+    if "payout_id" in match_data:
+        print("Already paid out")
         return {"status": "skipped", "reason": "deleted"}
 
     amount = _get_stripe_price_amount(match_data, "base") * len(match_data.get("going", {}))
@@ -1066,4 +1070,4 @@ if __name__ == '__main__':
 
     with app.app_context():
         # add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
-        print(cancel_match("brJTCnl6ACpYqMxh0wfb"))
+        print(create_organizer_payout("1exZGB1uY5X2kqU4eYX2"))
