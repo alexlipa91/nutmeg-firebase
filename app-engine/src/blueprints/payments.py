@@ -3,7 +3,6 @@ import os
 import firebase_admin
 import flask
 import stripe
-from dotenv import load_dotenv
 from firebase_admin import firestore
 
 from flask import Blueprint, Flask
@@ -150,6 +149,7 @@ def _create_checkout_session_with_deep_links(customer_id, connected_account_id, 
 
 
 if __name__ == '__main__':
+    from dotenv import load_dotenv
     load_dotenv("scripts/.env.local")
     firebase_admin.initialize_app()
     app = Flask("test_app")
