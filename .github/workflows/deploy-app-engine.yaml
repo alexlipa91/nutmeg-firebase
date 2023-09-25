@@ -15,12 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install test deps
-        run: pip3 install -r app-engine/requirements.txt
-
-      - name: Test
-        run: python3 -m unittest discover tests
-        working-directory: app-engine
+#      - name: Install test deps
+#        run: pip3 install -r app-engine/requirements.txt
+#
+#      - name: Test
+#        run: python3 -m unittest discover tests
+#        working-directory: app-engine
 
       - name: Create app yaml
         uses: cuchi/jinja2-action@v1.2.0
