@@ -67,6 +67,7 @@ def _get_user_firestore(user_id):
         l = data["last_date_scores"]
         l_top = sorted(l.items(), key=lambda item: item[0], reverse=True)[:min(len(l), 10)]
         data["last_date_scores"] = {k: v for k, v in l_top}
+        app.db_client.collection('users').document(user_id).update({"last_date_scores": data["last_date_scores"]})
 
     if "avg_score" in data and len(data.get("last_date_scores", {})) > 1:
         previous_score = sorted(data["last_date_scores"].items(), key=lambda item: item[0], reverse=True)[0][1]

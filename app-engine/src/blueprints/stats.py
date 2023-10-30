@@ -8,7 +8,7 @@ from firebase_admin import firestore
 from datetime import datetime
 
 
-from src.blueprints.matches import _freeze_match_stats, delete_tests, freeze_match_stats
+from src.blueprints.matches import _freeze_match_stats, freeze_match_stats
 from src.utils import update_leaderboard
 from statistics.stats_utils import UserUpdates
 
@@ -56,9 +56,9 @@ class UserStats:
     def __repr__(self):
         return "{}\n{}\n{}".format(str(self.num_played), str(self.scores), str(self.num_potm))
 
-
 @bp.route("/recompute/all", methods=["GET"])
 def recompute_stats():
+    # this method goes over ALL the history and recomputes every stat for every player
     db = app.db_client
 
     # updates aggregate

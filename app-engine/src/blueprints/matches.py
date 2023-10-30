@@ -525,9 +525,16 @@ Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_u
 
 
 @bp.route("/<match_id>/stats/freeze", methods=["POST"])
-def freeze_match_stats(match_id, notify=True):
+def freeze_match_stats(match_id, notify=True, only_for_user=None):
+    # only_for_user can be used to apply match stats only to a certain user
     match_data = get_match(match_id, is_local=True)
     updates, error = _freeze_match_stats(match_id, match_data)
+
+    if only_for_user:
+        updates = {
+            only_for_user: updates[only_for_user]
+        }
+        print("Reducing updates to {}".format(updates))
 
     if error:
         return {"error": error}
@@ -1073,4 +1080,4 @@ if __name__ == '__main__':
 
     with app.app_context():
         # add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
-        print(create_organizer_payout("1exZGB1uY5X2kqU4eYX2"))
+        print(freeze_match_stats("vbNkQCrS9imPXz9CgOuv"))
