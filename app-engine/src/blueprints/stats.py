@@ -93,6 +93,7 @@ def recompute_stats():
     print("recompute stats log: {}".format(log))
 
     for u in all_time_users_updates:
+        print("updating user {}".format(u))
         db.collection("users").document(u).update(all_time_users_updates[u].to_absolute_user_doc_update())
 
     # update leaderboards

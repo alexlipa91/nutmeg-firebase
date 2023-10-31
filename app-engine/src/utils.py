@@ -122,6 +122,7 @@ def _send_notification_to_tokens(title, body, data, tokens):
 
 
 def update_leaderboard(app, leaderboard_id, match_list, updates_map):
+    print("updating leaderboard {}".format(leaderboard_id))
     cache_user_data = {u: _get_user_basic_data(app, u) for u in updates_map.keys()}
     app.db_client.collection("leaderboards").document(leaderboard_id) \
         .set({"entries": updates_map,
