@@ -886,10 +886,9 @@ def _add_match_firestore(match_data):
     if "price" in match_data:
         # check if organizer can receive payments and if not do not publish yet
         organizer_data = app.db_client.collection('users').document(match_data["organizerId"]).get().to_dict()
-        field_name = "chargesEnabledOnStripeTest" if match_data["isTest"] else "chargesEnabledOnStripe"
 
-        if not organizer_data.get(field_name, False):
-            print("{} is False on organizer account: set match as unpublished".format(field_name))
+        if organizer_data.get("stripe_status", "") != "onboarded":
+            print("{} is False on organizer account: set match as unpublished")
             # add it as draft
             match_data["unpublished_reason"] = "organizer_not_onboarded"
 
@@ -1015,6 +1014,7 @@ def _update_user_account(user_id, is_test, match_id, manage_payments):
                 }
             )
             user_updates[organizer_id_field_name] = response.id
+            user_updates["stripe_status"] = "needs_onboarding"
 
     user_doc_ref.update(user_updates)
 
