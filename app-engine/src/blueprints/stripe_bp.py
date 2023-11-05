@@ -67,7 +67,7 @@ def go_to_onboard_connected_account():
 
     account_id = app.db_client.collection('users').document(user_id).get().to_dict()[field_name]
 
-    redirect_link = build_dynamic_link('https://nutmegapp.com/user')
+    redirect_link = build_dynamic_link('http://web.nutmegapp.com')
     refresh_link = "https://nutmeg-9099c.ew.r.appspot.com/stripe/account/onboard?is_test={}&user_id={}"\
         .format(is_test, user_id)
 
@@ -80,25 +80,6 @@ def go_to_onboard_connected_account():
         collect="currently_due",
     )
     return flask.redirect(response.url)
-
-
-def _onboard_account_url(stripe_account_id, user_id, is_test=False):
-    stripe.api_key = os.environ["STRIPE_PROD_KEY" if not is_test else "STRIPE_TEST_KEY"]
-
-    redirect_link = build_dynamic_link('https://nutmegapp.com/user'),
-    refresh_link = "https://europe-central2-nutmeg-9099c.cloudfunctions.net/go_to_onboard_connected_account" \
-                   "?is_test={}&id={}" \
-        .format(is_test, user_id)
-
-    response = stripe.AccountLink.create(
-        account=stripe_account_id,
-        # fixme add a proper refresh url
-        refresh_url=refresh_link,
-        return_url=redirect_link,
-        type="account_onboarding",
-        collect="currently_due",
-    )
-    return response.url
 
 
 @bp.route("/connect_account_updated_webhook", methods=["POST"])
