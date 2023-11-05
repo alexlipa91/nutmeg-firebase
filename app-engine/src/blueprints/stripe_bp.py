@@ -67,8 +67,9 @@ def go_to_onboard_connected_account():
 
     account_id = app.db_client.collection('users').document(user_id).get().to_dict()[field_name]
 
-    redirect_link = build_dynamic_link('https://nutmegapp.com/user'),
-    refresh_link = "https://nutmeg-9099c.ew.r.appspot.com/account/onboard"
+    redirect_link = build_dynamic_link('https://nutmegapp.com/user')
+    refresh_link = "https://nutmeg-9099c.ew.r.appspot.com/stripe/account/onboard?is_test={}&user_id={}"\
+        .format(is_test, user_id)
 
     response = stripe.AccountLink.create(
         account=account_id,
@@ -126,7 +127,8 @@ def stripe_connect_account_updated_webhook():
 
         user_data = app.db_client.collection("users").document(user_id).get().to_dict()
 
-        app.db_client.collection("users").document(user_id).update({"stripe_status": "onboarded"})
+        field_name = "chargesEnabledOnStripe" if not is_test else "chargesEnabledOnStripeTest"
+        app.db_client.collection("users").document(user_id).update({field_name: True})
         print("user {} can now receive payments on stripe".format(user_id))
 
         for m in user_data["created_matches" if not is_test else "created_test_matches"].keys():
