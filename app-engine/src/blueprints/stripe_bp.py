@@ -113,11 +113,11 @@ def stripe_connect_account_updated_webhook():
         print("user {} can now receive payments on stripe".format(user_id))
 
         for m in user_data["created_matches" if not is_test else "created_test_matches"].keys():
-            match = app.db.collection("matches").document(m).get(field_paths=["unpublished_reason"])
+            match = app.db_client.collection("matches").document(m).get(field_paths=["unpublished_reason"])
 
             if match.exists and match.to_dict().get("unpublished_reason", None) == "organizer_not_onboarded":
                 print("removing un-publishing blocker because of organizer from match {}".format(m))
-                app.db.collection("matches").document(m).update({
+                app.db_client.collection("matches").document(m).update({
                     'unpublished_reason': DELETE_FIELD
                 })
     else:
