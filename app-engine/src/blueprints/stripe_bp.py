@@ -62,18 +62,27 @@ def go_to_onboard_connected_account():
     is_test = flask.request.args["is_test"].lower() == "true"
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
     field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
-    # remove this
+
     user_id = flask.request.args["user_id"]
+    match_id = flask.request.args.get("match_id")
 
     account_id = app.db_client.collection('users').document(user_id).get().to_dict()[field_name]
 
-    redirect_link = build_dynamic_link('http://web.nutmegapp.com')
+    redirect_link_path = 'http://web.nutmegapp.com'
+    if match_id:
+        redirect_link_path = redirect_link_path + "/match/" + match_id
+    else:
+        redirect_link_path = redirect_link_path + "/user"
+
+    redirect_link = build_dynamic_link(redirect_link_path)
     refresh_link = "https://nutmeg-9099c.ew.r.appspot.com/stripe/account/onboard?is_test={}&user_id={}"\
         .format(is_test, user_id)
 
+    if match_id:
+        refresh_link = refresh_link + "&match_id=" + match_id
+
     response = stripe.AccountLink.create(
         account=account_id,
-        # fixme add a proper refresh url
         refresh_url=refresh_link,
         return_url=redirect_link,
         type="account_onboarding",
