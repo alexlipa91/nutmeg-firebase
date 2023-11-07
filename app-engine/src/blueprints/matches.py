@@ -312,6 +312,11 @@ def run_prematch_tasks(match_id):
 @bp.route("/<match_id>/tasks/precancellation", methods=["GET"])
 def run_precancellation_tasks(match_id):
     match = app.db_client.collection("matches").document(match_id).get().to_dict()
+
+    if not match or "cancelledAt" in match:
+        print("match has been cancelled or removed from the db...skipping")
+        return {"status": "skipped", "reason": "removed"}
+
     organizer_id = match["organizerId"]
     num_going = len(match.get("going", {}))
     min_players = match["minPlayers"]
