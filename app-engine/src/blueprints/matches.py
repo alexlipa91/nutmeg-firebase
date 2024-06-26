@@ -690,8 +690,8 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     if not match.get("going", {}).get(user_id, None):
         raise Exception("User is not part of the match")
 
-    if match["dateTime"] - timedelta(hours=24) > datetime.now():
-        raise Exception("Cannot leave 12 hours before")
+    # if match["dateTime"] - timedelta(hours=24) > datetime.now(utcnow):
+    #     raise Exception("Cannot leave 12 hours before")
 
     # remove if user is in going
     transaction.update(match_doc_ref, {
