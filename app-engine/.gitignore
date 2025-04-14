@@ -1,5 +1,7 @@
 env-variables.yaml
 
-scripts/.env.local
+.env.*
 
 app.yaml
+
+venv/*
