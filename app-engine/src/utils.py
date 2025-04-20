@@ -67,16 +67,20 @@ def build_dynamic_link(link):
                     "androidMinPackageVersionCode": '1'
                 },
                 "iosInfo": {
-                    "iosBundleId": "com.nutmeg.app",
-                    "iosAppStoreId": '1592985083',
+                    # "iosBundleId": "com.nutmeg.app",
+                    # "iosAppStoreId": '1592985083',
                 },
                 "socialMetaTagInfo": {
                     "socialTitle": "Nutmeg",
                     "socialDescription": "Play Football in your city",
                     # "socialImageLink": string
-                }
+                },
+                "navigationInfo": {
+                    "enableForcedRedirect": True, 
+                },
             }
         }))
+    print(json.loads(resp.text))
     return json.loads(resp.text)["shortLink"]
 
 
