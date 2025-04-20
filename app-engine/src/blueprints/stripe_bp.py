@@ -36,8 +36,7 @@ def stripe_checkout_webhook():
         add_user_to_match(
             event_data["metadata"]["match_id"],
             event_data["metadata"]["user_id"],
-            event_data["payment_intent"],
-            local=True
+            event_data["payment_intent"],            
         )
     else:
         print("checkout not successful")

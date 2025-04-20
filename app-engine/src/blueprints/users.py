@@ -85,4 +85,4 @@ if __name__ == '__main__':
     app.db_client = firestore.client()
 
     for i in range(10):
-        _add_user("test_{}".format(i), {"email": "test_{}@test.com".format(i), "fake_user": True}, create_stripe_customer=False)
+        _add_user("test_{}".format(i), {"name": "test_{}".format(i), "email": "test_{}@test.com".format(i), "fake_user": True}, create_stripe_customer=False)
