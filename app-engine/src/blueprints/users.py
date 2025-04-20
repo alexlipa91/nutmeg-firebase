@@ -24,22 +24,8 @@ def get_user(user_id):
 @bp.route("/<user_id>/add", methods=["POST"])
 def add_user(user_id):
     data = flask.request.get_json()
-    assert "email" in data, "Required field missing"
-
-    data["createdAt"] = firestore.firestore.SERVER_TIMESTAMP
-
-    # create stripe customer
-    stripe.api_key = os.environ["STRIPE_KEY"]
-    response = stripe.Customer.create(
-        email=data.get("email", None),
-        name=data.get("name", None)
-    )
-    data["stripeId"] = response["id"]
-
-    doc_ref = app.db_client.collection('users').document(user_id)
-    doc_ref.set(data)
-    return {}
-
+    _add_user(user_id, data)
+    return {}, 200
 
 @bp.route("/<user_id>/tokens", methods=["POST"])
 def add_token(user_id):
@@ -53,6 +39,22 @@ def add_token(user_id):
 def get_organisers_with_fees():
     return {'data': {'users': ['bQHD0EM265V6GuSZuy1uQPHzb602', 'IwrZWBFb4LZl3Kto1V3oUKPnCni1']}}, 200
 
+
+def _add_user(user_id,data, create_stripe_customer=True):
+    assert "email" in data, "Required field missing"
+    data["createdAt"] = firestore.firestore.SERVER_TIMESTAMP
+
+    if create_stripe_customer:
+        # create stripe customer
+        stripe.api_key = os.environ["STRIPE_KEY"]
+        response = stripe.Customer.create(
+            email=data.get("email", None),
+            name=data.get("name", None)
+        )
+        data["stripeId"] = response["id"]
+
+    doc_ref = app.db_client.collection('users').document(user_id)
+    doc_ref.set(data)
 
 def _get_user_firestore(user_id):
     data = app.db_client.collection('users').document(user_id).get().to_dict()
@@ -82,5 +84,5 @@ if __name__ == '__main__':
     app = Flask("test_app")
     app.db_client = firestore.client()
 
-    with app.app_context():
-        print(_get_user_firestore("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
+    for i in range(10):
+        _add_user("test_{}".format(i), {"email": "test_{}@test.com".format(i), "fake_user": True}, create_stripe_customer=False)
