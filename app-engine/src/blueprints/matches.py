@@ -85,7 +85,8 @@ def get_match(match_id, is_local=False):
                                               add_organizer_info=match_data.get("organizerId", None) == flask.g.uid)}
     elif flask.request.method == "POST":
         data = flask.request.get_json()
-        data["dateTime"] = datetime.strptime(data['dateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
+        if "dateTime" in data:
+            data["dateTime"] = datetime.strptime(data['dateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
         app.db_client.collection("matches").document(match_id).update(data)
         return {}, 200
 
