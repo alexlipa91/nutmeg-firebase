@@ -79,6 +79,10 @@ def _get_user_firestore(user_id):
     return data
 
 
+def _get_users_collection_name(is_test=False):
+    return "users_test" if is_test else "users"
+
+
 if __name__ == '__main__':
     firebase_admin.initialize_app()
     app = Flask("test_app")

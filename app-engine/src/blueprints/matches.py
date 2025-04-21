@@ -20,7 +20,7 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
-from src.blueprints.users import _get_user_firestore
+from src.blueprints.users import _get_user_firestore, _get_users_collection_name
 from src.utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
     schedule_app_engine_call, update_leaderboard
 from flask import current_app as app
@@ -95,19 +95,10 @@ def get_match(match_id, is_local=False):
 def get_ratings(match_id):
     ratings_data = app.db_client.collection("ratings").document(match_id).get().to_dict()
     if not ratings_data:
-        return {}, 200
-    match_stats = MatchStats(
-        match_id,
-        None,
-        [],
-        ratings_data.get("scores", {}),
-        ratings_data.get("skills", {})
-    )
-    if not match_stats:
-        return {}, 200
+        return {}, 200    
     resp = {
-        "scores": match_stats.user_scores,
-        "potms": match_stats.potms
+        "scores": ratings_data["finalScores"],
+        "potms": ratings_data["finalPotms"]
     }
     return {"data": resp}, 200
 
@@ -553,7 +544,7 @@ def freeze_match_stats(match_id, notify=True, only_for_user=None):
         return {"error": error}
 
     match_doc_ref = app.db_client.collection("matches").document(match_id)
-    users_doc_ref = {u: app.db_client.collection("users").document(u) for u in updates}
+    users_doc_ref = {u: app.db_client.collection(_get_users_collection_name(is_test=match_data.get("isTest", False))).document(u) for u in updates}
 
     # write to db
     _close_rating_round_transaction(app.db_client.transaction(),
@@ -562,10 +553,14 @@ def freeze_match_stats(match_id, notify=True, only_for_user=None):
                                     match_doc_ref,
                                     users_doc_ref)
     if notify:
-        _send_close_voting_notification(match_doc_ref.id,
-                                        list(match_data.get("going", {}).keys()),
-                                        [u for u in updates if updates[u].num_potms == 1],
-                                        match_data.get("sportCenter", None))
+        try:
+            _send_close_voting_notification(match_doc_ref.id,
+                                            list(match_data.get("going", {}).keys()),
+                                            [u for u in updates if updates[u].num_potms == 1],
+                                            match_data.get("sportCenter", None))
+        except Exception as e:
+            app.logger.error("Failed to send close voting notification for match {}".format(match_id))
+            traceback.print_exc()
 
     return {}
 
@@ -577,9 +572,7 @@ def _freeze_match_stats(match_id, match_data):
         return None, "too_early"
     if match_data.get("cancelledAt", None):
         return None, "cancelled"
-    if match_data.get("isTest", False):
-        return None, "test"
-
+        
     # ratings
     ratings_doc = app.db_client.collection("ratings").document(match_id).get()
     match_stats = MatchStats(
@@ -589,6 +582,12 @@ def _freeze_match_stats(match_id, match_data):
         ratings_doc.to_dict().get("scores", {}) if ratings_doc.to_dict() else {},
         ratings_doc.to_dict().get("skills", {}) if ratings_doc.to_dict() else {},
     )
+    
+    # store final scores
+    app.db_client.collection("ratings").document(match_id).update({
+        "finalScores": match_stats.user_scores,
+        "finalPotms": match_stats.potms
+    })
 
     # score
     user_won = []
