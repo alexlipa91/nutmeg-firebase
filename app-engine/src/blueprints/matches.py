@@ -230,7 +230,7 @@ def add_user_to_match_request(match_id):
 
 def add_user_to_match(match_id, user_id, payment_intent=None):
     transactions_doc_ref = app.db_client.collection('matches').document(match_id).collection("transactions").document()
-    user_stat_doc_ref = app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
+    user_stat_doc_ref = _get_user_stat_doc_ref(user_id, match_id)    
     match_doc_ref = app.db_client.collection('matches').document(match_id)
 
     _add_user_to_match_firestore_transaction(app.db_client.transaction(),
@@ -241,11 +241,17 @@ def add_user_to_match(match_id, user_id, payment_intent=None):
 
     # recompute teams
     get_teams(match_id)
+    
+
+def _get_user_stat_doc_ref(user_id, match_id):
+    if app.db_client.collection('matches').document(match_id).get().to_dict().get("isTest", False):
+        return app.db_client.collection("users").document(user_id).collection("stats_test").document("match_votes")
+    return app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
 
 @bp.route("/<match_id>/users/remove", methods=["POST"])
-def remove_user_from_match(match_id):
+def remove_user_from_match_request(match_id):
     user_id = flask.g.uid
-    _remove_user_from_match_firestore(match_id, user_id)
+    _remove_user_from_match(match_id, user_id)
 
     # recompute teams
     get_teams(match_id)
@@ -669,11 +675,11 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center):
     )
 
 
-def _remove_user_from_match_firestore(match_id, user_id):
+def _remove_user_from_match(match_id, user_id):
     db = firestore.client()
 
     transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
-    user_stat_doc_ref = db.collection("users").document(user_id).collection("stats").document("match_votes")
+    user_stat_doc_ref = _get_user_stat_doc_ref(user_id, match_id)
     match_doc_ref = db.collection('matches').document(match_id)
 
     _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_stat_doc_ref,
@@ -735,8 +741,7 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
                     merge=True)
 
     # add match to user
-    if not match["isTest"]:
-        transaction.set(user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True)
+    transaction.set(user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True)
 
     # record transaction
     transaction.set(transactions_doc_ref, {"type": "joined", "userId": user_id, "createdAt": timestamp,
