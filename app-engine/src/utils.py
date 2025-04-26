@@ -27,7 +27,7 @@ def schedule_app_engine_call(task_name, endpoint, date_time_to_execute,
     project = 'nutmeg-9099c'
     queue = 'match-notifications'
     location = 'europe-west1'
-    url = 'https://nutmeg-9099c.ew.r.appspot.com/{}'.format(endpoint)
+    url = f'https://nutmeg-9099c.ew.r.appspot.com/{endpoint}'
 
     parent = client.queue_path(project, location, queue)
 
@@ -50,36 +50,40 @@ def schedule_app_engine_call(task_name, endpoint, date_time_to_execute,
 
     # Use the client to build and send the task.
     response = client.create_task(request={"parent": parent, "task": task})
-    print("Created task {} to call {} with params {} at {}".format(response.name, endpoint, function_payload,
-                                                                   date_time_to_execute))
+    print(
+        f"Created task {response.name} to call {endpoint} with params {function_payload} at {date_time_to_execute}"
+    )
 
 
 def build_dynamic_link(link):
     resp = requests.post(
-        url="https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key={}".format(environ["DYNAMIC_LINK_API_KEY"]),
+        url=f'https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key={environ["DYNAMIC_LINK_API_KEY"]}',
         headers={'Content-Type': 'application/json'},
-        data=json.dumps({
-            "dynamicLinkInfo": {
-                "domainUriPrefix": "https://nutmegapp.page.link",
-                "link": link,
-                "androidInfo": {
-                    "androidPackageName": 'com.nutmeg.nutmeg',
-                    "androidMinPackageVersionCode": '1'
-                },
-                "iosInfo": {
-                    # "iosBundleId": "com.nutmeg.app",
-                    # "iosAppStoreId": '1592985083',
-                },
-                "socialMetaTagInfo": {
-                    "socialTitle": "Nutmeg",
-                    "socialDescription": "Play Football in your city",
-                    # "socialImageLink": string
-                },
-                "navigationInfo": {
-                    "enableForcedRedirect": True, 
-                },
+        data=json.dumps(
+            {
+                "dynamicLinkInfo": {
+                    "domainUriPrefix": "https://nutmegapp.page.link",
+                    "link": link,
+                    "androidInfo": {
+                        "androidPackageName": 'com.nutmeg.nutmeg',
+                        "androidMinPackageVersionCode": '1',
+                    },
+                    "iosInfo": {
+                        # "iosBundleId": "com.nutmeg.app",
+                        # "iosAppStoreId": '1592985083',
+                    },
+                    "socialMetaTagInfo": {
+                        "socialTitle": "Nutmeg",
+                        "socialDescription": "Play Football in your city",
+                        # "socialImageLink": string
+                    },
+                    "navigationInfo": {
+                        "enableForcedRedirect": True,
+                    },
+                }
             }
-        }))
+        ),
+    )
     print(json.loads(resp.text))
     return json.loads(resp.text)["shortLink"]
 
@@ -104,7 +108,7 @@ def send_notification_to_users(db, title, body, data, users):
         admins_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
         for t in admins_tokens:
             tokens.add(t)
-    _send_notification_to_tokens("[admin] {}".format(title), body, data, list(tokens))
+    _send_notification_to_tokens(f"[admin] {title}", body, data, list(tokens))
 
 
 def _send_notification_to_tokens(title, body, data, tokens):
@@ -120,13 +124,13 @@ def _send_notification_to_tokens(title, body, data, tokens):
     if response.failure_count > 0:
         for r in response.responses:
             if not r.success:
-                print("Logging one error:\n{}".format(r.exception))
+                print(f"Logging one error:\n{r.exception}")
                 break
-    print('Sent: {}. Failed: {}'.format(response.success_count, response.failure_count))
+    print(f'Sent: {response.success_count}. Failed: {response.failure_count}')
 
 
 def update_leaderboard(app, leaderboard_id, match_list, updates_map):
-    print("updating leaderboard {}".format(leaderboard_id))
+    print(f"updating leaderboard {leaderboard_id}")
     cache_user_data = {u: _get_user_basic_data(app, u) for u in updates_map.keys()}
     app.db_client.collection("leaderboards").document(leaderboard_id) \
         .set({"entries": updates_map,
@@ -136,6 +140,10 @@ def update_leaderboard(app, leaderboard_id, match_list, updates_map):
 
 def _get_user_basic_data(app, u):
     return app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
+
+def send_test_notification(db):
+    # send to admin a test notification
+    send_notification_to_users(db, "test", "test", {}, ["IwrZWBFb4LZl3Kto1V3oUKPnCni1"])
 
 
 if __name__ == '__main__':

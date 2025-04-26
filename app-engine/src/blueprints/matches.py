@@ -1086,7 +1086,7 @@ class MatchStats:
 
 if __name__ == '__main__':
     firebase_admin.initialize_app()
-    app = Flask()
+    app = Flask("test")
     app.db_client = firestore.client()
 
     with app.app_context():
