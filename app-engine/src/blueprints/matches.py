@@ -21,12 +21,17 @@ from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
 from src.blueprints.users import _get_user_firestore, _get_users_collection_name
-from src.utils import _serialize_dates, build_dynamic_link, send_notification_to_users, \
-    schedule_app_engine_call, update_leaderboard
+from src.utils import (
+    _serialize_dates,
+    build_dynamic_link,
+    send_notification_to_users,
+    schedule_app_engine_call,
+    update_leaderboard,
+)
 from flask import current_app as app
 
-bp = Blueprint('matches', __name__, url_prefix='/matches')
-tz = pytz.timezone('Europe/Amsterdam')
+bp = Blueprint("matches", __name__, url_prefix="/matches")
+tz = pytz.timezone("Europe/Amsterdam")
 
 
 # todo deprecate
@@ -39,7 +44,9 @@ def matches():
     with_user = request_json.get("with_user", None)
     organized_by = request_json.get("organized_by", None)
 
-    result = _get_matches_firestore(when=when, with_user=with_user, organized_by=organized_by, version=1)
+    result = _get_matches_firestore(
+        when=when, with_user=with_user, organized_by=organized_by, version=1
+    )
 
     return {"data": result}, 200
 
@@ -63,9 +70,15 @@ def get_matches():
         app.logger.error("received null as lng, fallback to Ams")
         lng = 4.9041
 
-    result = _get_matches_firestore(user_location=(lat, lng), when=when, with_user=with_user,
-                                    organized_by=organized_by, radius_km=radius_km, user_id=user_id,
-                                    version=version)
+    result = _get_matches_firestore(
+        user_location=(lat, lng),
+        when=when,
+        with_user=with_user,
+        organized_by=organized_by,
+        radius_km=radius_km,
+        user_id=user_id,
+        version=version,
+    )
 
     return {"data": result}, 200
 
@@ -73,34 +86,60 @@ def get_matches():
 @bp.route("/<match_id>", methods=["GET", "POST"])
 def get_match(match_id, is_local=False):
     if is_local:
-        return app.db_client.collection('matches').document(match_id).get().to_dict()
+        return app.db_client.collection("matches").document(match_id).get().to_dict()
 
     if flask.request.method == "GET":
-        match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
+        match_data = (
+            app.db_client.collection("matches").document(match_id).get().to_dict()
+        )
         version = 2 if is_local else int(flask.request.args.get("version", 1))
 
         if not match_data:
             return {}, 404
-        return {"data": _format_match_data_v2(match_id, match_data, version,
-                                              add_organizer_info=match_data.get("organizerId", None) == flask.g.uid)}
+        return {
+            "data": _format_match_data_v2(
+                match_id,
+                match_data,
+                version,
+                add_organizer_info=match_data.get("organizerId", None) == flask.g.uid,
+            )
+        }
     elif flask.request.method == "POST":
         data = flask.request.get_json()
         if "dateTime" in data:
-            data["dateTime"] = datetime.strptime(data['dateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
+            data["dateTime"] = datetime.strptime(
+                data["dateTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
+            )
         app.db_client.collection("matches").document(match_id).update(data)
         return {}, 200
 
 
 @bp.route("/<match_id>/ratings", methods=["GET"])
 def get_ratings(match_id):
-    ratings_data = app.db_client.collection("ratings").document(match_id).get().to_dict()
+    ratings_data = (
+        app.db_client.collection("ratings").document(match_id).get().to_dict()
+    )
     if not ratings_data:
-        return {}, 200    
-    resp = {
-        "scores": ratings_data["finalScores"],
-        "potms": ratings_data["finalPotms"]
-    }
+        return {}, 200
+
+    # legacy version, keep supporting it
+    if not "finalScores" in ratings_data:
+        resp = _get_ratings_data_legacy(match_id, ratings_data)
+        return {"data": resp}, 200
+
+    resp = {"scores": ratings_data["finalScores"], "potms": ratings_data["finalPotms"]}
     return {"data": resp}, 200
+
+
+def _get_ratings_data_legacy(match_id, ratings_data):
+    match_stats = MatchStats(
+        match_id,
+        None,
+        [],
+        ratings_data.get("scores", {}),
+        ratings_data.get("skills", {}),
+    )
+    return {"scores": match_stats.user_scores, "potms": match_stats.potms}
 
 
 @bp.route("/<match_id>/ratings/add", methods=["POST"])
@@ -108,9 +147,20 @@ def add_rating(match_id):
     request_data = flask.request.get_json()
 
     app.db_client.collection("ratings").document(match_id).set(
-        {"scores": {request_data["user_rated_id"]: {request_data["user_id"]: request_data["score"]}},
-         "skills": {request_data["user_rated_id"]: {request_data["user_id"]: request_data.get("skills", [])}}},
-        merge=True)
+        {
+            "scores": {
+                request_data["user_rated_id"]: {
+                    request_data["user_id"]: request_data["score"]
+                }
+            },
+            "skills": {
+                request_data["user_rated_id"]: {
+                    request_data["user_id"]: request_data.get("skills", [])
+                }
+            },
+        },
+        merge=True,
+    )
     return {}
 
 
@@ -127,8 +177,17 @@ def add_rating_multi(match_id):
 
 @bp.route("/<match_id>/ratings/to_vote", methods=["GET"])
 def get_still_to_vote(match_id):
-    all_going = app.db_client.collection("matches").document(match_id).get().to_dict().get("going", {}).keys()
-    received_dict = app.db_client.collection("ratings").document(match_id).get().to_dict()
+    all_going = (
+        app.db_client.collection("matches")
+        .document(match_id)
+        .get()
+        .to_dict()
+        .get("going", {})
+        .keys()
+    )
+    received_dict = (
+        app.db_client.collection("ratings").document(match_id).get().to_dict()
+    )
     received = received_dict.get("scores", {}) if received_dict else {}
 
     user_id = flask.g.uid
@@ -160,7 +219,14 @@ def create_match():
 
 @bp.route("/<match_id>/teams/<algorithm>", methods=["GET"])
 def get_teams(match_id, algorithm="balanced"):
-    going = list(app.db_client.collection('matches').document(match_id).get().to_dict().get("going", {}).keys())
+    going = list(
+        app.db_client.collection("matches")
+        .document(match_id)
+        .get()
+        .to_dict()
+        .get("going", {})
+        .keys()
+    )
     scores = {}
 
     for u in going:
@@ -190,7 +256,9 @@ def get_teams(match_id, algorithm="balanced"):
             i = i + 1
             if i < len(users_sorted_by_score):
                 teams[not next_team_to_assign].append(users_sorted_by_score[i][0])
-                teams_total_score[not next_team_to_assign] += users_sorted_by_score[i][1]
+                teams_total_score[not next_team_to_assign] += users_sorted_by_score[i][
+                    1
+                ]
             i = i + 1
 
     assert len(going) == len(teams[0]) + len(teams[1])
@@ -221,24 +289,50 @@ def add_user_to_match_request(match_id):
 
 
 def add_user_to_match(match_id, user_id, payment_intent=None):
-    transactions_doc_ref = app.db_client.collection('matches').document(match_id).collection("transactions").document()
-    user_stat_doc_ref = _get_user_stat_doc_ref(user_id, match_id)    
-    match_doc_ref = app.db_client.collection('matches').document(match_id)
+    transactions_doc_ref = (
+        app.db_client.collection("matches")
+        .document(match_id)
+        .collection("transactions")
+        .document()
+    )
+    user_stat_doc_ref = _get_user_stat_doc_ref(user_id, match_id)
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
 
-    _add_user_to_match_firestore_transaction(app.db_client.transaction(),
-                                             transactions_doc_ref,
-                                             user_stat_doc_ref,
-                                             match_doc_ref,
-                                             payment_intent, user_id, match_id)
+    _add_user_to_match_firestore_transaction(
+        app.db_client.transaction(),
+        transactions_doc_ref,
+        user_stat_doc_ref,
+        match_doc_ref,
+        payment_intent,
+        user_id,
+        match_id,
+    )
 
     # recompute teams
     get_teams(match_id)
-    
+
 
 def _get_user_stat_doc_ref(user_id, match_id):
-    if app.db_client.collection('matches').document(match_id).get().to_dict().get("isTest", False):
-        return app.db_client.collection("users").document(user_id).collection("stats_test").document("match_votes")
-    return app.db_client.collection("users").document(user_id).collection("stats").document("match_votes")
+    if (
+        app.db_client.collection("matches")
+        .document(match_id)
+        .get()
+        .to_dict()
+        .get("isTest", False)
+    ):
+        return (
+            app.db_client.collection("users")
+            .document(user_id)
+            .collection("stats_test")
+            .document("match_votes")
+        )
+    return (
+        app.db_client.collection("users")
+        .document(user_id)
+        .collection("stats")
+        .document("match_votes")
+    )
+
 
 @bp.route("/<match_id>/users/remove", methods=["POST"])
 def remove_user_from_match_request(match_id):
@@ -253,7 +347,7 @@ def remove_user_from_match_request(match_id):
 
 @bp.route("/<match_id>/cancel", methods=["GET"])
 def cancel_match(match_id, trigger="manual"):
-    match_doc_ref = app.db_client.collection('matches').document(match_id)
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
 
     match_data = match_doc_ref.get().to_dict()
 
@@ -262,23 +356,36 @@ def cancel_match(match_id, trigger="manual"):
 
     users_stats_docs = {}
     for u in match_data.get("going", {}).keys():
-        users_stats_docs[u] = app.db_client.collection("users").document(u).collection("stats").document("match_votes")
+        users_stats_docs[u] = (
+            app.db_client.collection("users")
+            .document(u)
+            .collection("stats")
+            .document("match_votes")
+        )
 
-    _cancel_match_firestore_transactional(app.db_client.transaction(), match_doc_ref, users_stats_docs,
-                                          match_id, match_data["isTest"], trigger)
+    _cancel_match_firestore_transactional(
+        app.db_client.transaction(),
+        match_doc_ref,
+        users_stats_docs,
+        match_id,
+        match_data["isTest"],
+        trigger,
+    )
     return {}
 
 
 @bp.route("/<match_id>/confirm", methods=["GET"])
 def confirm_match(match_id):
-    match_data = app.db_client.collection('matches').document(match_id).get().to_dict()
+    match_data = app.db_client.collection("matches").document(match_id).get().to_dict()
 
     if len(match_data.get("going", {}).keys()) < match_data["minPlayers"]:
         print("canceling match")
         cancel_match(match_id, "automatic")
     else:
         print("confirming match")
-        app.db_client.collection('matches').document(match_id).update({"confirmedAt": datetime.now()})
+        app.db_client.collection("matches").document(match_id).update(
+            {"confirmedAt": datetime.now()}
+        )
 
     return {}, 200
 
@@ -292,19 +399,23 @@ def run_prematch_tasks(match_id):
 
     users = match.get("going", {}).keys()
     sport_center = match["sportCenter"]
-    date_time_local = match["dateTime"].astimezone(pytz.timezone(sport_center["timeZoneId"]))
+    date_time_local = match["dateTime"].astimezone(
+        pytz.timezone(sport_center["timeZoneId"])
+    )
 
-    send_notification_to_users(db=app.db_client,
-                               title="Ready for the match? " + u"\u26BD\uFE0F",
-                               body="Your match today is at {} at {}. Tap here to check your team!".format(
-                                   date_time_local.strftime("%H:%M"),
-                                   sport_center["name"]),
-                               users=users,
-                               data={
-                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                                   "route": "/match/" + match_id,
-                                   "match_id": match_id
-                               })
+    send_notification_to_users(
+        db=app.db_client,
+        title="Ready for the match? " + "\u26bd\ufe0f",
+        body="Your match today is at {} at {}. Tap here to check your team!".format(
+            date_time_local.strftime("%H:%M"), sport_center["name"]
+        ),
+        users=users,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
+            "match_id": match_id,
+        },
+    )
     return {"status": "success"}
 
 
@@ -324,13 +435,15 @@ def run_precancellation_tasks(match_id):
         send_notification_to_users(
             db=app.db_client,
             title="Your match might be canceled in 1 hour!",
-            body="Currently only {} players out of {} have joined your match.".format(num_going, min_players),
+            body="Currently only {} players out of {} have joined your match.".format(
+                num_going, min_players
+            ),
             users=[organizer_id],
             data={
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 "route": "/match/" + match_id,
-                "match_id": match_id
-            }
+                "match_id": match_id,
+            },
         )
         return {"status": "success"}
 
@@ -353,34 +466,34 @@ def run_post_match_tasks(match_id):
 
     send_notification_to_users(
         db=app.db_client,
-        title="Rate players! " + u"\u2B50\uFE0F",
+        title="Rate players! " + "\u2b50\ufe0f",
         body="You have 24h to rate the players of today's match.",
         users=going_users,
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "route": "/match/" + match_id,
-            "match_id": match_id
-        }
+            "match_id": match_id,
+        },
     )
 
     if organiser_id:
         send_notification_to_users(
             db=app.db_client,
-            title="Add match result! " + u"\u2B50\uFE0F",
+            title="Add match result! " + "\u2b50\ufe0f",
             body="Add the final score for your match.",
             users=organiser_id,
             data={
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
                 "route": "/match/" + match_id,
-                "match_id": match_id
-            }
+                "match_id": match_id,
+            },
         )
 
     # payout
     schedule_app_engine_call(
         task_name="payout_organizer_for_match_{}_attempt_number_{}".format(match_id, 1),
         endpoint="matches/{}/tasks/payout?attempt={}".format(match_id, 1),
-        date_time_to_execute=datetime.now() + timedelta(days=3)
+        date_time_to_execute=datetime.now() + timedelta(days=3),
     )
     return {"status": "success"}
 
@@ -399,58 +512,74 @@ def create_organizer_payout(match_id):
         print("Already paid out")
         return {"status": "skipped", "reason": "deleted"}
 
-    amount = _get_stripe_price_amount(match_data, "base") * len(match_data.get("going", {}))
+    amount = _get_stripe_price_amount(match_data, "base") * len(
+        match_data.get("going", {})
+    )
     if amount == 0:
         print("Nothing to payout...skipping")
         return {"status": "skipped", "reason": "no_players"}
 
     is_test = match_data["isTest"]
-    organizer_account = app.db_client.collection("users").document(match_data["organizerId"]).get().to_dict()[
-        "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
-    ]
+    organizer_account = (
+        app.db_client.collection("users")
+        .document(match_data["organizerId"])
+        .get()
+        .to_dict()[
+            "stripeConnectedAccountTestId" if is_test else "stripeConnectedAccountId"
+        ]
+    )
     stripe.api_key = os.environ["STRIPE_KEY" if not is_test else "STRIPE_KEY_TEST"]
 
     # check if enough balance
     balance = stripe.Balance.retrieve(stripe_account=organizer_account)
-    available_amount = balance['available'][0]['amount']
+    available_amount = balance["available"][0]["amount"]
 
     print("trying to payout: {}, current balance {}".format(amount, available_amount))
 
     if available_amount >= amount:
         payout = stripe.Payout.create(
             amount=amount,
-            currency='eur',
+            currency="eur",
             stripe_account=organizer_account,
             metadata={"match_id": match_id, "attempt": attempt},
         )
         print("payout of {} created: {}".format(amount, payout.id))
-        app.db_client.collection("matches").document(match_id).update({
-            "paid_out_at": firestore.firestore.SERVER_TIMESTAMP,
-            "payout_id": payout.id
-        })
-        send_notification_to_users(db=app.db_client,
-                                   title="Your money is on the way! " + u"\U0001F4B5",
-                                   body="The amount of € {:.2f} for the match on {} is on its way to your bank account"
-                                   .format(amount / 100, datetime.strftime(match_data["dateTime"], "%B %-d, %Y")),
-                                   data={
-                                       "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                                       "route": "/match/" + match_id,
-                                       "match_id": match_id
-                                   },
-                                   users=[match_data["organizerId"]])
+        app.db_client.collection("matches").document(match_id).update(
+            {
+                "paid_out_at": firestore.firestore.SERVER_TIMESTAMP,
+                "payout_id": payout.id,
+            }
+        )
+        send_notification_to_users(
+            db=app.db_client,
+            title="Your money is on the way! " + "\U0001f4b5",
+            body="The amount of € {:.2f} for the match on {} is on its way to your bank account".format(
+                amount / 100, datetime.strftime(match_data["dateTime"], "%B %-d, %Y")
+            ),
+            data={
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "route": "/match/" + match_id,
+                "match_id": match_id,
+            },
+            users=[match_data["organizerId"]],
+        )
         return {"status": "success"}
     else:
         print("not enough balance...retry in 24 hours")
         schedule_app_engine_call(
-            task_name="payout_organizer_for_match_{}_attempt_number_{}".format(match_id, attempt + 1),
+            task_name="payout_organizer_for_match_{}_attempt_number_{}".format(
+                match_id, attempt + 1
+            ),
             endpoint="matches/{}/payout?attempt={}".format(match_id, attempt + 1),
-            date_time_to_execute=datetime.now() + timedelta(days=1)
+            date_time_to_execute=datetime.now() + timedelta(days=1),
         )
         return {"status": "retry", "reason": "not_enough_balance"}
 
 
 @firestore.transactional
-def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stats_docs, match_id, is_test, trigger):
+def _cancel_match_firestore_transactional(
+    transaction, match_doc_ref, users_stats_docs, match_id, is_test, trigger
+):
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
 
     match = get_match(match_id, is_local=True)
@@ -458,17 +587,16 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
     if "price" in match:
         to_refund = match["price"]["basePrice"] + match["price"].get("userFee", 0)
 
-    transaction.update(match_doc_ref, {
-        "cancelledAt": datetime.now(),
-        "cancelledReason": trigger
-    })
+    transaction.update(
+        match_doc_ref, {"cancelledAt": datetime.now(), "cancelledReason": trigger}
+    )
 
     going = match.get("going", {})
     for u in going:
         # remove match in user list (if present)
-        transaction.update(users_stats_docs[u], {
-            u'joinedMatches.' + match_id: firestore.DELETE_FIELD
-        })
+        transaction.update(
+            users_stats_docs[u], {"joinedMatches." + match_id: firestore.DELETE_FIELD}
+        )
 
         # refund
         if to_refund and "payment_intent" in going[u]:
@@ -476,53 +604,80 @@ def _cancel_match_firestore_transactional(transaction, match_doc_ref, users_stat
             refund_amount = to_refund
             refund_id = None
             try:
-                refund = stripe.Refund.create(payment_intent=payment_intent,
-                                              amount=refund_amount,
-                                              reverse_transfer=True,
-                                              refund_application_fee=True)
+                refund = stripe.Refund.create(
+                    payment_intent=payment_intent,
+                    amount=refund_amount,
+                    reverse_transfer=True,
+                    refund_application_fee=True,
+                )
                 refund_id = refund.id
             except Exception as e:
                 app.logger.error("Failed to send refund to {}".format(u))
                 traceback.print_exc()
 
             # record transaction
-            transaction_doc_ref = app.db_client.collection("matches").document(match_id).collection(
-                "transactions").document()
-            transaction.set(transaction_doc_ref,
-                            {"type": trigger.lower() + "_cancellation", "userId": u, "createdAt": datetime.now(),
-                             "paymentIntent": payment_intent,
-                             "refund_id": refund_id, "moneyRefunded": refund_amount})
+            transaction_doc_ref = (
+                app.db_client.collection("matches")
+                .document(match_id)
+                .collection("transactions")
+                .document()
+            )
+            transaction.set(
+                transaction_doc_ref,
+                {
+                    "type": trigger.lower() + "_cancellation",
+                    "userId": u,
+                    "createdAt": datetime.now(),
+                    "paymentIntent": payment_intent,
+                    "refund_id": refund_id,
+                    "moneyRefunded": refund_amount,
+                },
+            )
 
-    user_info_message = "Your match at {} has been cancelled!".format(match["sportCenter"]["name"])
+    user_info_message = "Your match at {} has been cancelled!".format(
+        match["sportCenter"]["name"]
+    )
     if to_refund:
-        user_info_message = user_info_message \
-                            + " € {:.2f} have been refunded on your payment method".format(to_refund / 100)
+        user_info_message = (
+            user_info_message
+            + " € {:.2f} have been refunded on your payment method".format(
+                to_refund / 100
+            )
+        )
 
-    send_notification_to_users(db=app.db_client,
-                               title="Match cancelled!",
-                               body=user_info_message,
-                               data={
-                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                                   "route": "/match/" + match_id,
-                                   "match_id": match_id
-                               },
-                               users=list(going.keys()))
+    send_notification_to_users(
+        db=app.db_client,
+        title="Match cancelled!",
+        body=user_info_message,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
+            "match_id": match_id,
+        },
+        users=list(going.keys()),
+    )
 
     org_info_message = "Your match at {} has been {} as you requested!".format(
         match["sportCenter"]["name"],
-        "cancelled" if trigger == "manual" else "automatically cancelled")
+        "cancelled" if trigger == "manual" else "automatically cancelled",
+    )
     if to_refund:
-        org_info_message = org_info_message + " All players have been refunded € {:.2f}".format(to_refund / 100)
+        org_info_message = (
+            org_info_message
+            + " All players have been refunded € {:.2f}".format(to_refund / 100)
+        )
 
-    send_notification_to_users(db=app.db_client,
-                               title="Match cancelled!",
-                               body=org_info_message,
-                               data={
-                                   "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                                   "route": "/match/" + match_id,
-                                   "match_id": match_id
-                               },
-                               users=[match["organizerId"]])
+    send_notification_to_users(
+        db=app.db_client,
+        title="Match cancelled!",
+        body=org_info_message,
+        data={
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "route": "/match/" + match_id,
+            "match_id": match_id,
+        },
+        users=[match["organizerId"]],
+    )
 
 
 Updates = namedtuple("Updates", "match_updates users_updates users_match_stats_updates")
@@ -535,31 +690,40 @@ def freeze_match_stats(match_id, notify=True, only_for_user=None):
     updates, error = _freeze_match_stats(match_id, match_data)
 
     if only_for_user:
-        updates = {
-            only_for_user: updates[only_for_user]
-        }
+        updates = {only_for_user: updates[only_for_user]}
         print("Reducing updates to {}".format(updates))
 
     if error:
         return {"error": error}
 
     match_doc_ref = app.db_client.collection("matches").document(match_id)
-    users_doc_ref = {u: app.db_client.collection(_get_users_collection_name(is_test=match_data.get("isTest", False))).document(u) for u in updates}
+    users_doc_ref = {
+        u: app.db_client.collection(
+            _get_users_collection_name(is_test=match_data.get("isTest", False))
+        ).document(u)
+        for u in updates
+    }
 
     # write to db
-    _close_rating_round_transaction(app.db_client.transaction(),
-                                    match_data["dateTime"].strftime("%Y%m"),
-                                    updates,
-                                    match_doc_ref,
-                                    users_doc_ref)
+    _close_rating_round_transaction(
+        app.db_client.transaction(),
+        match_data["dateTime"].strftime("%Y%m"),
+        updates,
+        match_doc_ref,
+        users_doc_ref,
+    )
     if notify:
         try:
-            _send_close_voting_notification(match_doc_ref.id,
-                                            list(match_data.get("going", {}).keys()),
-                                            [u for u in updates if updates[u].num_potms == 1],
-                                            match_data.get("sportCenter", None))
+            _send_close_voting_notification(
+                match_doc_ref.id,
+                list(match_data.get("going", {}).keys()),
+                [u for u in updates if updates[u].num_potms == 1],
+                match_data.get("sportCenter", None),
+            )
         except Exception as e:
-            app.logger.error("Failed to send close voting notification for match {}".format(match_id))
+            app.logger.error(
+                "Failed to send close voting notification for match {}".format(match_id)
+            )
             traceback.print_exc()
 
     return {}
@@ -572,7 +736,7 @@ def _freeze_match_stats(match_id, match_data):
         return None, "too_early"
     if match_data.get("cancelledAt", None):
         return None, "cancelled"
-        
+
     # ratings
     ratings_doc = app.db_client.collection("ratings").document(match_id).get()
     match_stats = MatchStats(
@@ -582,12 +746,11 @@ def _freeze_match_stats(match_id, match_data):
         ratings_doc.to_dict().get("scores", {}) if ratings_doc.to_dict() else {},
         ratings_doc.to_dict().get("skills", {}) if ratings_doc.to_dict() else {},
     )
-    
+
     # store final scores
-    app.db_client.collection("ratings").document(match_id).update({
-        "finalScores": match_stats.user_scores,
-        "finalPotms": match_stats.potms
-    })
+    app.db_client.collection("ratings").document(match_id).update(
+        {"finalScores": match_stats.user_scores, "finalPotms": match_stats.potms}
+    )
 
     # score
     user_won = []
@@ -599,13 +762,13 @@ def _freeze_match_stats(match_id, match_data):
         teams = match_data["teams"][team_logic]["players"]
 
         if score_delta > 0:
-            user_won = teams['a']
-            user_lost = teams['b']
+            user_won = teams["a"]
+            user_lost = teams["b"]
         elif score_delta == 0:
-            user_draw = teams['a'] + teams['b']
+            user_draw = teams["a"] + teams["b"]
         else:
-            user_won = teams['b']
-            user_lost = teams['a']
+            user_won = teams["b"]
+            user_lost = teams["a"]
 
     user_updates = {}
 
@@ -614,8 +777,12 @@ def _freeze_match_stats(match_id, match_data):
         user_updates[u] = UserUpdates.from_single_game(
             date=match_data["dateTime"],
             score=match_stats.user_scores.get(u, None),
-            wdl="w" if u in user_won else "d" if u in user_draw else "l" if u in user_lost else None,
-            is_potm=u in match_stats.potms
+            wdl=(
+                "w"
+                if u in user_won
+                else "d" if u in user_draw else "l" if u in user_lost else None
+            ),
+            is_potm=u in match_stats.potms,
         )
 
     return user_updates, None
@@ -623,24 +790,38 @@ def _freeze_match_stats(match_id, match_data):
 
 @bp.route("/<match_id>/dynamicLink", methods=["GET"])
 def test_dynamic_link(match_id):
-    return flask.redirect(build_dynamic_link('http://web.nutmegapp.com/match/{}'.format(match_id)))
+    return flask.redirect(
+        build_dynamic_link("http://web.nutmegapp.com/match/{}".format(match_id))
+    )
 
 
 @firestore.transactional
-def _close_rating_round_transaction(transaction,
-                                    yearmonth,
-                                    user_updates: Dict[str, UserUpdates],
-                                    match_doc_ref,
-                                    users_docs_ref):
+def _close_rating_round_transaction(
+    transaction,
+    yearmonth,
+    user_updates: Dict[str, UserUpdates],
+    match_doc_ref,
+    users_docs_ref,
+):
     for u in user_updates:
-        transaction.set(users_docs_ref[u], user_updates[u].to_user_document_update(), merge=True)
+        transaction.set(
+            users_docs_ref[u], user_updates[u].to_user_document_update(), merge=True
+        )
 
     for leaderboard in ["abs", yearmonth]:
         print("updating leaderboard {}".format(leaderboard))
-        update_leaderboard(app, leaderboard, [match_doc_ref.id],
-                           {u: user_updates[u].to_leaderboard_document_update() for u in user_updates})
+        update_leaderboard(
+            app,
+            leaderboard,
+            [match_doc_ref.id],
+            {u: user_updates[u].to_leaderboard_document_update() for u in user_updates},
+        )
 
-    transaction.set(match_doc_ref, {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP}, merge=True)
+    transaction.set(
+        match_doc_ref,
+        {"scoresComputedAt": firestore.firestore.SERVER_TIMESTAMP},
+        merge=True,
+    )
 
 
 def _send_close_voting_notification(match_id, going_users, potms, sport_center):
@@ -658,37 +839,56 @@ def _send_close_voting_notification(match_id, going_users, potms, sport_center):
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "route": "/match/" + match_id,
             "match_id": match_id,
-        }
+        },
     )
 
     send_notification_to_users(
         app.db_client,
-        title="Congratulations! " + u"\U0001F3C6",
-        body="You won the Player of the Match award for the{} match".format(" " + sport_center_name),
+        title="Congratulations! " + "\U0001f3c6",
+        body="You won the Player of the Match award for the{} match".format(
+            " " + sport_center_name
+        ),
         users=list(potms),
         data={
             "click_action": "FLUTTER_NOTIFICATION_CLICK",
             "match_id": match_id,
             "route": "/match/" + match_id,
             "event": "potm",
-        }
+        },
     )
 
 
 def _remove_user_from_match(match_id, user_id):
     db = firestore.client()
 
-    transactions_doc_ref = db.collection('matches').document(match_id).collection("transactions").document()
+    transactions_doc_ref = (
+        db.collection("matches")
+        .document(match_id)
+        .collection("transactions")
+        .document()
+    )
     user_stat_doc_ref = _get_user_stat_doc_ref(user_id, match_id)
-    match_doc_ref = db.collection('matches').document(match_id)
+    match_doc_ref = db.collection("matches").document(match_id)
 
-    _remove_user_from_match_stripe_refund_firestore_transaction(db.transaction(), match_doc_ref, user_stat_doc_ref,
-                                                                transactions_doc_ref, user_id, match_id)
+    _remove_user_from_match_stripe_refund_firestore_transaction(
+        db.transaction(),
+        match_doc_ref,
+        user_stat_doc_ref,
+        transactions_doc_ref,
+        user_id,
+        match_id,
+    )
 
 
 @firestore.transactional
-def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, match_doc_ref, user_stat_doc_ref,
-                                                                transaction_doc_ref, user_id, match_id):
+def _remove_user_from_match_stripe_refund_firestore_transaction(
+    transaction,
+    match_doc_ref,
+    user_stat_doc_ref,
+    transaction_doc_ref,
+    user_id,
+    match_id,
+):
     timestamp = datetime.now(tz)
 
     match = match_doc_ref.get(transaction=transaction).to_dict()
@@ -701,22 +901,24 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
     #     raise Exception("Cannot leave 12 hours before")
 
     # remove if user is in going
-    transaction.update(match_doc_ref, {
-        u'going.' + user_id: firestore.DELETE_FIELD
-    })
+    transaction.update(match_doc_ref, {"going." + user_id: firestore.DELETE_FIELD})
 
     # remove match in user list
-    transaction.update(user_stat_doc_ref, {
-        u'joinedMatches.' + match_id: firestore.DELETE_FIELD
-    })
+    transaction.update(
+        user_stat_doc_ref, {"joinedMatches." + match_id: firestore.DELETE_FIELD}
+    )
 
     transaction_log = {"type": "user_left", "userId": user_id, "createdAt": timestamp}
 
     if payment_intent:
         # issue_refund
-        stripe.api_key = os.environ["STRIPE_KEY_TEST" if match["isTest"] else "STRIPE_KEY"]
+        stripe.api_key = os.environ[
+            "STRIPE_KEY_TEST" if match["isTest"] else "STRIPE_KEY"
+        ]
         refund_amount = _get_stripe_price_amount(match, "base")
-        refund = stripe.Refund.create(payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True)
+        refund = stripe.Refund.create(
+            payment_intent=payment_intent, amount=refund_amount, reverse_transfer=True
+        )
         transaction_log["paymentIntent"] = payment_intent
         transaction_log["refund_id"] = refund.id
         transaction_log["moneyRefunded"] = refund_amount
@@ -726,8 +928,15 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(transaction, mat
 
 
 @firestore.transactional
-def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, user_stat_doc_ref,
-                                             match_doc_ref, payment_intent, user_id, match_id):
+def _add_user_to_match_firestore_transaction(
+    transaction,
+    transactions_doc_ref,
+    user_stat_doc_ref,
+    match_doc_ref,
+    payment_intent,
+    user_id,
+    match_id,
+):
     timestamp = datetime.now(tz)
 
     match = match_doc_ref.get(transaction=transaction).to_dict()
@@ -737,38 +946,63 @@ def _add_user_to_match_firestore_transaction(transaction, transactions_doc_ref, 
         return
 
     # add user to list of going
-    transaction.set(match_doc_ref, {"going": {user_id: {"createdAt": timestamp, "payment_intent": payment_intent}}},
-                    merge=True)
+    transaction.set(
+        match_doc_ref,
+        {
+            "going": {
+                user_id: {"createdAt": timestamp, "payment_intent": payment_intent}
+            }
+        },
+        merge=True,
+    )
 
     # add match to user
-    transaction.set(user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True)
+    transaction.set(
+        user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True
+    )
 
     # record transaction
-    transaction.set(transactions_doc_ref, {"type": "joined", "userId": user_id, "createdAt": timestamp,
-                                           "paymentIntent": payment_intent})
+    transaction.set(
+        transactions_doc_ref,
+        {
+            "type": "joined",
+            "userId": user_id,
+            "createdAt": timestamp,
+            "paymentIntent": payment_intent,
+        },
+    )
 
 
 class MatchStatus(Enum):
     CANCELLED = "cancelled"  # match has been canceled (cancelation can triggered both before or after match start time)
     RATED = "rated"  # all players have rated and POTM has been determined
-    TO_RATE = "to_rate"  # match has been played and now is in rating window; users can rate
+    TO_RATE = (
+        "to_rate"  # match has been played and now is in rating window; users can rate
+    )
     PLAYING = "playing"  # we are in between match start and end time
     PRE_PLAYING = "pre_playing"  # we are before match start time and match has been confirmed (automatic cancellation didn't happen)
     OPEN = "open"  # match is in the future and is open for users to join
     UNPUBLISHED = "unpublished"  # match created but not visible to others
 
 
-def _get_matches_firestore(user_location=None, when=None, with_user=None, organized_by=None,
-                           radius_km=None, user_id=None, version=1):
+def _get_matches_firestore(
+    user_location=None,
+    when=None,
+    with_user=None,
+    organized_by=None,
+    radius_km=None,
+    user_id=None,
+    version=1,
+):
     sport_centers_cache = {}
 
-    query = app.db_client.collection('matches')
+    query = app.db_client.collection("matches")
 
     if with_user:
-        field_path = u"going.`{}`".format(with_user)
+        field_path = "going.`{}`".format(with_user)
         query = query.where(field_path, "!=", "undefined")
     if organized_by:
-        query = query.where('organizerId', "==", organized_by)
+        query = query.where("organizerId", "==", organized_by)
 
     res = {}
 
@@ -779,8 +1013,10 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             # time filter
             now = datetime.now(tz=pytz.UTC)
             is_outside_time_range = (
-                    when == "future" and raw_data["dateTime"] < now or
-                    when == "past" and raw_data["dateTime"] > now
+                when == "future"
+                and raw_data["dateTime"] < now
+                or when == "past"
+                and raw_data["dateTime"] > now
             )
 
             data = _format_match_data_v2(m.id, raw_data, version)
@@ -790,10 +1026,15 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             if radius_km:
                 radius_km = float(radius_km)
                 if "sportCenter" in data:
-                    match_location = (data["sportCenter"]["lat"], data["sportCenter"]["lng"])
+                    match_location = (
+                        data["sportCenter"]["lat"],
+                        data["sportCenter"]["lng"],
+                    )
                 else:
-                    sp = sport_centers_cache.get(data["sportCenterId"],
-                                                 sportcenters.get_sportcenter(data["sportCenterId"])[0]["data"])
+                    sp = sport_centers_cache.get(
+                        data["sportCenterId"],
+                        sportcenters.get_sportcenter(data["sportCenterId"])[0]["data"],
+                    )
                     sport_centers_cache[data["sportCenterId"]] = sp
                     match_location = (sp["lat"], sp["lng"])
 
@@ -804,15 +1045,27 @@ def _get_matches_firestore(user_location=None, when=None, with_user=None, organi
             skip_status = organized_by is None and data["status"] == "unpublished"
 
             # test filter
-            is_admin = user_id is not None and user_id in ["IwrZWBFb4LZl3Kto1V3oUKPnCni1",
-                                                           "bQHD0EM265V6GuSZuy1uQPHzb602"]
+            is_admin = user_id is not None and user_id in [
+                "IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+                "bQHD0EM265V6GuSZuy1uQPHzb602",
+            ]
             is_test = data.get("isTest", False)
             hide_test_match = is_test and not is_admin
 
             # private match
-            hide_private_match = with_user is None and organized_by is None and data.get("isPrivate", False)
+            hide_private_match = (
+                with_user is None
+                and organized_by is None
+                and data.get("isPrivate", False)
+            )
 
-            if not (skip_status or outside_radius or is_outside_time_range or hide_test_match or hide_private_match):
+            if not (
+                skip_status
+                or outside_radius
+                or is_outside_time_range
+                or hide_test_match
+                or hide_private_match
+            ):
                 res[m.id] = data
 
         except Exception as e:
@@ -831,31 +1084,47 @@ def _format_match_data_v2(match_id, match_data, version, add_organizer_info=Fals
 
     if version > 1:
         if "sportCenterId" in match_data:
-            sportcenter = sportcenters.get_sportcenter(match_data["sportCenterId"])[0]["data"]
+            sportcenter = sportcenters.get_sportcenter(match_data["sportCenterId"])[0][
+                "data"
+            ]
             sportcenter["placeId"] = match_data["sportCenterId"]
             match_data["sportCenter"] = sportcenter
 
     if add_organizer_info:
         try:
             if "payout_id" in match_data:
-                stripe.api_key = os.environ["STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"]
-                field_name = "stripeConnectedAccountId" if not match_data["isTest"] else "stripeConnectedAccountTestId"
-                stripe_connected_account_id = app.db_client.collection("users").document(match_data["organizerId"]) \
-                    .get(field_paths={field_name}).to_dict()[field_name]
-                info = stripe.Payout.retrieve(match_data["payout_id"], stripe_account=stripe_connected_account_id)
+                stripe.api_key = os.environ[
+                    "STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"
+                ]
+                field_name = (
+                    "stripeConnectedAccountId"
+                    if not match_data["isTest"]
+                    else "stripeConnectedAccountTestId"
+                )
+                stripe_connected_account_id = (
+                    app.db_client.collection("users")
+                    .document(match_data["organizerId"])
+                    .get(field_paths={field_name})
+                    .to_dict()[field_name]
+                )
+                info = stripe.Payout.retrieve(
+                    match_data["payout_id"], stripe_account=stripe_connected_account_id
+                )
                 match_data["payout"] = {
                     "status": info.status,
                     "amount": info.amount,
-                    "arrival_date": info.arrival_date
+                    "arrival_date": info.arrival_date,
                 }
         except Exception as e:
-            app.logger.error("Failed to get payout info {} for match {}".format(e, match_id))
+            app.logger.error(
+                "Failed to get payout info {} for match {}".format(e, match_id)
+            )
 
     # todo support legacy
     if "pricePerPerson" in match_data:
         match_data["price"] = {
             "basePrice": match_data["pricePerPerson"] - match_data.get("userFee", 50),
-            "userFee": match_data.get("userFee", 50)
+            "userFee": match_data.get("userFee", 50),
         }
 
     return match_data
@@ -896,7 +1165,12 @@ def _add_match_firestore(match_data):
 
     if "price" in match_data:
         # check if organizer can receive payments and if not do not publish yet
-        organizer_data = app.db_client.collection('users').document(match_data["organizerId"]).get().to_dict()
+        organizer_data = (
+            app.db_client.collection("users")
+            .document(match_data["organizerId"])
+            .get()
+            .to_dict()
+        )
 
         if organizer_data.get("stripe_status", "") != "onboarded":
             print("{} is False on organizer account: set match as unpublished")
@@ -904,43 +1178,55 @@ def _add_match_firestore(match_data):
             match_data["unpublished_reason"] = "organizer_not_onboarded"
 
         # create stripe object
-        stripe.api_key = os.environ["STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"]
+        stripe.api_key = os.environ[
+            "STRIPE_KEY_TEST" if match_data["isTest"] else "STRIPE_KEY"
+        ]
         response = stripe.Product.create(
-            name="Nutmeg Match - {} - {}".format(match_data["sportCenter"]["name"], match_data["dateTime"]),
-            description="Address: " + match_data["sportCenter"]["address"]
+            name="Nutmeg Match - {} - {}".format(
+                match_data["sportCenter"]["name"], match_data["dateTime"]
+            ),
+            description="Address: " + match_data["sportCenter"]["address"],
         )
         match_data["stripeProductId"] = response["id"]
         response = stripe.Price.create(
-            nickname='Standard Price',
+            nickname="Standard Price",
             unit_amount=_get_stripe_price_amount(match_data, "full"),
             currency="eur",
-            product=match_data["stripeProductId"]
+            product=match_data["stripeProductId"],
         )
         match_data["stripePriceId"] = response.id
 
-    doc_ref = app.db_client.collection('matches').document()
+    doc_ref = app.db_client.collection("matches").document()
     doc_ref.set(match_data)
 
     # POST CREATION
     # dynamic link
-    dynamic_link = build_dynamic_link('http://web.nutmegapp.com/match/{}'.format(doc_ref.id))
+    dynamic_link = build_dynamic_link(
+        "http://web.nutmegapp.com/match/{}".format(doc_ref.id)
+    )
 
-    app.db_client.collection("matches").document(doc_ref.id).update({
-        'dynamicLink': dynamic_link,
-    })
+    app.db_client.collection("matches").document(doc_ref.id).update(
+        {
+            "dynamicLink": dynamic_link,
+        }
+    )
 
     # schedule cancellation check if required
     if "cancelHoursBefore" in match_data:
-        cancellation_time = match_data["dateTime"] - timedelta(hours=match_data["cancelHoursBefore"])
+        cancellation_time = match_data["dateTime"] - timedelta(
+            hours=match_data["cancelHoursBefore"]
+        )
         schedule_app_engine_call(
             task_name="cancel_or_confirm_match_{}".format(doc_ref.id),
             endpoint="matches/{}/confirm".format(doc_ref.id),
-            date_time_to_execute=cancellation_time
+            date_time_to_execute=cancellation_time,
         )
         schedule_app_engine_call(
-            task_name="send_pre_cancellation_organizer_notification_{}".format(doc_ref.id),
+            task_name="send_pre_cancellation_organizer_notification_{}".format(
+                doc_ref.id
+            ),
             endpoint="matches/{}/tasks/precancellation".format(doc_ref.id),
-            date_time_to_execute=cancellation_time - timedelta(hours=1)
+            date_time_to_execute=cancellation_time - timedelta(hours=1),
         )
 
     # schedule close rating round
@@ -948,21 +1234,23 @@ def _add_match_firestore(match_data):
         task_name="close_rating_round_{}".format(doc_ref.id),
         endpoint="matches/{}/stats/freeze".format(doc_ref.id),
         method=tasks_v2.HttpMethod.POST,
-        date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(
-            days=1),
-        function_payload={}
+        date_time_to_execute=match_data["dateTime"]
+        + timedelta(minutes=int(match_data["duration"]))
+        + timedelta(days=1),
+        function_payload={},
     )
     # schedule notifications
     schedule_app_engine_call(
         task_name="send_prematch_notification_{}".format(doc_ref.id),
         endpoint="matches/{}/tasks/prematch".format(doc_ref.id),
-        date_time_to_execute=match_data["dateTime"] - timedelta(hours=1)
+        date_time_to_execute=match_data["dateTime"] - timedelta(hours=1),
     )
     schedule_app_engine_call(
         task_name="run_post_match_tasks_{}".format(doc_ref.id),
         endpoint="matches/{}/tasks/postmatch".format(doc_ref.id),
-        date_time_to_execute=match_data["dateTime"] + timedelta(minutes=int(match_data["duration"])) + timedelta(
-            hours=1)
+        date_time_to_execute=match_data["dateTime"]
+        + timedelta(minutes=int(match_data["duration"]))
+        + timedelta(hours=1),
     )
 
     return doc_ref.id
@@ -987,13 +1275,19 @@ def delete_tests():
 
 def _update_user_account(user_id, is_test, match_id, manage_payments):
     stripe.api_key = os.environ["STRIPE_KEY_TEST" if is_test else "STRIPE_KEY"]
-    organizer_id_field_name = "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    organizer_id_field_name = (
+        "stripeConnectedAccountId" if not is_test else "stripeConnectedAccountTestId"
+    )
 
     # add to created matches
-    user_doc_ref = app.db_client.collection('users').document(user_id)
-    organised_list_field_name = "created_matches" if not is_test else "created_test_matches"
+    user_doc_ref = app.db_client.collection("users").document(user_id)
+    organised_list_field_name = (
+        "created_matches" if not is_test else "created_test_matches"
+    )
     user_updates = {
-        "{}.{}".format(organised_list_field_name, match_id): firestore.firestore.SERVER_TIMESTAMP
+        "{}.{}".format(
+            organised_list_field_name, match_id
+        ): firestore.firestore.SERVER_TIMESTAMP
     }
 
     if manage_payments:
@@ -1009,20 +1303,14 @@ def _update_user_account(user_id, is_test, match_id, manage_payments):
                     "transfers": {"requested": True},
                 },
                 business_type="individual",
-                business_profile={
-                    "product_description": "Nutmeg football matches"
-                },
-                metadata={
-                    "userId": user_id
-                },
+                business_profile={"product_description": "Nutmeg football matches"},
+                metadata={"userId": user_id},
                 settings={
                     "payouts": {
                         "debit_negative_balances": True,
-                        "schedule": {
-                            "interval": "manual"
-                        }
+                        "schedule": {"interval": "manual"},
                     }
-                }
+                },
             )
             user_updates[organizer_id_field_name] = response.id
             user_updates["stripe_status"] = "needs_onboarding"
@@ -1032,12 +1320,14 @@ def _update_user_account(user_id, is_test, match_id, manage_payments):
 
 class MatchStats:
 
-    def __init__(self,
-                 match_id,
-                 date,
-                 going: List[str],
-                 raw_scores: Dict[str, Dict[str, float]],
-                 skills_scores: Dict[str, Dict[str, List[str]]]):
+    def __init__(
+        self,
+        match_id,
+        date,
+        going: List[str],
+        raw_scores: Dict[str, Dict[str, float]],
+        skills_scores: Dict[str, Dict[str, List[str]]],
+    ):
         self.id = match_id
         self.date = date
         self.going = going
@@ -1072,7 +1362,9 @@ class MatchStats:
     def compute_potms(self) -> List[str]:
         if len(self.user_scores) == 0:
             return []
-        sorted_user_scores = sorted(self.user_scores.items(), reverse=True, key=lambda x: x[1])
+        sorted_user_scores = sorted(
+            self.user_scores.items(), reverse=True, key=lambda x: x[1]
+        )
         potm_score = sorted_user_scores[0][1]
         potms = [x[0] for x in sorted_user_scores if x[1] == potm_score]
         # for now, one POTM
@@ -1081,10 +1373,12 @@ class MatchStats:
         return potms
 
     def __repr__(self):
-        return "{}\n{}\n{}".format(str(self.user_scores), str(self.potms), str(self.user_skills))
+        return "{}\n{}\n{}".format(
+            str(self.user_scores), str(self.potms), str(self.user_skills)
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     firebase_admin.initialize_app()
     app = Flask("test")
     app.db_client = firestore.client()
