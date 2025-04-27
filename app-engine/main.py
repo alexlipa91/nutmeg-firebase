@@ -10,7 +10,7 @@ load_dotenv(".env.local")
 
 def create_app():
     firebase_admin.initialize_app()
-    return _create_app(firestore.client())
+    return _create_app(firestore.client(), log_to_gcloud=False)
 
 
 app = create_app()
