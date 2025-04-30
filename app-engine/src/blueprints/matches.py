@@ -175,6 +175,67 @@ def add_rating_multi(match_id):
     return {}
 
 
+@bp.route("/<match_id>/awards/add", methods=["POST"])
+def add_match_awards(match_id):
+    """Add awards for a match. The request data should be a map of award_id -> user_id."""
+    request_data = flask.request.get_json()
+    
+    # Validate the match exists
+    match_doc = app.db_client.collection("matches").document(match_id).get()
+    if not match_doc.exists:
+        return {"error": "Match not found"}, 404
+    
+    match_data = match_doc.to_dict()
+    
+    # Validate the user is part of the match
+    if flask.g.uid not in match_data.get("going", {}):
+        return {"error": "User not authorized"}, 403
+        
+    # Store the awards
+    awards_update = {
+        "awards": {
+            award_id: {
+                "userId": user_id,
+                "votedBy": {flask.g.uid: firestore.SERVER_TIMESTAMP}
+            } for award_id, user_id in request_data.items()
+        }
+    }
+    
+    app.db_client.collection("ratings").document(match_id).set(awards_update, merge=True)
+    return {}, 200
+
+
+@bp.route("/<match_id>/awards", methods=["GET"])
+def get_match_awards(match_id):
+    """Get awards for a match with vote counts."""
+    # Get the match data
+    match_doc = app.db_client.collection("matches").document(match_id).get()
+    if not match_doc.exists:
+        return {"error": "Match not found"}, 404
+    
+    # Get the ratings document which contains awards
+    ratings_doc = app.db_client.collection("ratings").document(match_id).get()
+    if not ratings_doc.exists:
+        return {"data": {"awards": {}}}, 200
+    
+    ratings_data = ratings_doc.to_dict()
+    awards_data = ratings_data.get("awards", {})
+    
+    # Format the response with vote counts
+    formatted_awards = {}
+    for award_id, award_info in awards_data.items():
+        user_id = award_info.get("userId")
+        voted_by = award_info.get("votedBy", {})
+        
+        formatted_awards[award_id] = {
+            "userId": user_id,
+            "voteCount": len(voted_by),
+            "votedBy": list(voted_by.keys())
+        }
+    
+    return {"data": {"awards": formatted_awards}}, 200
+
+
 @bp.route("/<match_id>/ratings/to_vote", methods=["GET"])
 def get_still_to_vote(match_id):
     all_going = (
