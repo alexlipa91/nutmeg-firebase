@@ -110,6 +110,12 @@ def get_match(match_id, is_local=False):
             data["dateTime"] = datetime.strptime(
                 data["dateTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
             )
+
+            # update Cloud tasks related to the match
+            tasks_scheduled = app.db_client.collection("matches").document(match_id).get().to_dict().get("tasksScheduled", [])
+            for task_name in tasks_scheduled:
+                delete_task(task_name)
+            data["tasksScheduled"] = schedule_match_tasks(match_id, data)
         app.db_client.collection("matches").document(match_id).update(data)
         return {}, 200
 
@@ -179,29 +185,32 @@ def add_rating_multi(match_id):
 def add_match_awards(match_id):
     """Add awards for a match. The request data should be a map of award_id -> user_id."""
     request_data = flask.request.get_json()
-    
+
     # Validate the match exists
     match_doc = app.db_client.collection("matches").document(match_id).get()
     if not match_doc.exists:
         return {"error": "Match not found"}, 404
-    
+
     match_data = match_doc.to_dict()
-    
+
     # Validate the user is part of the match
     if flask.g.uid not in match_data.get("going", {}):
         return {"error": "User not authorized"}, 403
-        
+
     # Store the awards
     awards_update = {
         "awards": {
             award_id: {
                 "userId": user_id,
-                "votedBy": {flask.g.uid: firestore.SERVER_TIMESTAMP}
-            } for award_id, user_id in request_data.items()
+                "votedBy": {flask.g.uid: firestore.SERVER_TIMESTAMP},
+            }
+            for award_id, user_id in request_data.items()
         }
     }
-    
-    app.db_client.collection("ratings").document(match_id).set(awards_update, merge=True)
+
+    app.db_client.collection("ratings").document(match_id).set(
+        awards_update, merge=True
+    )
     return {}, 200
 
 
@@ -212,27 +221,27 @@ def get_match_awards(match_id):
     match_doc = app.db_client.collection("matches").document(match_id).get()
     if not match_doc.exists:
         return {"error": "Match not found"}, 404
-    
+
     # Get the ratings document which contains awards
     ratings_doc = app.db_client.collection("ratings").document(match_id).get()
     if not ratings_doc.exists:
         return {"data": {"awards": {}}}, 200
-    
+
     ratings_data = ratings_doc.to_dict()
     awards_data = ratings_data.get("awards", {})
-    
+
     # Format the response with vote counts
     formatted_awards = {}
     for award_id, award_info in awards_data.items():
         user_id = award_info.get("userId")
         voted_by = award_info.get("votedBy", {})
-        
+
         formatted_awards[award_id] = {
             "userId": user_id,
             "voteCount": len(voted_by),
-            "votedBy": list(voted_by.keys())
+            "votedBy": list(voted_by.keys()),
         }
-    
+
     return {"data": {"awards": formatted_awards}}, 200
 
 
@@ -1266,56 +1275,104 @@ def _add_match_firestore(match_data):
         "http://web.nutmegapp.com/match/{}".format(doc_ref.id)
     )
 
+    tasks_scheduled = schedule_match_tasks(doc_ref.id, match_data)
+
     app.db_client.collection("matches").document(doc_ref.id).update(
         {
             "dynamicLink": dynamic_link,
+            "tasksScheduled": tasks_scheduled,
         }
     )
+
+    return doc_ref.id
+
+
+def schedule_match_tasks(match_id, match_data):
+    tasks_scheduled = []
+    current_epoch_str = str(int(datetime.now(tz=pytz.UTC).timestamp()))
 
     # schedule cancellation check if required
     if "cancelHoursBefore" in match_data:
         cancellation_time = match_data["dateTime"] - timedelta(
             hours=match_data["cancelHoursBefore"]
         )
+        task_name = "cancel_or_confirm_match_{}_{}".format(match_id, current_epoch_str)
         schedule_app_engine_call(
-            task_name="cancel_or_confirm_match_{}".format(doc_ref.id),
-            endpoint="matches/{}/confirm".format(doc_ref.id),
+            task_name=task_name,
+            endpoint="matches/{}/confirm".format(match_id),
             date_time_to_execute=cancellation_time,
         )
+        tasks_scheduled.append(task_name)
+
+        task_name = "send_pre_cancellation_organizer_notification_{}_{}".format(match_id, current_epoch_str)
         schedule_app_engine_call(
-            task_name="send_pre_cancellation_organizer_notification_{}".format(
-                doc_ref.id
-            ),
-            endpoint="matches/{}/tasks/precancellation".format(doc_ref.id),
+            task_name=task_name,
+            endpoint="matches/{}/tasks/precancellation".format(match_id),
             date_time_to_execute=cancellation_time - timedelta(hours=1),
         )
+        tasks_scheduled.append(task_name)
 
     # schedule close rating round
+    task_name = "close_rating_round_{}_{}".format(match_id, current_epoch_str)
     schedule_app_engine_call(
-        task_name="close_rating_round_{}".format(doc_ref.id),
-        endpoint="matches/{}/stats/freeze".format(doc_ref.id),
+        task_name=task_name,
+        endpoint="matches/{}/stats/freeze".format(match_id),
         method=tasks_v2.HttpMethod.POST,
         date_time_to_execute=match_data["dateTime"]
         + timedelta(minutes=int(match_data["duration"]))
         + timedelta(days=1),
         function_payload={},
     )
+    tasks_scheduled.append(task_name)
+
     # schedule notifications
+    task_name = "send_prematch_notification_{}_{}".format(match_id, current_epoch_str)
     schedule_app_engine_call(
-        task_name="send_prematch_notification_{}".format(doc_ref.id),
-        endpoint="matches/{}/tasks/prematch".format(doc_ref.id),
+        task_name=task_name,
+        endpoint="matches/{}/tasks/prematch".format(match_id),
         date_time_to_execute=match_data["dateTime"] - timedelta(hours=1),
     )
+    tasks_scheduled.append(task_name)
+
+    task_name = "run_post_match_tasks_{}_{}".format(match_id, current_epoch_str)
     schedule_app_engine_call(
-        task_name="run_post_match_tasks_{}".format(doc_ref.id),
-        endpoint="matches/{}/tasks/postmatch".format(doc_ref.id),
+        task_name=task_name,
+        endpoint="matches/{}/tasks/postmatch".format(match_id),
         date_time_to_execute=match_data["dateTime"]
         + timedelta(minutes=int(match_data["duration"]))
         + timedelta(hours=1),
     )
+    tasks_scheduled.append(task_name)
 
-    return doc_ref.id
+    return tasks_scheduled
 
+def delete_task(task_name):
+    from google.cloud import tasks_v2
+    
+    try:
+        # Create a client
+        client = tasks_v2.CloudTasksClient()
+        
+        # Construct the fully qualified queue path
+        project = 'nutmeg-9099c'
+        location = 'europe-west1'
+        queue = 'match-notifications'
+        
+        # Format: projects/PROJECT_ID/locations/LOCATION_ID/queues/QUEUE_ID/tasks/TASK_ID
+        task_path = client.task_path(project, location, queue, task_name)
+        
+        try:
+            client.delete_task(name=task_path)
+            print(f"Successfully deleted task: {task_name}")
+        except Exception as e:
+            print(f"Failed to delete task {task_name}: {str(e)}")
+            # Don't raise the exception since the task might already be deleted or executed
+            pass
+            
+    except Exception as e:
+        print(f"Error setting up task deletion: {str(e)}")
+        # Don't raise the exception to allow the match update to proceed
+        pass
 
 def _get_stripe_price_amount(match_data, type):
     base_price = 0

@@ -18,16 +18,28 @@ def _serialize_dates(data):
     return data
 
 
-def schedule_app_engine_call(task_name, endpoint, date_time_to_execute,
-                             function_payload=None,
-                             method=tasks_v2.HttpMethod.GET):
+def delete_task(task_name):
+    client = tasks_v2.CloudTasksClient()
+    project = "nutmeg-9099c"
+    location = "europe-west1"
+    queue = "match-notifications"
+    client.delete_task(name=client.task_path(project, location, queue, task_name))
+
+
+def schedule_app_engine_call(
+    task_name,
+    endpoint,
+    date_time_to_execute,
+    function_payload=None,
+    method=tasks_v2.HttpMethod.GET,
+):
     # schedule task
     client = tasks_v2.CloudTasksClient()
 
-    project = 'nutmeg-9099c'
-    queue = 'match-notifications'
-    location = 'europe-west1'
-    url = f'https://nutmeg-9099c.ew.r.appspot.com/{endpoint}'
+    project = "nutmeg-9099c"
+    queue = "match-notifications"
+    location = "europe-west1"
+    url = f"https://nutmeg-9099c.ew.r.appspot.com/{endpoint}"
 
     parent = client.queue_path(project, location, queue)
 
@@ -43,7 +55,7 @@ def schedule_app_engine_call(task_name, endpoint, date_time_to_execute,
             "headers": {"Content-type": "application/json"},
         },
         "schedule_time": timestamp,
-        "name": client.task_path(project, location, queue, task_name)
+        "name": client.task_path(project, location, queue, task_name),
     }
     if function_payload:
         task["http_request"]["body"] = json.dumps({"data": function_payload}).encode()
@@ -58,15 +70,15 @@ def schedule_app_engine_call(task_name, endpoint, date_time_to_execute,
 def build_dynamic_link(link):
     resp = requests.post(
         url=f'https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key={environ["DYNAMIC_LINK_API_KEY"]}',
-        headers={'Content-Type': 'application/json'},
+        headers={"Content-Type": "application/json"},
         data=json.dumps(
             {
                 "dynamicLinkInfo": {
                     "domainUriPrefix": "https://nutmegapp.page.link",
                     "link": link,
                     "androidInfo": {
-                        "androidPackageName": 'com.nutmeg.nutmeg',
-                        "androidMinPackageVersionCode": '1',
+                        "androidPackageName": "com.nutmeg.nutmeg",
+                        "androidMinPackageVersionCode": "1",
                     },
                     "iosInfo": {
                         # "iosBundleId": "com.nutmeg.app",
@@ -92,7 +104,12 @@ def send_notification_to_users(db, title, body, data, users):
     # normal send
     tokens = set()
     for user_id in users:
-        user_data = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()
+        user_data = (
+            db.collection("users")
+            .document(user_id)
+            .get(field_paths={"tokens"})
+            .to_dict()
+        )
         if user_data:
             for t in user_data.get("tokens", []):
                 tokens.add(t)
@@ -105,7 +122,12 @@ def send_notification_to_users(db, title, body, data, users):
 
     tokens = set()
     for user_id in admins_to_forward:
-        admins_tokens = db.collection('users').document(user_id).get(field_paths={"tokens"}).to_dict()["tokens"]
+        admins_tokens = (
+            db.collection("users")
+            .document(user_id)
+            .get(field_paths={"tokens"})
+            .to_dict()["tokens"]
+        )
         for t in admins_tokens:
             tokens.add(t)
     _send_notification_to_tokens(f"[admin] {title}", body, data, list(tokens))
@@ -113,10 +135,7 @@ def send_notification_to_users(db, title, body, data, users):
 
 def _send_notification_to_tokens(title, body, data, tokens):
     message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
+        notification=messaging.Notification(title=title, body=body),
         data=data,
         tokens=tokens,
     )
@@ -126,26 +145,39 @@ def _send_notification_to_tokens(title, body, data, tokens):
             if not r.success:
                 print(f"Logging one error:\n{r.exception}")
                 break
-    print(f'Sent: {response.success_count}. Failed: {response.failure_count}')
+    print(f"Sent: {response.success_count}. Failed: {response.failure_count}")
 
 
 def update_leaderboard(app, leaderboard_id, match_list, updates_map):
     print(f"updating leaderboard {leaderboard_id}")
     cache_user_data = {u: _get_user_basic_data(app, u) for u in updates_map.keys()}
-    app.db_client.collection("leaderboards").document(leaderboard_id) \
-        .set({"entries": updates_map,
-              "cache_user_data": cache_user_data,
-              "matches": {match_id: True for match_id in match_list}},
-             merge=True)
+    app.db_client.collection("leaderboards").document(leaderboard_id).set(
+        {
+            "entries": updates_map,
+            "cache_user_data": cache_user_data,
+            "matches": {match_id: True for match_id in match_list},
+        },
+        merge=True,
+    )
+
 
 def _get_user_basic_data(app, u):
-    return app.db_client.collection("users").document(u).get(field_paths={"name", "image"}).to_dict()
+    return (
+        app.db_client.collection("users")
+        .document(u)
+        .get(field_paths={"name", "image"})
+        .to_dict()
+    )
+
 
 def send_test_notification(db):
     # send to admin a test notification
     send_notification_to_users(db, "test", "test", {}, ["IwrZWBFb4LZl3Kto1V3oUKPnCni1"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
+
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
+        "/Users/alessandrolipa/IdeaProjects/nutmeg-firebase/nutmeg-9099c-bf73c9d6b62a.json"
+    )
