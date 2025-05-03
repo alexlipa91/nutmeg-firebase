@@ -271,6 +271,48 @@ def get_still_to_vote(match_id):
     return {"data": {"users": list(to_vote)}}, 200
 
 
+@bp.route("/<match_id>/ratings/given", methods=["GET"])
+def get_ratings_given_by_user(match_id):
+    """Return the ratings given by the authenticated user for this match."""
+    ratings_doc = app.db_client.collection("ratings").document(match_id).get()
+    if not ratings_doc.exists:
+        return {"data": {}}, 200
+
+    ratings_data = ratings_doc.to_dict()
+    scores = ratings_data.get("scores", {})
+    user_id = flask.g.uid
+
+    # Find all ratings where this user is the rater
+    given = {}
+    for user_rated_id, raters in scores.items():
+        if user_id in raters:
+            given[user_rated_id] = raters[user_id]
+
+    return {"data": given}, 200
+
+
+@bp.route("/<match_id>/awards/given", methods=["GET"])
+def get_user_given_awards(match_id):
+    """Get awards given by the current user for this match."""
+    # Get the ratings document which contains awards
+    ratings_doc = app.db_client.collection("ratings").document(match_id).get()
+    if not ratings_doc.exists:
+        return {"data": {}}, 200
+
+    ratings_data = ratings_doc.to_dict()
+    awards_data = ratings_data.get("awards", {})
+    user_id = flask.g.uid
+
+    # Find all awards where this user has voted
+    given_awards = {}
+    for award_id, award_info in awards_data.items():
+        voted_by = award_info.get("votedBy", {})
+        if user_id in voted_by:
+            given_awards[award_id] = award_info["userId"]
+
+    return {"data": given_awards}, 200
+
+
 @bp.route("", methods=["POST"])
 def create_match():
     request_json = flask.request.get_json(silent=True)
