@@ -8,6 +8,12 @@ from flask import Blueprint, Flask
 from flask import current_app as app
 
 
+ADMIN_IDS = [
+    "IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+    "bQHD0EM265V6GuSZuy1uQPHzb602",
+    "sibAyjCmxRZpaxCqW3zjuD3gMKl2",
+]
+
 bp = Blueprint('users', __name__, url_prefix='/users')
 
 

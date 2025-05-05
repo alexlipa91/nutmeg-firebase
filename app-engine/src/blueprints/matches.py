@@ -20,7 +20,7 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
-from src.blueprints.users import _get_user_firestore, _get_users_collection_name
+from src.blueprints.users import ADMIN_IDS, _get_user_firestore, _get_users_collection_name
 from src.utils import (
     _serialize_dates,
     build_dynamic_link,
@@ -112,7 +112,13 @@ def get_match(match_id, is_local=False):
             )
 
             # update Cloud tasks related to the match
-            tasks_scheduled = app.db_client.collection("matches").document(match_id).get().to_dict().get("tasksScheduled", [])
+            tasks_scheduled = (
+                app.db_client.collection("matches")
+                .document(match_id)
+                .get()
+                .to_dict()
+                .get("tasksScheduled", [])
+            )
             for task_name in tasks_scheduled:
                 delete_task(task_name)
             data["tasksScheduled"] = schedule_match_tasks(match_id, data)
@@ -1116,19 +1122,21 @@ def _get_matches_firestore(
 
     res = {}
 
+    num_fetched_matches = 0
+
     for m in query.stream():
         try:
             raw_data = m.to_dict()
+            num_fetched_matches += 1
 
             # time filter
             now = datetime.now(tz=pytz.UTC)
-            is_outside_time_range = (
-                when == "future"
-                and raw_data["dateTime"] < now
-                or when == "past"
-                and raw_data["dateTime"] > now
-            )
-
+            is_outside_time_range = False
+            if when == "future":
+                is_outside_time_range = raw_data["dateTime"] < now
+            elif when == "past":
+                is_outside_time_range = raw_data["dateTime"] > now
+            
             data = _format_match_data_v2(m.id, raw_data, version)
 
             # location filter
@@ -1155,10 +1163,7 @@ def _get_matches_firestore(
             skip_status = organized_by is None and data["status"] == "unpublished"
 
             # test filter
-            is_admin = user_id is not None and user_id in [
-                "IwrZWBFb4LZl3Kto1V3oUKPnCni1",
-                "bQHD0EM265V6GuSZuy1uQPHzb602",
-            ]
+            is_admin = user_id is not None and user_id in ADMIN_IDS
             is_test = data.get("isTest", False)
             hide_test_match = is_test and not is_admin
 
@@ -1182,6 +1187,9 @@ def _get_matches_firestore(
             print("Failed to read match data with id '{}".format(m.id))
             traceback.print_exc()
 
+    app.logger.info(
+        "Fetched {} matches, {} matches filtered".format(num_fetched_matches, len(res))
+    )
     return res
 
 
@@ -1345,7 +1353,9 @@ def schedule_match_tasks(match_id, match_data):
         )
         tasks_scheduled.append(task_name)
 
-        task_name = "send_pre_cancellation_organizer_notification_{}_{}".format(match_id, current_epoch_str)
+        task_name = "send_pre_cancellation_organizer_notification_{}_{}".format(
+            match_id, current_epoch_str
+        )
         schedule_app_engine_call(
             task_name=task_name,
             endpoint="matches/{}/tasks/precancellation".format(match_id),
@@ -1387,21 +1397,22 @@ def schedule_match_tasks(match_id, match_data):
 
     return tasks_scheduled
 
+
 def delete_task(task_name):
     from google.cloud import tasks_v2
-    
+
     try:
         # Create a client
         client = tasks_v2.CloudTasksClient()
-        
+
         # Construct the fully qualified queue path
-        project = 'nutmeg-9099c'
-        location = 'europe-west1'
-        queue = 'match-notifications'
-        
+        project = "nutmeg-9099c"
+        location = "europe-west1"
+        queue = "match-notifications"
+
         # Format: projects/PROJECT_ID/locations/LOCATION_ID/queues/QUEUE_ID/tasks/TASK_ID
         task_path = client.task_path(project, location, queue, task_name)
-        
+
         try:
             client.delete_task(name=task_path)
             print(f"Successfully deleted task: {task_name}")
@@ -1409,11 +1420,12 @@ def delete_task(task_name):
             print(f"Failed to delete task {task_name}: {str(e)}")
             # Don't raise the exception since the task might already be deleted or executed
             pass
-            
+
     except Exception as e:
         print(f"Error setting up task deletion: {str(e)}")
         # Don't raise the exception to allow the match update to proceed
         pass
+
 
 def _get_stripe_price_amount(match_data, type):
     base_price = 0
