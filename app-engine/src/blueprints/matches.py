@@ -20,7 +20,11 @@ from firebase_admin import firestore
 from flask import Blueprint, Flask
 
 from statistics.stats_utils import UserUpdates
-from src.blueprints.users import ADMIN_IDS, _get_user_firestore, _get_users_collection_name
+from src.blueprints.users import (
+    ADMIN_IDS,
+    _get_user_firestore,
+    _get_users_collection_name,
+)
 from src.utils import (
     _serialize_dates,
     build_dynamic_link,
@@ -204,13 +208,12 @@ def add_match_awards(match_id):
         return {"error": "User not authorized"}, 403
 
     # Store the awards
+    # voter -> award_id -> user_id
     awards_update = {
-        "awards": {
-            award_id: {
-                "userId": user_id,
-                "votedBy": {flask.g.uid: firestore.SERVER_TIMESTAMP},
+        "awardVotes": {
+            flask.g.uid: {
+                award_id: user_id for award_id, user_id in request_data.items()
             }
-            for award_id, user_id in request_data.items()
         }
     }
 
@@ -306,15 +309,14 @@ def get_user_given_awards(match_id):
         return {"data": {}}, 200
 
     ratings_data = ratings_doc.to_dict()
-    awards_data = ratings_data.get("awards", {})
+    awards_data = ratings_data.get("awardVotes", {})
     user_id = flask.g.uid
 
     # Find all awards where this user has voted
     given_awards = {}
-    for award_id, award_info in awards_data.items():
-        voted_by = award_info.get("votedBy", {})
-        if user_id in voted_by:
-            given_awards[award_id] = award_info["userId"]
+
+    for award_id, user_id in awards_data.get(user_id, {}).items():
+        given_awards[award_id] = user_id
 
     return {"data": given_awards}, 200
 
