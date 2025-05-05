@@ -806,7 +806,7 @@ def freeze_match_stats(match_id, notify=True, only_for_user=None):
         print("Reducing updates to {}".format(updates))
 
     if error:
-        return {"error": error}
+        raise Exception(error)
 
     match_doc_ref = app.db_client.collection("matches").document(match_id)
     users_doc_ref = {
@@ -843,11 +843,9 @@ def freeze_match_stats(match_id, notify=True, only_for_user=None):
 
 def _freeze_match_stats(match_id, match_data):
     if not match_data:
-        return None, "not_found"
-    if datetime.now(dateutil.tz.UTC) < match_data["dateTime"] + timedelta(days=1):
-        return None, "too_early"
+        return None, "match_not_found"
     if match_data.get("cancelledAt", None):
-        return None, "cancelled"
+        return None, "match_cancelled"
 
     # ratings
     ratings_doc = app.db_client.collection("ratings").document(match_id).get()
