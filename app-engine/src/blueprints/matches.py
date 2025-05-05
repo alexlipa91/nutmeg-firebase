@@ -143,7 +143,11 @@ def get_ratings(match_id):
         resp = _get_ratings_data_legacy(match_id, ratings_data)
         return {"data": resp}, 200
 
-    resp = {"scores": ratings_data["finalScores"], "potms": ratings_data["finalPotms"]}
+    resp = {
+        "scores": ratings_data["finalScores"],
+        "potms": ratings_data["finalPotms"],
+        "awards": ratings_data.get("finalAwards", {}),
+    }
     return {"data": resp}, 200
 
 
