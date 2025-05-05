@@ -143,10 +143,15 @@ def get_ratings(match_id):
         resp = _get_ratings_data_legacy(match_id, ratings_data)
         return {"data": resp}, 200
 
+    distinct_score_voters = set()
+    for _, votes in ratings_data["scores"].items():
+        distinct_score_voters.update(votes.keys())
+    
     resp = {
         "scores": ratings_data["finalScores"],
         "potms": ratings_data["finalPotms"],
         "awards": ratings_data.get("finalAwards", {}),
+        "num_distinct_score_voters": len(distinct_score_voters),
     }
     return {"data": resp}, 200
 
@@ -158,6 +163,7 @@ def _get_ratings_data_legacy(match_id, ratings_data):
         [],
         ratings_data.get("scores", {}),
         ratings_data.get("skills", {}),
+        {}
     )
     return {"scores": match_stats.user_scores, "potms": match_stats.potms}
 
@@ -875,7 +881,7 @@ def _freeze_match_stats(match_id, match_data):
         {
             "finalScores": match_stats.user_scores,
             "finalPotms": match_stats.potms,
-            "finalAward": match_stats.award_votes,
+            "finalAwards": match_stats.award_votes,
         }
     )
 
@@ -1560,7 +1566,7 @@ class MatchStats:
     def compute_award_votes(self) -> Dict[str, str]:
         # award_id -> {voted_user -> number_of_votes}
         award_votes = {}
-        for voter, votes in self.award_votes.items():
+        for _, votes in self.award_votes.items():
             for award_id, user_id in votes.items():
                 # user can be None if they did not vote
                 if user_id is None:
@@ -1583,7 +1589,4 @@ if __name__ == "__main__":
     app.db_client = firestore.client()
 
     with app.app_context():
-        for i in range(10):
-            add_user_to_match("CL64PyDTrb003fqCOMre", "test_{}".format(i))
-        # add_user_to_match("0OsielJQ2ZCBIDatvB8h", user_id="5NeACflel8NNpGnNR3W2ikbPbtB2", local=True)
-        # print(freeze_match_stats("vbNkQCrS9imPXz9CgOuv"))
+        freeze_match_stats("CL64PyDTrb003fqCOMre")
