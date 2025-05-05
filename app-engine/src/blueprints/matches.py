@@ -38,23 +38,6 @@ bp = Blueprint("matches", __name__, url_prefix="/matches")
 tz = pytz.timezone("Europe/Amsterdam")
 
 
-# todo deprecate
-@bp.route("/", methods=["POST"])
-def matches():
-    request_json = flask.request.get_json(silent=True)
-
-    # when can have values: 'future', 'all'
-    when = request_json.get("when", None)
-    with_user = request_json.get("with_user", None)
-    organized_by = request_json.get("organized_by", None)
-
-    result = _get_matches_firestore(
-        when=when, with_user=with_user, organized_by=organized_by, version=1
-    )
-
-    return {"data": result}, 200
-
-
 @bp.route("", methods=["GET"])
 def get_matches():
     # when can have values: 'future', 'past'
@@ -66,13 +49,6 @@ def get_matches():
     radius_km = flask.request.args.get("radius_km", None)
     version = int(flask.request.args.get("version", 1))
     user_id = flask.g.uid
-
-    if lat == "null":
-        app.logger.error("received null as lat, fallback to Ams")
-        lat = 52.3676
-    if lng == "null":
-        app.logger.error("received null as lng, fallback to Ams")
-        lng = 4.9041
 
     result = _get_matches_firestore(
         user_location=(lat, lng),
@@ -146,7 +122,7 @@ def get_ratings(match_id):
     distinct_score_voters = set()
     for _, votes in ratings_data["scores"].items():
         distinct_score_voters.update(votes.keys())
-    
+
     resp = {
         "scores": ratings_data["finalScores"],
         "potms": ratings_data["finalPotms"],
@@ -163,7 +139,7 @@ def _get_ratings_data_legacy(match_id, ratings_data):
         [],
         ratings_data.get("scores", {}),
         ratings_data.get("skills", {}),
-        {}
+        {},
     )
     return {"scores": match_stats.user_scores, "potms": match_stats.potms}
 
@@ -1127,6 +1103,7 @@ def _get_matches_firestore(
     user_id=None,
     version=1,
 ):
+    now = datetime.now(tz=pytz.UTC)
     sport_centers_cache = {}
 
     query = app.db_client.collection("matches")
@@ -1136,6 +1113,10 @@ def _get_matches_firestore(
         query = query.where(field_path, "!=", "undefined")
     if organized_by:
         query = query.where("organizerId", "==", organized_by)
+    if when == "future":
+        query = query.where("dateTime", ">=", now)
+    elif when == "past":
+        query = query.where("dateTime", "<=", now)
 
     res = {}
 
@@ -1147,13 +1128,6 @@ def _get_matches_firestore(
             num_fetched_matches += 1
 
             # time filter
-            now = datetime.now(tz=pytz.UTC)
-            is_outside_time_range = False
-            if when == "future":
-                is_outside_time_range = raw_data["dateTime"] < now
-            elif when == "past":
-                is_outside_time_range = raw_data["dateTime"] > now
-            
             data = _format_match_data_v2(m.id, raw_data, version)
 
             # location filter
@@ -1194,7 +1168,6 @@ def _get_matches_firestore(
             if not (
                 skip_status
                 or outside_radius
-                or is_outside_time_range
                 or hide_test_match
                 or hide_private_match
             ):
