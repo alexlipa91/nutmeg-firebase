@@ -1253,9 +1253,10 @@ def _get_status(match_data):
     end = start + timedelta(minutes=match_data.get("duration", 60))
     rating_window_over = end + timedelta(days=1)
 
-    # cannot_leave_at  |  start  |  end  |  rating_window_over
-    if now > rating_window_over:
+    if "scoresComputedAt" in match_data:
         return MatchStatus.RATED
+
+    # cannot_leave_at  |  start  |  end  |  rating_window_over
     if now > end:
         return MatchStatus.TO_RATE
     if now > start:
