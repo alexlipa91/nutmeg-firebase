@@ -863,11 +863,16 @@ def _freeze_match_stats(match_id, match_data):
         match_data.get("going", {}),
         ratings_doc.to_dict().get("scores", {}) if ratings_doc.to_dict() else {},
         ratings_doc.to_dict().get("skills", {}) if ratings_doc.to_dict() else {},
+        ratings_doc.to_dict().get("awardVotes", {}) if ratings_doc.to_dict() else {},
     )
 
     # store final scores
     app.db_client.collection("ratings").document(match_id).update(
-        {"finalScores": match_stats.user_scores, "finalPotms": match_stats.potms}
+        {
+            "finalScores": match_stats.user_scores,
+            "finalPotms": match_stats.potms,
+            "finalAward": match_stats.award_votes,
+        }
     )
 
     # score
@@ -1500,16 +1505,19 @@ class MatchStats:
         going: List[str],
         raw_scores: Dict[str, Dict[str, float]],
         skills_scores: Dict[str, Dict[str, List[str]]],
+        # voter_id -> {award_id -> voted_user_id}
+        award_votes: Dict[str, Dict[str, str]],
     ):
         self.id = match_id
         self.date = date
         self.going = going
         self.raw_scores = raw_scores
         self.raw_skill_scores = skills_scores
-
+        self.award_votes = award_votes
         self.user_scores = self.compute_user_scores()
         self.potms = self.compute_potms()
         self.user_skills = self.compute_user_skills()
+        self.award_votes = self.compute_award_votes()
 
     def compute_user_scores(self) -> Dict[str, float]:
         user_scores = {}
@@ -1544,6 +1552,20 @@ class MatchStats:
         if len(potms) > 1:
             return []
         return potms
+
+    def compute_award_votes(self) -> Dict[str, str]:
+        # award_id -> {voted_user -> number_of_votes}
+        award_votes = {}
+        for voter, votes in self.award_votes.items():
+            for award_id, user_id in votes.items():
+                # user can be None if they did not vote
+                if user_id is None:
+                    continue
+                if award_id not in award_votes:
+                    award_votes[award_id] = {}
+                current_votes = award_votes[award_id].get(user_id, 0)
+                award_votes[award_id][user_id] = current_votes + 1
+        return award_votes
 
     def __repr__(self):
         return "{}\n{}\n{}".format(
