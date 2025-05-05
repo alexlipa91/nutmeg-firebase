@@ -100,9 +100,10 @@ def build_dynamic_link(link):
     return json.loads(resp.text)["shortLink"]
 
 
-def send_notification_to_users(db, title, body, data, users):
-    # normal send
-    tokens = set()
+def send_notification_to_users(flask_app, title, body, data, users):
+    db = flask_app.db_client
+    logger = flask_app.logger
+    
     for user_id in users:
         user_data = (
             db.collection("users")
@@ -110,42 +111,17 @@ def send_notification_to_users(db, title, body, data, users):
             .get(field_paths={"tokens"})
             .to_dict()
         )
-        if user_data:
-            for t in user_data.get("tokens", []):
-                tokens.add(t)
-    _send_notification_to_tokens(title, body, data, list(tokens))
-
-    # forward to admins
-    admins = ["IwrZWBFb4LZl3Kto1V3oUKPnCni1", "bQHD0EM265V6GuSZuy1uQPHzb602"]
-    admins_to_forward = set()
-    [admins_to_forward.add(a) for a in admins if a not in users]
-
-    tokens = set()
-    for user_id in admins_to_forward:
-        admins_tokens = (
-            db.collection("users")
-            .document(user_id)
-            .get(field_paths={"tokens"})
-            .to_dict()["tokens"]
-        )
-        for t in admins_tokens:
-            tokens.add(t)
-    _send_notification_to_tokens(f"[admin] {title}", body, data, list(tokens))
-
-
-def _send_notification_to_tokens(title, body, data, tokens):
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(title=title, body=body),
-        data=data,
-        tokens=tokens,
-    )
-    response = messaging.send_multicast(message)
-    if response.failure_count > 0:
-        for r in response.responses:
-            if not r.success:
-                print(f"Logging one error:\n{r.exception}")
-                break
-    print(f"Sent: {response.success_count}. Failed: {response.failure_count}")
+        for t in user_data.get("tokens", []):
+            try:
+                message = messaging.Message(
+                    notification=messaging.Notification(title=title, body=body),
+                    data=data,
+                    token=t,
+                )
+                response = messaging.send(message)
+                logger.info(f"Notification to {t} sent with response {response}")
+            except Exception as e:
+                logger.error(f"Error sending notification to {t}: {e}")
 
 
 def update_leaderboard(app, leaderboard_id, match_list, updates_map):
@@ -170,9 +146,11 @@ def _get_user_basic_data(app, u):
     )
 
 
-def send_test_notification(db):
+def send_test_notification(app):
     # send to admin a test notification
-    send_notification_to_users(db, "test", "test", {}, ["IwrZWBFb4LZl3Kto1V3oUKPnCni1"])
+    send_notification_to_users(
+        app, "test", "test", {}, ["IwrZWBFb4LZl3Kto1V3oUKPnCni1"]
+    )
 
 
 if __name__ == "__main__":
