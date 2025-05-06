@@ -1,10 +1,12 @@
+from dataclasses import dataclass
 import os
 import random
 import traceback
 from collections import namedtuple
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Optional
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 import dateutil.parser
 import firebase_admin
@@ -35,6 +37,7 @@ from src.utils import (
 from flask import current_app as app
 
 bp = Blueprint("matches", __name__, url_prefix="/matches")
+bp_v2 = Blueprint("matches_v2", __name__, url_prefix="/v2/matches")
 tz = pytz.timezone("Europe/Amsterdam")
 
 
@@ -62,22 +65,97 @@ def get_matches():
 
     return {"data": result}, 200
 
-# TODO finish it
-@bp.route("/past", methods=["GET"])
-def get_user_past_matches():
-    return {"data": get_user_past_matches(flask.g.uid)}, 200
+
+class MatchesTimeFilter(Enum):
+    PAST = "past"
+    FUTURE = "future"
 
 
-def get_user_past_matches(user_id: str):
+@staticmethod
+def from_arg(arg: Optional[str]) -> Optional["MatchesTimeFilter"]:
+    if arg is None:
+        return None
+    if arg == "past":
+        return MatchesTimeFilter.PAST
+    elif arg == "future":
+        return MatchesTimeFilter.FUTURE
+    else:
+        raise ValueError(f"Invalid time filter: {arg}")
+
+
+@dataclass
+class LocationFilter:
+    city: str
+    country: str
+
+    @staticmethod
+    def from_arg(arg: Optional[str]) -> Optional["LocationFilter"]:
+        if arg is None:
+            return None
+        city, country = arg.split(",")
+        return LocationFilter(city=city, country=country)
+
+
+def _get_matches(
+    time_filter: Optional[MatchesTimeFilter] = None,
+    location_filter: Optional[LocationFilter] = None,
+):
     now = datetime.now(tz=pytz.UTC)
 
     query = app.db_client.collection("matches")
-    query = query.where("going.`{}`".format(user_id), "!=", "undefined")
-    query = query.where("dateTime", "<=", now)
+    if time_filter == MatchesTimeFilter.PAST:
+        query = query.where(filter=FieldFilter("dateTime", "<=", now))
+    elif time_filter == MatchesTimeFilter.FUTURE:
+        query = query.where(filter=FieldFilter("dateTime", ">", now))
+
+    if location_filter:
+        query = query.where(
+            filter=FieldFilter("sportCenter.city", "==", location_filter.city)
+        )
+        query = query.where(
+            filter=FieldFilter("sportCenter.country", "==", location_filter.country)
+        )
+
+    return _run_match_query(query)
+
+
+def _get_user_matches(user_id: str, time_filter: Optional[MatchesTimeFilter]):
+    now = datetime.now(tz=pytz.UTC)
+
+    query = app.db_client.collection("matches")
+    query = query.where(filter=FieldFilter("goingPlayers", "array_contains", user_id))
+
+    if time_filter == MatchesTimeFilter.PAST:
+        query = query.where(filter=FieldFilter("dateTime", "<=", now))
+    elif time_filter == MatchesTimeFilter.FUTURE:
+        query = query.where(filter=FieldFilter("dateTime", ">", now))
 
     if user_id not in ADMIN_IDS:
-        query = query.where("isTest", "==", False)
+        query = query.where(filter=FieldFilter("isTest", "==", False))
 
+    return _run_match_query(query)
+
+
+def _get_organizer_matches(
+    organizer_id: str, time_filter: Optional[MatchesTimeFilter] = None
+):
+    now = datetime.now(tz=pytz.UTC)
+
+    query = app.db_client.collection("matches")
+    query = query.where(filter=FieldFilter("organizerId", "==", organizer_id))
+
+    if time_filter == MatchesTimeFilter.PAST:
+        query = query.where(filter=FieldFilter("dateTime", "<=", now))
+    elif time_filter == MatchesTimeFilter.FUTURE:
+        query = query.where(filter=FieldFilter("dateTime", ">", now))
+
+    if organizer_id not in ADMIN_IDS:
+        query = query.where(filter=FieldFilter("isTest", "==", False))
+
+    return _run_match_query(query)
+
+
+def _run_match_query(query):
     res = {}
 
     num_fetched_matches = 0
@@ -87,8 +165,7 @@ def get_user_past_matches(user_id: str):
             raw_data = m.to_dict()
             num_fetched_matches += 1
 
-            # time filter
-            data = _format_match_data_v2(m.id, raw_data)
+            data = _format_match_data_v3(raw_data)
 
             # status filter
             skip_status = "organized_by" in data and data["status"] == "unpublished"
@@ -105,7 +182,44 @@ def get_user_past_matches(user_id: str):
     )
     return res
 
+## V2 API
 
+@bp_v2.route("", methods=["GET"])
+def get_matches():
+    time_filter: Optional[MatchesTimeFilter] = from_arg(
+        flask.request.args.get("time_filter", None)
+    )
+    location_filter: Optional[LocationFilter] = from_arg(
+        flask.request.args.get("location", None)
+    )
+    return {
+        "data": _get_matches(time_filter=time_filter, location_filter=location_filter)
+    }, 200
+
+
+@bp_v2.route("/user", methods=["GET"])
+def get_user_matches():
+    time_filter: Optional[MatchesTimeFilter] = from_arg(
+        flask.request.args.get("time_filter", None)
+    )
+    return {
+        "data": _get_user_matches(user_id=flask.g.uid, time_filter=time_filter)
+    }, 200
+
+
+@bp_v2.route("/organizer", methods=["GET"])
+def get_organizer_matches():
+    time_filter: Optional[MatchesTimeFilter] = from_arg(
+        flask.request.args.get("time_filter", None)
+    )
+    return {
+        "data": _get_organizer_matches(
+            organizer_id=flask.g.uid, time_filter=time_filter
+        )
+    }, 200
+
+
+## V1 API
 @bp.route("/<match_id>", methods=["GET", "POST"])
 def get_match(match_id, is_local=False):
     if is_local:
@@ -1054,7 +1168,9 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(
 
     # remove if user is in going
     transaction.update(match_doc_ref, {"going." + user_id: firestore.DELETE_FIELD})
-    transaction.update(match_doc_ref, {"goingPlayers": firestore.ArrayRemove([user_id])})
+    transaction.update(
+        match_doc_ref, {"goingPlayers": firestore.ArrayRemove([user_id])}
+    )
     # remove match in user list
     transaction.update(
         user_stat_doc_ref, {"joinedMatches." + match_id: firestore.DELETE_FIELD}
@@ -1104,7 +1220,7 @@ def _add_user_to_match_firestore_transaction(
             "going": {
                 user_id: {"createdAt": timestamp, "payment_intent": payment_intent}
             },
-            "goingPlayers": firestore.ArrayUnion([user_id])
+            "goingPlayers": firestore.ArrayUnion([user_id]),
         },
         merge=True,
     )
@@ -1158,9 +1274,9 @@ def _get_matches_firestore(
     if organized_by:
         query = query.where("organizerId", "==", organized_by)
     if when == "future":
-        query = query.where("dateTime", ">=", now)
+        query = query.where(filter=("dateTime", ">=", now))
     elif when == "past":
-        query = query.where("dateTime", "<=", now)
+        query = query.where(filter=("dateTime", "<=", now))
 
     res = {}
 
@@ -1173,7 +1289,7 @@ def _get_matches_firestore(
 
             # time filter
             data = _format_match_data_v2(m.id, raw_data, version)
-            
+
             # FIXME use index instead
             if with_user:
                 if with_user not in data.get("goingPlayers", []):
@@ -1229,6 +1345,7 @@ def _get_matches_firestore(
     return res
 
 
+# DEPRECATED
 def _format_match_data_v2(match_id, match_data, version, add_organizer_info=False):
     # add status
     match_data["status"] = _get_status(match_data).value
@@ -1281,6 +1398,14 @@ def _format_match_data_v2(match_id, match_data, version, add_organizer_info=Fals
             "userFee": match_data.get("userFee", 50),
         }
 
+    return match_data
+
+
+def _format_match_data_v3(match_data):
+    # add status
+    match_data["status"] = _get_status(match_data).value
+    # serialize dates
+    match_data = _serialize_dates(match_data)
     return match_data
 
 
@@ -1608,24 +1733,8 @@ if __name__ == "__main__":
     app.db_client = firestore.client()
 
     with app.app_context():
-        for m in app.db_client.collection("matches").stream():
-            data = m.to_dict()
-            if "going" not in data:
-                continue
-            
-            going_players = []
-            
-            going = data["going"]
-            for key, value in going.items():
-                user_id = key
-                created_at = data.get("createdAt")
-                payment_intent = data.get("paymentIntent")
-                going_players.append(user_id)
-            
-            app.db_client.collection("matches").document(m.id).update(
-                {
-                    "goingPlayers": going_players
-                }
-            )
-        # print(get_user_past_matches("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
-        # freeze_match_stats("CL64PyDTrb003fqCOMre")
+        m = _get_organizer_matches(
+            # time_filter=MatchesTimeFilter.FUTURE,
+            organizer_id="IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+        )
+        print(len(m))
