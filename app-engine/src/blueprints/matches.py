@@ -99,6 +99,7 @@ class LocationFilter:
 def _get_matches(
     time_filter: Optional[MatchesTimeFilter] = None,
     location_filter: Optional[LocationFilter] = None,
+    user_id: Optional[str] = None,
 ):
     now = datetime.now(tz=pytz.UTC)
 
@@ -116,7 +117,7 @@ def _get_matches(
             filter=FieldFilter("sportCenter.country", "==", location_filter.country)
         )
 
-    return _run_match_query(query)
+    return _run_match_query(query, user_id=user_id)
 
 
 def _get_user_matches(user_id: str, time_filter: Optional[MatchesTimeFilter]):
@@ -130,10 +131,7 @@ def _get_user_matches(user_id: str, time_filter: Optional[MatchesTimeFilter]):
     elif time_filter == MatchesTimeFilter.FUTURE:
         query = query.where(filter=FieldFilter("dateTime", ">", now))
 
-    if user_id not in ADMIN_IDS:
-        query = query.where(filter=FieldFilter("isTest", "==", False))
-
-    return _run_match_query(query)
+    return _run_match_query(query, user_id=user_id)
 
 
 def _get_organizer_matches(
@@ -152,10 +150,10 @@ def _get_organizer_matches(
     if organizer_id not in ADMIN_IDS:
         query = query.where(filter=FieldFilter("isTest", "==", False))
 
-    return _run_match_query(query)
+    return _run_match_query(query, user_id=organizer_id)
 
 
-def _run_match_query(query):
+def _run_match_query(query, user_id: str):
     res = {}
 
     num_fetched_matches = 0
@@ -172,6 +170,9 @@ def _run_match_query(query):
             if skip_status:
                 continue
 
+            if user_id not in ADMIN_IDS and data.get("isTest", False):
+                continue
+
             res[m.id] = data
         except Exception as e:
             print("Failed to read match data with id '{}".format(m.id))
@@ -182,7 +183,9 @@ def _run_match_query(query):
     )
     return res
 
+
 ## V2 API
+
 
 @bp_v2.route("", methods=["GET"])
 def get_matches():
@@ -1733,17 +1736,8 @@ if __name__ == "__main__":
     app.db_client = firestore.client()
 
     with app.app_context():
-        app.db_client.collection("matches").document("fgoS7LrcPxYIJy3k7fNQ").update({
-            "sportCenter.name": "test",
-            "sportCenter.address": "test",
-            "sportCenter.city": "test",
-            "sportCenter.country": "test",
-            "sportCenter.lat": 1.0,
-            "sportCenter.lng": 1.0,
-        })
-        
-        m = _get_organizer_matches(
-            # time_filter=MatchesTimeFilter.FUTURE,
-            organizer_id="IwrZWBFb4LZl3Kto1V3oUKPnCni1",
+        m = _get_user_matches(
+            user_id="VCRshYa2BWYohWIJJ4UjBUMctH53",
+            time_filter=MatchesTimeFilter.PAST,
         )
         print(len(m))
