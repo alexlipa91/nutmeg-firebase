@@ -62,6 +62,49 @@ def get_matches():
 
     return {"data": result}, 200
 
+# TODO finish it
+@bp.route("/past", methods=["GET"])
+def get_user_past_matches():
+    return {"data": get_user_past_matches(flask.g.uid)}, 200
+
+
+def get_user_past_matches(user_id: str):
+    now = datetime.now(tz=pytz.UTC)
+
+    query = app.db_client.collection("matches")
+    query = query.where("going.`{}`".format(user_id), "!=", "undefined")
+    query = query.where("dateTime", "<=", now)
+
+    if user_id not in ADMIN_IDS:
+        query = query.where("isTest", "==", False)
+
+    res = {}
+
+    num_fetched_matches = 0
+
+    for m in query.stream():
+        try:
+            raw_data = m.to_dict()
+            num_fetched_matches += 1
+
+            # time filter
+            data = _format_match_data_v2(m.id, raw_data)
+
+            # status filter
+            skip_status = "organized_by" in data and data["status"] == "unpublished"
+            if skip_status:
+                continue
+
+            res[m.id] = data
+        except Exception as e:
+            print("Failed to read match data with id '{}".format(m.id))
+            traceback.print_exc()
+
+    app.logger.info(
+        "Fetched {} matches, {} returned".format(num_fetched_matches, len(res))
+    )
+    return res
+
 
 @bp.route("/<match_id>", methods=["GET", "POST"])
 def get_match(match_id, is_local=False):
@@ -1011,7 +1054,7 @@ def _remove_user_from_match_stripe_refund_firestore_transaction(
 
     # remove if user is in going
     transaction.update(match_doc_ref, {"going." + user_id: firestore.DELETE_FIELD})
-
+    transaction.update(match_doc_ref, {"goingPlayers": firestore.ArrayRemove([user_id])})
     # remove match in user list
     transaction.update(
         user_stat_doc_ref, {"joinedMatches." + match_id: firestore.DELETE_FIELD}
@@ -1060,7 +1103,8 @@ def _add_user_to_match_firestore_transaction(
         {
             "going": {
                 user_id: {"createdAt": timestamp, "payment_intent": payment_intent}
-            }
+            },
+            "goingPlayers": firestore.ArrayUnion([user_id])
         },
         merge=True,
     )
@@ -1108,9 +1152,9 @@ def _get_matches_firestore(
 
     query = app.db_client.collection("matches")
 
-    if with_user:
-        field_path = "going.`{}`".format(with_user)
-        query = query.where(field_path, "!=", "undefined")
+    # FIXME wait for index
+    # if with_user:
+    #     query = query.where("goingPlayers", "array_contains", with_user)
     if organized_by:
         query = query.where("organizerId", "==", organized_by)
     if when == "future":
@@ -1129,6 +1173,11 @@ def _get_matches_firestore(
 
             # time filter
             data = _format_match_data_v2(m.id, raw_data, version)
+            
+            # FIXME use index instead
+            if with_user:
+                if with_user not in data.get("goingPlayers", []):
+                    continue
 
             # location filter
             outside_radius = False
@@ -1166,10 +1215,7 @@ def _get_matches_firestore(
             )
 
             if not (
-                skip_status
-                or outside_radius
-                or hide_test_match
-                or hide_private_match
+                skip_status or outside_radius or hide_test_match or hide_private_match
             ):
                 res[m.id] = data
 
@@ -1562,4 +1608,24 @@ if __name__ == "__main__":
     app.db_client = firestore.client()
 
     with app.app_context():
-        freeze_match_stats("CL64PyDTrb003fqCOMre")
+        for m in app.db_client.collection("matches").stream():
+            data = m.to_dict()
+            if "going" not in data:
+                continue
+            
+            going_players = []
+            
+            going = data["going"]
+            for key, value in going.items():
+                user_id = key
+                created_at = data.get("createdAt")
+                payment_intent = data.get("paymentIntent")
+                going_players.append(user_id)
+            
+            app.db_client.collection("matches").document(m.id).update(
+                {
+                    "goingPlayers": going_players
+                }
+            )
+        # print(get_user_past_matches("IwrZWBFb4LZl3Kto1V3oUKPnCni1"))
+        # freeze_match_stats("CL64PyDTrb003fqCOMre")
