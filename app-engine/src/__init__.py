@@ -22,6 +22,7 @@ def _create_app(db, log_to_gcloud=True):
     app.db_client = db
 
     app.register_blueprint(matches.bp)
+    app.register_blueprint(matches.bp_v2)
     app.register_blueprint(payments.bp)
     app.register_blueprint(users.bp)
     app.register_blueprint(sportcenters.bp)

@@ -71,16 +71,16 @@ class MatchesTimeFilter(Enum):
     FUTURE = "future"
 
 
-@staticmethod
-def from_arg(arg: Optional[str]) -> Optional["MatchesTimeFilter"]:
-    if arg is None:
-        return None
-    if arg == "past":
-        return MatchesTimeFilter.PAST
-    elif arg == "future":
-        return MatchesTimeFilter.FUTURE
-    else:
-        raise ValueError(f"Invalid time filter: {arg}")
+    @staticmethod
+    def from_arg(arg: Optional[str]) -> Optional["MatchesTimeFilter"]:
+        if arg is None:
+            return None
+        if arg == "past":
+            return MatchesTimeFilter.PAST
+        elif arg == "future":
+            return MatchesTimeFilter.FUTURE
+        else:
+            raise ValueError(f"Invalid time filter: {arg}")
 
 
 @dataclass
@@ -186,10 +186,10 @@ def _run_match_query(query):
 
 @bp_v2.route("", methods=["GET"])
 def get_matches():
-    time_filter: Optional[MatchesTimeFilter] = from_arg(
-        flask.request.args.get("time_filter", None)
+    time_filter: Optional[MatchesTimeFilter] = MatchesTimeFilter.from_arg(
+        flask.request.args.get("when", None)
     )
-    location_filter: Optional[LocationFilter] = from_arg(
+    location_filter: Optional[LocationFilter] = LocationFilter.from_arg(
         flask.request.args.get("location", None)
     )
     return {
@@ -199,8 +199,8 @@ def get_matches():
 
 @bp_v2.route("/user", methods=["GET"])
 def get_user_matches():
-    time_filter: Optional[MatchesTimeFilter] = from_arg(
-        flask.request.args.get("time_filter", None)
+    time_filter: Optional[MatchesTimeFilter] = MatchesTimeFilter.from_arg(
+        flask.request.args.get("when", None)
     )
     return {
         "data": _get_user_matches(user_id=flask.g.uid, time_filter=time_filter)
@@ -209,8 +209,8 @@ def get_user_matches():
 
 @bp_v2.route("/organizer", methods=["GET"])
 def get_organizer_matches():
-    time_filter: Optional[MatchesTimeFilter] = from_arg(
-        flask.request.args.get("time_filter", None)
+    time_filter: Optional[MatchesTimeFilter] = MatchesTimeFilter.from_arg(
+        flask.request.args.get("when", None)
     )
     return {
         "data": _get_organizer_matches(
@@ -1733,6 +1733,15 @@ if __name__ == "__main__":
     app.db_client = firestore.client()
 
     with app.app_context():
+        app.db_client.collection("matches").document("fgoS7LrcPxYIJy3k7fNQ").update({
+            "sportCenter.name": "test",
+            "sportCenter.address": "test",
+            "sportCenter.city": "test",
+            "sportCenter.country": "test",
+            "sportCenter.lat": 1.0,
+            "sportCenter.lng": 1.0,
+        })
+        
         m = _get_organizer_matches(
             # time_filter=MatchesTimeFilter.FUTURE,
             organizer_id="IwrZWBFb4LZl3Kto1V3oUKPnCni1",
