@@ -117,7 +117,11 @@ def _get_matches(
             filter=FieldFilter("sportCenter.country", "==", location_filter.country)
         )
 
-    return _run_match_query(query, user_id=user_id)
+    res = _run_match_query(query, user_id=user_id)
+    logging.info(
+        f"Queried matches time filter {time_filter}, location filter {location_filter}: {len(res)} matches"
+    )
+    return res
 
 
 def _get_user_matches(user_id: str, time_filter: Optional[MatchesTimeFilter]):
@@ -131,7 +135,9 @@ def _get_user_matches(user_id: str, time_filter: Optional[MatchesTimeFilter]):
     elif time_filter == MatchesTimeFilter.FUTURE:
         query = query.where(filter=FieldFilter("dateTime", ">", now))
 
-    return _run_match_query(query, user_id=user_id)
+    res = _run_match_query(query, user_id=user_id)
+    logging.info(f"Queried user matches time filter {time_filter}: {len(res)} matches")
+    return res
 
 
 def _get_organizer_matches(
@@ -150,7 +156,11 @@ def _get_organizer_matches(
     if organizer_id not in ADMIN_IDS:
         query = query.where(filter=FieldFilter("isTest", "==", False))
 
-    return _run_match_query(query, user_id=organizer_id)
+    res = _run_match_query(query, user_id=organizer_id)
+    logging.info(
+        f"Queried organizer matches time filter {time_filter}: {len(res)} matches"
+    )
+    return res
 
 
 def _run_match_query(query, user_id: str):

@@ -1,9 +1,7 @@
-import json
 import logging
-import sys
+from firebase_admin import firestore
 
 import flask
-import google.cloud.logging
 from firebase_admin import auth
 from flask import request
 from flask_cors import CORS
@@ -20,28 +18,13 @@ from src.blueprints import (
     payments,
     leaderboard,
 )
-from google.cloud.logging_v2.handlers import StructuredLogHandler
 
 
-class UserIdFilter(logging.Filter):
-    def filter(self, record):
-        # Add user_id as a custom attribute for structured logging
-        record.user_id = getattr(flask.g, "uid", "anonymous")
-        return True
-
-
-def _create_app(db):
-    app = flask.Flask(__name__)
-    
-    # Setup basic logging
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger()
-    # Replace default handler with structured one
-    handler = StructuredLogHandler()
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
-
+def _create_app():
     logging.info("Starting app")
+
+    app: flask.Flask = flask.Flask(__name__)
+    db: firestore.client = firestore.client()
     app.db_client = db
 
     app.register_blueprint(matches.bp)
