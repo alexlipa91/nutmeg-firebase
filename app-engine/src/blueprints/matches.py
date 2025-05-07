@@ -190,9 +190,6 @@ def _run_match_query(query, user_id: str):
 
 @bp_v2.route("", methods=["GET"])
 def get_matches():
-    print("print: called get_matches")
-    logging.info("logging: called get_matches")
-    app.logger.info("app.logger: called get_matches")
     time_filter: Optional[MatchesTimeFilter] = MatchesTimeFilter.from_arg(
         flask.request.args.get("when", None)
     )
@@ -882,7 +879,7 @@ def _cancel_match_firestore_transactional(
                 )
                 refund_id = refund.id
             except Exception as e:
-                app.logger.error("Failed to send refund to {}".format(u))
+                logging.error("Failed to send refund to {}".format(u), e)
                 traceback.print_exc()
 
             # record transaction
@@ -991,8 +988,11 @@ def freeze_match_stats(match_id, notify=True, only_for_user=None):
                 match_data.get("sportCenter", None),
             )
         except Exception as e:
-            app.logger.error(
-                "Failed to send close voting notification for match {}".format(match_id)
+            logging.error(
+                "Failed to send close voting notification for match {}".format(
+                    match_id
+                ),
+                e,
             )
             traceback.print_exc()
 
@@ -1346,8 +1346,9 @@ def _get_matches_firestore(
             print("Failed to read match data with id '{}".format(m.id))
             traceback.print_exc()
 
-    app.logger.info(
-        "Fetched {} matches, {} matches filtered".format(num_fetched_matches, len(res))
+    logging.info(
+        "Fetched {} matches, {} matches filtered".format(num_fetched_matches, len(res)),
+        extra={"user_id": user_id},
     )
     return res
 
@@ -1394,8 +1395,9 @@ def _format_match_data_v2(match_id, match_data, version, add_organizer_info=Fals
                     "arrival_date": info.arrival_date,
                 }
         except Exception as e:
-            app.logger.error(
-                "Failed to get payout info {} for match {}".format(e, match_id)
+            logging.error(
+                "Failed to get payout info for match {}".format(match_id),
+                e,
             )
 
     # todo support legacy

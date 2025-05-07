@@ -20,6 +20,7 @@ from src.blueprints import (
     payments,
     leaderboard,
 )
+from google.cloud.logging_v2.handlers import StructuredLogHandler
 
 
 class UserIdFilter(logging.Filter):
@@ -29,31 +30,18 @@ class UserIdFilter(logging.Filter):
         return True
 
 
-# def _setup_logging():
-#     client = google.cloud.logging.Client()
-#     handler = CloudLoggingHandler(client)
-#     handler.addFilter(UserIdFilter())
-#     logging.getLogger().setLevel(logging.INFO)
-#     logging.getLogger().addHandler(handler)
-
-
 def _create_app(db):
     app = flask.Flask(__name__)
     
     # Setup basic logging
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger()
+    # Replace default handler with structured one
+    handler = StructuredLogHandler()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
 
-    print("print: Starting app GAE_INSTANCE: {}, GAE_VERSION: {}".format(
-            os.environ.get("GAE_INSTANCE", "unknown"),
-            os.environ.get("GAE_VERSION", "unknown"),
-        )
-    )
-    logger.info("logging.info: Starting app GAE_INSTANCE: {}, GAE_VERSION: {}".format(
-            os.environ.get("GAE_INSTANCE", "unknown"),
-            os.environ.get("GAE_VERSION", "unknown"),
-        )
-    )
+    logging.info("Starting app")
     app.db_client = db
 
     app.register_blueprint(matches.bp)
@@ -78,18 +66,6 @@ def _create_app(db):
             flask.g.uid = decoded_token["uid"]
         else:
             flask.g.uid = None
-
-        structured_log = {
-            "client-version": "{}".format(
-                request.headers.get("App-Version", "unknown")
-            ),
-            "user-id": flask.g.uid,
-        }
-        if "X-Cloud-Trace-Context" in request.headers:
-            structured_log["logging.googleapis.com/trace"] = request.headers[
-                "X-Cloud-Trace-Context"
-            ]
-        logging.info(json.dumps(structured_log))
 
     @app.route("/routes", methods=["GET"])
     def routes():

@@ -1,3 +1,4 @@
+import logging
 import json
 from datetime import datetime
 
@@ -102,8 +103,7 @@ def build_dynamic_link(link):
 
 def send_notification_to_users(flask_app, title, body, data, users):
     db = flask_app.db_client
-    logger = flask_app.logger
-    
+
     for user_id in users:
         user_data = (
             db.collection("users")
@@ -119,9 +119,9 @@ def send_notification_to_users(flask_app, title, body, data, users):
                     token=t,
                 )
                 response = messaging.send(message)
-                logger.info(f"Notification to {t} sent with response {response}")
+                logging.info(f"Notification to {t} sent with response {response}")
             except Exception as e:
-                logger.error(f"Error sending notification to {t}: {e}")
+                logging.error(f"Error sending notification to {t}: {e}")
 
 
 def update_leaderboard(app, leaderboard_id, match_list, updates_map):
