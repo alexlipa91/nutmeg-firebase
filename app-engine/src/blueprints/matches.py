@@ -190,6 +190,9 @@ def _run_match_query(query, user_id: str):
 
 @bp_v2.route("", methods=["GET"])
 def get_matches():
+    print("called get_matches")
+    logging.info("called get_matches")
+    app.logger.info("called get_matches")
     time_filter: Optional[MatchesTimeFilter] = MatchesTimeFilter.from_arg(
         flask.request.args.get("when", None)
     )

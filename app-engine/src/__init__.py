@@ -36,7 +36,7 @@ def _setup_logging():
     logging.getLogger().addHandler(handler)
 
 
-def _create_app(db, log_to_gcloud=True):
+def _create_app(db):
     app = flask.Flask(__name__)
 
     logging.info(
@@ -57,9 +57,6 @@ def _create_app(db, log_to_gcloud=True):
     app.register_blueprint(stripe_bp.bp)
     app.register_blueprint(feedback.bp)
     app.register_blueprint(leaderboard.bp)
-
-    if log_to_gcloud:
-        _setup_logging()
 
     CORS(app)
 
