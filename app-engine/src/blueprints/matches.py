@@ -1348,7 +1348,7 @@ def _get_matches_firestore(
 
     logging.info(
         "Fetched {} matches, {} matches filtered".format(num_fetched_matches, len(res)),
-        extra={"user_id": user_id},
+        extra={"custom_fields": {"user_id": user_id}},
     )
     return res
 
