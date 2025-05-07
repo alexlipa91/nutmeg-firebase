@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 
 import flask
 import google.cloud.logging
@@ -28,19 +29,27 @@ class UserIdFilter(logging.Filter):
         return True
 
 
-def _setup_logging():
-    client = google.cloud.logging.Client()
-    handler = CloudLoggingHandler(client)
-    handler.addFilter(UserIdFilter())
-    logging.getLogger().setLevel(logging.INFO)
-    logging.getLogger().addHandler(handler)
+# def _setup_logging():
+#     client = google.cloud.logging.Client()
+#     handler = CloudLoggingHandler(client)
+#     handler.addFilter(UserIdFilter())
+#     logging.getLogger().setLevel(logging.INFO)
+#     logging.getLogger().addHandler(handler)
 
 
 def _create_app(db):
     app = flask.Flask(__name__)
+    
+    # Setup basic logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger()
 
-    logging.info(
-        "Starting app GAE_INSTANCE: {}, GAE_VERSION: {}".format(
+    print("print: Starting app GAE_INSTANCE: {}, GAE_VERSION: {}".format(
+            os.environ.get("GAE_INSTANCE", "unknown"),
+            os.environ.get("GAE_VERSION", "unknown"),
+        )
+    )
+    logger.info("logging.info: Starting app GAE_INSTANCE: {}, GAE_VERSION: {}".format(
             os.environ.get("GAE_INSTANCE", "unknown"),
             os.environ.get("GAE_VERSION", "unknown"),
         )
