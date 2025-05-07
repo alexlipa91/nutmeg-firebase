@@ -7,7 +7,7 @@ from firebase_admin import auth
 from flask import request
 from flask_cors import CORS
 from google.cloud.logging.handlers import CloudLoggingHandler
-
+import os
 from src.blueprints import (
     feedback,
     stats,
@@ -39,7 +39,12 @@ def _setup_logging():
 def _create_app(db, log_to_gcloud=True):
     app = flask.Flask(__name__)
 
-    print("initializing")
+    logging.info(
+        "Starting app GAE_INSTANCE: {}, GAE_VERSION: {}".format(
+            os.environ.get("GAE_INSTANCE", "unknown"),
+            os.environ.get("GAE_VERSION", "unknown"),
+        )
+    )
     app.db_client = db
 
     app.register_blueprint(matches.bp)

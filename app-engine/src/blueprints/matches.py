@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 import os
 import random
 import traceback
@@ -69,7 +70,6 @@ def get_matches():
 class MatchesTimeFilter(Enum):
     PAST = "past"
     FUTURE = "future"
-
 
     @staticmethod
     def from_arg(arg: Optional[str]) -> Optional["MatchesTimeFilter"]:
@@ -175,11 +175,12 @@ def _run_match_query(query, user_id: str):
 
             res[m.id] = data
         except Exception as e:
-            print("Failed to read match data with id '{}".format(m.id))
+            logging.error("Failed to read match data with id '{}".format(m.id), e)
             traceback.print_exc()
 
-    app.logger.info(
-        "Fetched {} matches, {} returned".format(num_fetched_matches, len(res))
+    logging.info(
+        "Fetched {} matches, {} returned".format(num_fetched_matches, len(res)),
+        extra={"user_id": user_id},
     )
     return res
 
