@@ -1,4 +1,5 @@
 import logging
+import flask
 import google.cloud.logging
 
 
@@ -35,7 +36,7 @@ class CloudLoggingHandler(logging.Handler):
                 # Add user_id if available
                 if hasattr(flask.g, "uid"):
                     structured_log["user_id"] = flask.g.uid
-                structured_log["client_version"] = request.headers.get(
+                structured_log["client_version"] = flask.request.headers.get(
                     "App-Version", "unknown"
                 )
 
