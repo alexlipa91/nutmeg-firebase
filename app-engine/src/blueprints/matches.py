@@ -188,10 +188,6 @@ def _run_match_query(query, user_id: str):
             logging.error("Failed to read match data with id '{}".format(m.id), e)
             traceback.print_exc()
 
-    logging.info(
-        "Fetched {} matches, {} returned".format(num_fetched_matches, len(res)),
-        extra={"user_id": user_id},
-    )
     return res
 
 
