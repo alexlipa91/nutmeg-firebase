@@ -344,7 +344,6 @@ def add_rating_multi(match_id):
     update = {"scores": {}}
     for receiver in request_data:
         update["scores"][receiver] = {flask.g.uid: request_data[receiver]}
-    print(update)
     app.db_client.collection("ratings").document(match_id).set(update, merge=True)
     return {}
 

@@ -1,3 +1,4 @@
+import base64
 import logging
 from firebase_admin import firestore
 
@@ -43,12 +44,22 @@ def _create_app():
     @app.before_request
     def before_request_callback():
         if "Authorization" in request.headers:
+            print("Authorization header found")
             decoded_token = auth.verify_id_token(
                 request.headers["Authorization"].split(" ")[1]
             )
             flask.g.uid = decoded_token["uid"]
         else:
             flask.g.uid = None
+
+        if request.method == "POST":
+            try:
+                body = request.get_data()
+                if body:
+                    encoded = base64.b64encode(body).decode("utf-8")
+                    logging.info(f"Request body (base64): {encoded}")
+            except Exception as e:
+                logging.error(f"Error logging request body: {e}")
 
     @app.route("/routes", methods=["GET"])
     def routes():
