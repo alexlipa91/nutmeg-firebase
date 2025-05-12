@@ -5,6 +5,8 @@ import firebase_admin
 import os
 
 
+load_dotenv(".env.local")
+
 def create_app():
     firebase_admin.initialize_app()
 
