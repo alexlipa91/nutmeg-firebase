@@ -287,7 +287,7 @@ def get_ratings(match_id):
         return {"data": resp}, 200
 
     distinct_score_voters = set()
-    for _, votes in ratings_data["scores"].items():
+    for _, votes in ratings_data.get("scores", {}).items():
         distinct_score_voters.update(votes.keys())
 
     resp = {
