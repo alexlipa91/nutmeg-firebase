@@ -44,7 +44,6 @@ def _create_app():
     @app.before_request
     def before_request_callback():
         if "Authorization" in request.headers:
-            print("Authorization header found")
             decoded_token = auth.verify_id_token(
                 request.headers["Authorization"].split(" ")[1]
             )
@@ -57,7 +56,7 @@ def _create_app():
                 body = request.get_data()
                 if body:
                     encoded = base64.b64encode(body).decode("utf-8")
-                    logging.info(f"Request body (base64): {encoded}")
+                    logging.info(f"Request body (base64): {encoded}, userId: {flask.g.uid}, path: {request.path}")
             except Exception as e:
                 logging.error(f"Error logging request body: {e}")
 
