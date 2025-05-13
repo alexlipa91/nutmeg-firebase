@@ -290,16 +290,14 @@ def get_ratings(match_id):
     for _, votes in ratings_data.get("scores", {}).items():
         distinct_score_voters.update(votes.keys())
 
-    distinct_award_voters = set()
-    for _, details in ratings_data.get("awards", {}).items():
-        distinct_award_voters.update(details.get("votedBy", {}).keys())
-
+    num_distinct_award_voters = len(ratings_data.get("awardVotes", {}))
+    
     resp = {
         "scores": ratings_data["finalScores"],
         "potms": ratings_data["finalPotms"],
         "awards": ratings_data.get("finalAwards", {}),
         "num_distinct_score_voters": len(distinct_score_voters),
-        "num_distinct_award_voters": len(distinct_award_voters),
+        "num_distinct_award_voters": num_distinct_award_voters,
     }
     return {"data": resp}, 200
 
