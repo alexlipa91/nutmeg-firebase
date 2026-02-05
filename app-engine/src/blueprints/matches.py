@@ -6,7 +6,7 @@ import traceback
 from collections import namedtuple
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 import dateutil.parser
@@ -122,6 +122,13 @@ def _get_matches(
         f"Queried matches time filter {time_filter}, location filter {location_filter}: {len(res)} matches"
     )
     return res
+
+def _get_teams(match_data: Dict) -> Tuple[List[str], List[str]]:
+    if match_data.get("hasManualTeams", False):
+        teams = match_data["teams"]["manual"]
+    else:
+        teams = match_data["teams"]["balanced"]
+    return teams["players"]["a"], teams["players"]["b"]
 
 
 def _get_user_matches(user_id: str, time_filter: Optional[MatchesTimeFilter]):
@@ -613,6 +620,43 @@ def _get_user_stat_doc_ref(user_id, match_id):
 @bp.route("/<match_id>/users/remove", methods=["POST"])
 def remove_user_from_match_request(match_id):
     user_id = flask.g.uid
+    _remove_user_from_match(match_id, user_id)
+
+    # recompute teams
+    get_teams(match_id)
+
+    return {"data": {}}, 200
+
+
+@bp.route("/<match_id>/users/remove_other", methods=["POST"])
+def remove_other_user_from_match_request(match_id):
+    """
+    Remove a specific user from a match.
+
+    Authorization: only the match organizer (or an admin) can remove other users.
+    Body: { "user_id": "<user_to_remove>" }
+    """
+    data = flask.request.get_json(silent=True) or {}
+    user_id = data.get("user_id", None)
+    if not user_id:
+        return {"error": "Missing user_id"}, 400
+
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
+    match_doc = match_doc_ref.get()
+    if not match_doc.exists:
+        return {"error": "Match not found"}, 404
+
+    match_data = match_doc.to_dict()
+    requester_id = flask.g.uid
+
+    is_admin = requester_id in ADMIN_IDS
+    is_organizer = match_data.get("organizerId", None) == requester_id
+    if not (is_admin or is_organizer):
+        return {"error": "User not authorized"}, 403
+
+    if user_id == match_data.get("organizerId", None):
+        return {"error": "Cannot remove organizer"}, 400
+
     _remove_user_from_match(match_id, user_id)
 
     # recompute teams
