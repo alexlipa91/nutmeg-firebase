@@ -5,3 +5,5 @@ env-variables.yaml
 app.yaml
 
 venv/*
+
+__pycache__/
