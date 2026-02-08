@@ -665,6 +665,167 @@ def remove_other_user_from_match_request(match_id):
     return {"data": {}}, 200
 
 
+@bp.route("/<match_id>/waitlist/add", methods=["POST"])
+def add_user_to_waitlist_request(match_id):
+    data = flask.request.get_json(silent=True) or {}
+    user_id = data.get("user_id", flask.g.uid)
+
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
+
+    _add_user_to_waitlist_transaction(
+        app.db_client.transaction(),
+        match_doc_ref,
+        user_id,
+        match_id,
+    )
+
+    return {"data": {}}, 200
+
+
+@bp.route("/<match_id>/waitlist/remove", methods=["POST"])
+def remove_user_from_waitlist_request(match_id):
+    user_id = flask.g.uid
+
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
+    match_data = match_doc_ref.get().to_dict()
+
+    if not match_data:
+        return {"error": "Match not found"}, 404
+
+    if user_id not in match_data.get("waitList", {}):
+        return {"error": "User is not in the waitlist"}, 400
+
+    match_doc_ref.update({"waitList." + user_id: firestore.DELETE_FIELD})
+
+    return {"data": {}}, 200
+
+
+@bp.route("/<match_id>/waitlist/promote", methods=["POST"])
+def promote_user_from_waitlist_request(match_id):
+    """Promote a user from the waitlist to going. Only organizer or admin can do this."""
+    data = flask.request.get_json(silent=True) or {}
+    user_id = data.get("user_id", None)
+    if not user_id:
+        return {"error": "Missing user_id"}, 400
+
+    match_doc_ref = app.db_client.collection("matches").document(match_id)
+    match_data = match_doc_ref.get().to_dict()
+
+    if not match_data:
+        return {"error": "Match not found"}, 404
+
+    requester_id = flask.g.uid
+    is_admin = requester_id in ADMIN_IDS
+    is_organizer = match_data.get("organizerId", None) == requester_id
+    if not (is_admin or is_organizer):
+        return {"error": "User not authorized"}, 403
+
+    if user_id not in match_data.get("waitList", {}):
+        return {"error": "User is not in the waitlist"}, 400
+
+    if len(match_data.get("going", {})) >= match_data.get("maxPlayers", 0):
+        return {"error": "Match is full"}, 400
+
+    user_stat_doc_ref = _get_user_stat_doc_ref(user_id, match_id)
+    transactions_doc_ref = (
+        app.db_client.collection("matches")
+        .document(match_id)
+        .collection("transactions")
+        .document()
+    )
+
+    _promote_user_from_waitlist_transaction(
+        app.db_client.transaction(),
+        match_doc_ref,
+        user_stat_doc_ref,
+        transactions_doc_ref,
+        user_id,
+        match_id,
+    )
+
+    # recompute teams
+    get_teams(match_id)
+
+    return {"data": {}}, 200
+
+
+@firestore.transactional
+def _promote_user_from_waitlist_transaction(
+    transaction, match_doc_ref, user_stat_doc_ref, transactions_doc_ref, user_id, match_id
+):
+    timestamp = datetime.now(tz)
+
+    match = match_doc_ref.get(transaction=transaction).to_dict()
+
+    if user_id not in match.get("waitList", {}):
+        raise Exception("User is not in the waitlist")
+
+    if len(match.get("going", {})) >= match.get("maxPlayers", 0):
+        raise Exception("Match is full")
+
+    # remove from waitlist
+    transaction.update(match_doc_ref, {"waitList." + user_id: firestore.DELETE_FIELD})
+
+    # add to going
+    transaction.set(
+        match_doc_ref,
+        {
+            "going": {
+                user_id: {"createdAt": timestamp}
+            },
+            "goingPlayers": firestore.ArrayUnion([user_id]),
+        },
+        merge=True,
+    )
+
+    # add match to user stats
+    transaction.set(
+        user_stat_doc_ref, {"joinedMatches": {match_id: match["dateTime"]}}, merge=True
+    )
+
+    # record transaction
+    transaction.set(
+        transactions_doc_ref,
+        {
+            "type": "promoted_from_waitlist",
+            "userId": user_id,
+            "createdAt": timestamp,
+        },
+    )
+
+
+@firestore.transactional
+def _add_user_to_waitlist_transaction(transaction, match_doc_ref, user_id, match_id):
+    timestamp = datetime.now(tz)
+
+    match = match_doc_ref.get(transaction=transaction).to_dict()
+
+    if not match:
+        raise Exception("Match not found")
+
+    # don't allow joining waitlist if user is already going
+    if user_id in match.get("going", {}):
+        raise Exception("User is already going to this match")
+
+    # don't allow joining waitlist if user is already on it
+    if user_id in match.get("waitList", {}):
+        return
+
+    # don't allow joining waitlist if match is not full
+    if len(match.get("going", {})) < match.get("maxPlayers", 0):
+        raise Exception("Match is not full, join the match directly")
+
+    transaction.set(
+        match_doc_ref,
+        {
+            "waitList": {
+                user_id: {"createdAt": timestamp}
+            }
+        },
+        merge=True,
+    )
+
+
 @bp.route("/<match_id>/cancel", methods=["GET"])
 def cancel_match(match_id, trigger="manual"):
     match_doc_ref = app.db_client.collection("matches").document(match_id)
@@ -1272,6 +1433,10 @@ def _add_user_to_match_firestore_transaction(
     if match.get("going", {}).get(user_id, None):
         print("User already going")
         return
+
+    # check if match is full
+    if len(match.get("going", {})) >= match.get("maxPlayers", 0):
+        raise Exception("Match is full")
 
     # add user to list of going
     transaction.set(
